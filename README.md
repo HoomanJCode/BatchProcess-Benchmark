@@ -1,20 +1,20 @@
 # Unity Batch Processing and Gravity Demos
 
-This Unity project contains two presentation examples. The batch example compares seven ways to process the same list of numbers. The gravity example shows spheres attracting each other in either a 2D plane or 3D space, using the same seven execution strategies.
+This Unity project contains two code examples. The batch scene runs one selected processing strategy over a list of numbers. The gravity scenes show bodies attracting each other in either a 2D plane or 3D space, using the same seven execution strategies.
 
 ## Requirements
 
 - Unity **6000.5.1f1** (see `ProjectSettings/ProjectVersion.txt`)
 - Packages listed in `Packages/manifest.json`. Unity Package Manager installs them when the project opens.
 
-## Start with the simple batch example
+## Run the batch example
 
 1. Open the project in Unity Hub.
 2. Open [`Assets/Examples/BatchProcessing/Scenes/BatchProcessing.unity`](Assets/Examples/BatchProcessing/Scenes/BatchProcessing.unity).
-3. Press **Play**, choose a processing mode, and press **Run batch**.
-4. Keep the item count and operations per item fixed while comparing modes. Each run starts with the same deterministic values and displays a checksum so you can check that modes produce equivalent results.
+3. In the `Batch Processing App` Inspector, choose the processing mode and workload size. The scene runs the selected mode on Play when **Run On Start** is enabled. You can also run it from the component's **Run Batch** context menu.
+4. Compare modes using the reported checksum and the matching `BatchProcessing.*` marker in **Window → Analysis → Profiler**. Each run starts with the same deterministic values.
 
-The batch scene has sliders for workload size, a progress bar, compute and wall-clock timings, a checksum, and a Unity Profiler marker. Find the matching `BatchProcessing.*` marker in **Window → Analysis → Profiler**. Async work is marked `BatchProcessing.CSharpAsync.Worker`; coroutine chunks use the selected mode marker across frames. The Burst mode also displays whether Burst compilation is enabled or using the managed fallback.
+The batch scene has no runtime UI. Its mode, item count, iteration count, and run-on-start option are Inspector fields; the last checksum and timings are shown on the component. Async work is marked `BatchProcessing.CSharpAsync.Worker`; coroutine chunks use the selected mode marker across frames.
 
 The sample calculation repeats a small multiply/add operation for each number. It is intentionally simple so it is easy to explain: the calculation stays the same while the scheduling changes.
 
@@ -30,14 +30,15 @@ This scene does not create spheres or simulate gravity. It isolates batch schedu
 | Unity coroutine | A loop processes a small chunk, yields, then continues on a later frame. |
 | Unity Jobs (Burst) | The same job is marked with `[BurstCompile]` and compiled by Burst when available. |
 
-Choose **Tools → Batch Processing → Create Presentation Scene** to regenerate the batch scene and its Build Settings entry.
+Choose **Tools → Batch Processing → Create Example Scene** to regenerate the batch scene and its Build Settings entry.
 
 ## Open the gravity example
 
-The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/GravitySimulation). Open a `Gravity_*.unity` scene and press **Play**. Each scene selects a strategy when it starts. Use the runtime controls to change between 2D and 3D, pause, reset, and adjust body count and simulation speed.
+The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/GravitySimulation). Each scene is a standalone example with one controller and no runtime UI. The starter scene opens in 2D with sprite bodies; each strategy scene opens in 3D with sphere bodies. Use the controller Inspector to set body count, gravity, softening, simulation speed, and dimension.
 
 | Scene | Starts with |
 | --- | --- |
+| [`SampleScene.unity`](Assets/Examples/GravitySimulation/Scenes/SampleScene.unity) | Single threaded, 2D sprites |
 | [`Gravity_SingleThreaded.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_SingleThreaded.unity) | Single threaded |
 | [`Gravity_CSharpAsync.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_CSharpAsync.unity) | C# async |
 | [`Gravity_CSharpParallel.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_CSharpParallel.unity) | C# parallel |
@@ -46,19 +47,21 @@ The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/
 | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_UnityCoroutine.unity) | Unity coroutine |
 | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_UnityJobsBurst.unity) | Unity Jobs with Burst |
 
-All seven gravity scenes and the batch scene are in **Build Settings**. The gravity starter scene is `Assets/Examples/GravitySimulation/Scenes/SampleScene.unity`. Regenerate the gravity scenes with **Tools → Gravity Simulation → Generate Mode Scenes**.
+All eight gravity scenes and the batch scene are in **Build Settings**. Regenerate the gravity scenes with **Tools → Gravity Simulation → Regenerate Example Scenes**.
 
-The gravity demo uses deterministic initial positions and velocities, softened inverse-square attraction, and a simple semi-implicit Euler integration. It is a visual workload example, not a high-precision orbital solver. Sphere collisions are not simulated. At `N` bodies, each step performs roughly `N × (N - 1)` pair evaluations, so the workload grows quadratically.
+Each strategy has its own assembly under `Assets/Examples/GravitySimulation/Scripts`. All seven reference `GravitySimulation.Core`, which owns the shared gravity formulas, simulation state, steppers, and scene runner.
 
-## Presenting and profiling
+In 2D mode, bodies use `SpriteRenderer` with the controller's optional body sprite (a circle sprite is generated when none is assigned), and the camera looks straight at the simulation plane. In 3D mode, bodies use spheres. The demo uses deterministic initial positions and velocities, softened inverse-square attraction, and a simple semi-implicit Euler integration. It is a visual workload example, not a high-precision orbital solver. Body collisions are not simulated. At `N` bodies, each step performs roughly `N × (N - 1)` pair evaluations, so the workload grows quadratically.
+
+## Profiling
 
 1. Open **Window → Analysis → Profiler** before running the example.
 2. Use the same workload settings for each mode. For gravity, reset the scene between captures; the batch scene recreates its same starting values for each run.
 3. Warm up each mode first. Discard the first Burst measurement in Editor Play mode because it may include JIT compilation.
-4. Compare frame time and main-thread cost as well as the example's compute time. C# async and coroutines can keep the main thread responsive by moving or spreading work, even when total elapsed time is not lower.
+4. Compare frame time and main-thread cost. The gravity strategies expose `GravitySimulation.*` profiler markers; C# async and coroutines can keep the main thread responsive by moving or spreading work, even when total elapsed time is not lower.
 5. Small workloads may be slower with parallel strategies because scheduling has a cost. Results depend on hardware, Editor load, Unity version, and Burst configuration.
 
-The batch display's **compute time** measures work within that mode (including job setup and copying for Unity Jobs); **wall time** measures how long the run takes from start to completion. For async, the wall time includes the wait until the worker finishes. For coroutines, wall time includes the frames spent yielding while compute time sums only the chunk work.
+The batch component reports **compute time** for work within that mode (including job setup and copying for Unity Jobs), and **wall time** from start to completion. For async, wall time includes the wait until the worker finishes. For coroutines, wall time includes the frames spent yielding while compute time sums only the chunk work.
 
 ## Project layout
 
@@ -76,7 +79,7 @@ Assets/Examples/
 
 Useful batch files:
 
-- [`BatchProcessingApp.cs`](Assets/Examples/BatchProcessing/Scripts/BatchProcessingApp.cs) — the controls, mode selection, execution, and timings.
+- [`BatchProcessingApp.cs`](Assets/Examples/BatchProcessing/Scripts/BatchProcessingApp.cs) — Inspector settings, batch execution, and results.
 - [`BatchProcessingMath.cs`](Assets/Examples/BatchProcessing/Scripts/BatchProcessingMath.cs) — the shared calculation and Unity job definitions.
 - [`ProcessingModule.cs`](Assets/Examples/BatchProcessing/Scripts/ProcessingModule.cs) — the component-based main-thread example.
 
