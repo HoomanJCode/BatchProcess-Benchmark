@@ -9,7 +9,7 @@ using Unity.Mathematics;
 using Unity.Profiling;
 using UnityEngine;
 
-/// <summary>The available execution strategies exposed by the demo controls.</summary>
+/// <summary>The available gravity execution strategies.</summary>
 public enum SimulationMode
 {
     SingleThreaded,
@@ -50,6 +50,11 @@ public interface IGravityStepper : IDisposable
     BodyState[] States { get; }
     double LastStepMilliseconds { get; }
     void Step(float deltaTime, float gravity, float softening, SimulationDimension dimension);
+}
+
+public interface IGravityBodyProvider
+{
+    GravityBodyView[] GetBodyViews();
 }
 
 internal static class GravityStateFactory
@@ -429,8 +434,8 @@ internal sealed class ModularMainThreadStepper : IGravityStepper
     public ModularMainThreadStepper(BodyState[] initialStates, MonoBehaviour owner)
     {
         States = (BodyState[])initialStates.Clone();
-        var app = owner as GravitySimulationApp;
-        _bodyModules = app == null ? new GravityBodyView[0] : app.GetBodyViews();
+        var provider = owner as IGravityBodyProvider;
+        _bodyModules = provider == null ? new GravityBodyView[0] : provider.GetBodyViews();
     }
 
     public void Step(float deltaTime, float gravity, float softening, SimulationDimension dimension)
