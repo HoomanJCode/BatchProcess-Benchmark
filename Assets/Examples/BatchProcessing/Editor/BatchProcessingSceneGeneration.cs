@@ -4,12 +4,12 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>Creates the small standalone scene used by the batch-processing presentation.</summary>
+/// <summary>Creates the small standalone batch-processing example scene.</summary>
 public static class BatchProcessingSceneGeneration
 {
     private const string ScenePath = "Assets/Examples/BatchProcessing/Scenes/BatchProcessing.unity";
 
-    [MenuItem("Tools/Batch Processing/Create Presentation Scene")]
+    [MenuItem("Tools/Batch Processing/Create Example Scene")]
     public static void Build()
     {
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -22,11 +22,6 @@ public static class BatchProcessingSceneGeneration
         camera.backgroundColor = new Color(0.035f, 0.055f, 0.09f);
         cameraObject.transform.position = new Vector3(0f, 0f, -10f);
         cameraObject.AddComponent<AudioListener>();
-
-        var lightObject = new GameObject("Directional Light");
-        Light light = lightObject.AddComponent<Light>();
-        light.type = LightType.Directional;
-        lightObject.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
 
         var appObject = new GameObject("Batch Processing App");
         appObject.AddComponent<BatchProcessingApp>();
