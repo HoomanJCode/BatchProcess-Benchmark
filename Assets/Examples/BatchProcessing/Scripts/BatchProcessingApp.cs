@@ -48,7 +48,14 @@ public struct SimpleBatchJob : IJobParallelFor
 
     public void Execute(int index)
     {
-        Values[index] = BatchProcessingMath.ProcessValue(Values[index], Iterations);
+        float value = Values[index];
+        for (int i = 0; i < Iterations; i++)
+        {
+            value = value * 1.00001f + 0.00002f;
+            if (value >= 1f)
+                value -= 1f;
+        }
+        Values[index] = value;
     }
 }
 
@@ -60,7 +67,14 @@ public struct SimpleBatchBurstJob : IJobParallelFor
 
     public void Execute(int index)
     {
-        Values[index] = BatchProcessingMath.ProcessValue(Values[index], Iterations);
+        float value = Values[index];
+        for (int i = 0; i < Iterations; i++)
+        {
+            value = value * 1.00001f + 0.00002f;
+            if (value >= 1f)
+                value -= 1f;
+        }
+        Values[index] = value;
     }
 }
 

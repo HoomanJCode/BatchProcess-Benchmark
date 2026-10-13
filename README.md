@@ -1,6 +1,6 @@
 # Unity Batch Processing and Gravity Demos
 
-This Unity project contains two code examples. The batch scene runs one selected processing strategy over a list of numbers. The gravity scenes show bodies attracting each other in either a 2D plane or 3D space, using the same seven execution strategies.
+This Unity project contains parallel-processing examples. The batch scene compares processing strategies over a list of numbers. The gravity scenes show bodies attracting each other in either a 2D plane or 3D space.
 
 ## Requirements
 
@@ -12,23 +12,22 @@ This Unity project contains two code examples. The batch scene runs one selected
 1. Open the project in Unity Hub.
 2. Open [`Assets/Examples/BatchProcessing/Scenes/BatchProcessing.unity`](Assets/Examples/BatchProcessing/Scenes/BatchProcessing.unity).
 3. In the `Batch Processing App` Inspector, choose the processing mode and workload size. The scene runs the selected mode on Play when **Run On Start** is enabled. You can also run it from the component's **Run Batch** context menu.
-4. Compare modes using the reported checksum and the matching `BatchProcessing.*` marker in **Window → Analysis → Profiler**. Each run starts with the same deterministic values.
+4. Compare modes using the reported checksum and the matching `BatchProcessing.*` marker in **Window → Analysis → Profiler**. Each run starts with the same deterministic values. Burst can produce small floating-point checksum differences while running the same calculation.
 
 The batch scene has no runtime UI. Its mode, item count, iteration count, and run-on-start option are Inspector fields; the last checksum and timings are shown on the component. Async work is marked `BatchProcessing.CSharpAsync.Worker`; coroutine chunks use the selected mode marker across frames.
 
 The sample calculation repeats a small multiply/add operation for each number. It is intentionally simple so it is easy to explain: the calculation stays the same while the scheduling changes.
 
-This scene does not create spheres or simulate gravity. It isolates batch scheduling: every mode receives the same deterministic `float` array and performs the same calculation. Use the checksum to confirm the results match, then compare timing and responsiveness in the Profiler. The gravity scene is the visual physics demonstration.
+This scene does not create spheres or simulate gravity. It isolates batch scheduling: every mode receives the same deterministic `float` array and performs the same calculation. Use the checksum to compare results, allowing for small floating-point differences in Burst, then compare timing and responsiveness in the Profiler. The gravity scene is the visual physics demonstration.
 
 | Mode | Simple explanation |
 | --- | --- |
 | Single threaded | One loop processes every number on Unity's main thread. |
 | C# async | A `Task` processes the numbers on a worker thread; Unity reads the result after it finishes. |
 | C# parallel | `Parallel.For` splits numbers across .NET thread-pool workers. |
-| Unity modular main thread | A `ProcessingModule` component runs the same loop on the main thread. It demonstrates code organization, not parallel work. |
-| Unity Jobs (no Burst) | `IJobParallelFor` processes native data in parallel without Burst compilation. |
+| Unity Jobs | `IJobParallelFor` processes native data in parallel without Burst compilation. |
 | Unity coroutine | A loop processes a small chunk, yields, then continues on a later frame. |
-| Unity Jobs (Burst) | The same job is marked with `[BurstCompile]` and compiled by Burst when available. |
+| Unity Jobs with Burst | The same job is marked with `[BurstCompile]` and compiled by Burst when available. |
 
 Choose **Tools → Batch Processing → Create Example Scene** to regenerate the batch scene and its Build Settings entry.
 
@@ -42,14 +41,13 @@ The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/
 | [`Gravity_SingleThreaded.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_SingleThreaded.unity) | Single threaded |
 | [`Gravity_CSharpAsync.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_CSharpAsync.unity) | C# async |
 | [`Gravity_CSharpParallel.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_CSharpParallel.unity) | C# parallel |
-| [`Gravity_UnityModularMainThread.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_UnityModularMainThread.unity) | Unity modular main thread |
-| [`Gravity_UnityJobs.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_UnityJobs.unity) | Unity Jobs without Burst |
+| [`Gravity_UnityJobs.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_UnityJobs.unity) | Unity Jobs |
 | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_UnityCoroutine.unity) | Unity coroutine |
 | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_UnityJobsBurst.unity) | Unity Jobs with Burst |
 
-All eight gravity scenes and the batch scene are in **Build Settings**. Regenerate the gravity scenes with **Tools → Gravity Simulation → Regenerate Example Scenes**.
+All seven gravity scenes and the batch scene are in **Build Settings**. Regenerate the gravity scenes with **Tools → Gravity Simulation → Regenerate Example Scenes**.
 
-Each strategy has its own assembly under `Assets/Examples/GravitySimulation/Scripts`. All seven reference `GravitySimulation.Core`, which owns the shared gravity formulas, simulation state, steppers, and scene runner.
+Each gravity strategy has one implementation script in its own assembly under `Assets/Examples/GravitySimulation/Scripts`. Those assemblies reference `GravitySimulation.Core` for the shared gravity formula and common scene setup.
 
 In 2D mode, bodies use `SpriteRenderer` with the controller's optional body sprite (a circle sprite is generated when none is assigned), and the camera looks straight at the simulation plane. In 3D mode, bodies use spheres. The demo uses deterministic initial positions and velocities, softened inverse-square attraction, and a simple semi-implicit Euler integration. It is a visual workload example, not a high-precision orbital solver. Body collisions are not simulated. At `N` bodies, each step performs roughly `N × (N - 1)` pair evaluations, so the workload grows quadratically.
 
@@ -70,20 +68,16 @@ Assets/Examples/
 ├── BatchProcessing/
 │   ├── Editor/       Scene creation command
 │   ├── Scenes/       Standalone comparison scene
-│   └── Scripts/      Shared calculation and seven processing modes
+│   └── Scripts/      One script containing the calculation and processing modes
 └── GravitySimulation/
     ├── Editor/       Gravity mode scene generator
-    ├── Scenes/       Starter scene and seven preset scenes
-    └── Scripts/      Gravity simulation, sphere views, and execution modes
+    ├── Scenes/       Starter scene and strategy scenes
+    └── Scripts/      Shared gravity core and one script per strategy
 ```
 
-Useful batch files:
+The batch example's settings, processing modes, jobs, and calculation are all in [`BatchProcessingApp.cs`](Assets/Examples/BatchProcessing/Scripts/BatchProcessingApp.cs).
 
-- [`BatchProcessingApp.cs`](Assets/Examples/BatchProcessing/Scripts/BatchProcessingApp.cs) — Inspector settings, batch execution, and results.
-- [`BatchProcessingMath.cs`](Assets/Examples/BatchProcessing/Scripts/BatchProcessingMath.cs) — the shared calculation and Unity job definitions.
-- [`ProcessingModule.cs`](Assets/Examples/BatchProcessing/Scripts/ProcessingModule.cs) — the component-based main-thread example.
-
-Burst is a package dependency but is not enabled project-wide. The plain Jobs mode remains a baseline; the separate Burst job opts into compilation with `[BurstCompile]`. The overlay reports Burst availability in the gravity demo.
+Burst is a package dependency but is not enabled project-wide. The plain Jobs mode remains a baseline; the Burst job opts into compilation with `[BurstCompile]`.
 
 ## Optional Unity CLI integration
 
