@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using Unity.Profiling;
 using UnityEngine;
 
-/// <summary>Shared scene setup and presentation for one gravity execution example.</summary>
-public abstract class GravitySimulationExample : MonoBehaviour, IGravityBodyProvider
+/// <summary>Shared Inspector settings and visual setup for one gravity strategy example.</summary>
+public abstract class GravitySimulationExample : MonoBehaviour
 {
     [Header("Simulation")]
     [SerializeField, Min(1)] private int _bodyCount = 128;
@@ -15,48 +15,36 @@ public abstract class GravitySimulationExample : MonoBehaviour, IGravityBodyProv
 
     private static Material _gridMaterial;
     private readonly List<GravityBodyView> _views = new List<GravityBodyView>();
-    private IGravityStepper _stepper;
-    private BodyState[] _initialStates;
-    private GameObject _gridRoot;
     private ProfilerMarker _stepMarker;
 
+    protected BodyState[] States { get; set; }
+    protected SimulationDimension Dimension { get { return _dimension; } }
     protected abstract SimulationMode Mode { get; }
 
-    GravityBodyView[] IGravityBodyProvider.GetBodyViews() { return _views.ToArray(); }
+    protected abstract void SimulateStep(float deltaTime, float gravity, float softening,
+        SimulationDimension dimension);
 
-    private void Awake()
+    protected virtual void Awake()
     {
         ConfigureCamera();
-        _stepMarker = new ProfilerMarker("GravitySimulation." + Mode.ToString());
-        int count = Mathf.Max(1, _bodyCount);
-        _initialStates = GravityStateFactory.Create(count, _dimension);
-        CreateBodies(count);
+        _stepMarker = new ProfilerMarker("GravitySimulation." + Mode);
+        States = GravityMath.CreateInitialStates(Mathf.Max(1, _bodyCount), _dimension);
+        CreateBodies();
         CreateGrid();
-        _stepper = GravityStepperFactory.Create(Mode, this, _initialStates);
     }
 
-    private void Update()
+    protected virtual void Update()
     {
-        if (_stepper == null)
-            return;
-
-        if (_stepper is CoroutineGravityStepper coroutineStepper)
-            coroutineStepper.Paused = false;
-
         using (_stepMarker.Auto())
-            _stepper.Step(Time.deltaTime * _timeScale, _gravity, _softening, _dimension);
+            SimulateStep(Time.deltaTime * _timeScale, _gravity, _softening, _dimension);
         ApplyBodyStates();
     }
 
-    private void OnDestroy()
-    {
-        if (_stepper != null)
-            _stepper.Dispose();
-    }
+    protected virtual void OnDestroy() { }
 
-    private void CreateBodies(int count)
+    private void CreateBodies()
     {
-        for (int i = 0; i < _initialStates.Length; i++)
+        for (int i = 0; i < States.Length; i++)
         {
             GameObject bodyObject = _dimension == SimulationDimension.TwoD
                 ? new GameObject()
@@ -66,22 +54,20 @@ public abstract class GravitySimulationExample : MonoBehaviour, IGravityBodyProv
             if (collider != null)
                 Destroy(collider);
 
-            float scale = Mathf.Clamp(0.28f * Mathf.Pow(128f / count, 0.22f), 0.11f, 0.32f);
+            float scale = Mathf.Clamp(0.28f * Mathf.Pow(128f / States.Length, 0.22f), 0.11f, 0.32f);
             bodyObject.transform.localScale = Vector3.one * scale;
             var view = bodyObject.AddComponent<GravityBodyView>();
-            view.Initialize(_initialStates[i], Color.HSVToRGB((i * 0.6180339f) % 1f, 0.68f, 1f),
+            view.Initialize(States[i], Color.HSVToRGB((i * 0.6180339f) % 1f, 0.68f, 1f),
                 _dimension, _bodySprite);
-            view.SetStateIndex(i);
             _views.Add(view);
         }
     }
 
     private void ApplyBodyStates()
     {
-        BodyState[] states = _stepper.States;
-        int count = Mathf.Min(states.Length, _views.Count);
+        int count = Mathf.Min(States.Length, _views.Count);
         for (int i = 0; i < count; i++)
-            _views[i].ApplyState(states[i], _dimension);
+            _views[i].ApplyState(States[i], _dimension);
     }
 
     private void ConfigureCamera()
@@ -115,18 +101,18 @@ public abstract class GravitySimulationExample : MonoBehaviour, IGravityBodyProv
 
     private void CreateGrid()
     {
-        _gridRoot = new GameObject("Simulation Grid");
+        var gridRoot = new GameObject("Simulation Grid");
         float span = _dimension == SimulationDimension.TwoD ? 11f : 12f;
         const int lines = 20;
         for (int i = 0; i <= lines; i++)
         {
             float offset = Mathf.Lerp(-span * 0.5f, span * 0.5f, i / (float)lines);
-            CreateGridLine(_gridRoot.transform, span, offset, true);
-            CreateGridLine(_gridRoot.transform, span, offset, false);
+            CreateGridLine(gridRoot.transform, span, offset, true);
+            CreateGridLine(gridRoot.transform, span, offset, false);
         }
 
         if (_dimension == SimulationDimension.ThreeD)
-            _gridRoot.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            gridRoot.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
     }
 
     private static void CreateGridLine(Transform parent, float span, float offset, bool horizontal)

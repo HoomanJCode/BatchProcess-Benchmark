@@ -10,6 +10,7 @@ public static class GravitySceneGeneration
 {
     private const string SceneFolder = "Assets/Examples/GravitySimulation/Scenes";
     private const string StarterScenePath = SceneFolder + "/SampleScene.unity";
+    private const string RemovedScenePath = SceneFolder + "/Gravity_UnityModularMainThread.unity";
 
     [MenuItem("Tools/Gravity Simulation/Regenerate Example Scenes")]
     public static void Build()
@@ -27,7 +28,9 @@ public static class GravitySceneGeneration
             generatedScenes.Add(new EditorBuildSettingsScene(path, true));
         }
 
-        var buildScenes = EditorBuildSettings.scenes.ToList();
+        var buildScenes = EditorBuildSettings.scenes
+            .Where(scene => scene.path != RemovedScenePath)
+            .ToList();
         foreach (EditorBuildSettingsScene generated in generatedScenes)
         {
             int existingIndex = buildScenes.FindIndex(scene => scene.path == generated.path);
@@ -101,7 +104,6 @@ public static class GravitySceneGeneration
         {
             case SimulationMode.CSharpAsync: controller = controllerObject.AddComponent<CSharpAsyncGravityExample>(); break;
             case SimulationMode.CSharpParallel: controller = controllerObject.AddComponent<CSharpParallelGravityExample>(); break;
-            case SimulationMode.UnityModularMainThread: controller = controllerObject.AddComponent<UnityModularMainThreadGravityExample>(); break;
             case SimulationMode.UnityJobs: controller = controllerObject.AddComponent<UnityJobsGravityExample>(); break;
             case SimulationMode.UnityCoroutine: controller = controllerObject.AddComponent<UnityCoroutineGravityExample>(); break;
             case SimulationMode.UnityJobsBurst: controller = controllerObject.AddComponent<UnityJobsBurstGravityExample>(); break;
@@ -120,7 +122,6 @@ public static class GravitySceneGeneration
             case SimulationMode.SingleThreaded: return "SingleThreaded";
             case SimulationMode.CSharpAsync: return "CSharpAsync";
             case SimulationMode.CSharpParallel: return "CSharpParallel";
-            case SimulationMode.UnityModularMainThread: return "UnityModularMainThread";
             case SimulationMode.UnityJobs: return "UnityJobs";
             case SimulationMode.UnityCoroutine: return "UnityCoroutine";
             case SimulationMode.UnityJobsBurst: return "UnityJobsBurst";

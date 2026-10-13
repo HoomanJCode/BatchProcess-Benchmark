@@ -1,6 +1,6 @@
 {
   "name": "GravitySimulation.Example.UnityJobsBurst",
-  "references": ["GravitySimulation.Core"],
+  "references": ["GravitySimulation.Core", "Unity.Burst", "Unity.Collections"],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

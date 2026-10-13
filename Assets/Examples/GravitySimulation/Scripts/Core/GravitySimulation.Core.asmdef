@@ -1,7 +1,6 @@
 {
   "name": "GravitySimulation.Core",
   "references": [
-    "Unity.Burst",
     "Unity.Collections",
     "Unity.Mathematics"
   ],

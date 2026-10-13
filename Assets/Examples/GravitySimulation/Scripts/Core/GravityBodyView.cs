@@ -1,8 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// The view-side module for one simulated body. It owns rendering and exposes its
-/// force calculation for the Unity modular-main-thread comparison mode.
+/// Renders one simulated body as a sprite or sphere.
 /// </summary>
 public sealed class GravityBodyView : MonoBehaviour
 {
@@ -14,7 +13,6 @@ public sealed class GravityBodyView : MonoBehaviour
     private MaterialPropertyBlock _propertyBlock;
     private Renderer _renderer;
     private SpriteRenderer _spriteRenderer;
-    private int _stateIndex;
 
     public void Initialize(BodyState initialState, Color color, SimulationDimension dimension, Sprite sprite)
     {
@@ -88,17 +86,6 @@ public sealed class GravityBodyView : MonoBehaviour
         _defaultSprite.name = "Default Gravity Body Sprite";
         _defaultSprite.hideFlags = HideFlags.HideAndDontSave;
         return _defaultSprite;
-    }
-
-    internal void SetStateIndex(int index)
-    {
-        _stateIndex = index;
-    }
-
-    /// <summary>Called only by the modular mode; ordinary modes use shared math loops.</summary>
-    public Vector3 CalculateAcceleration(BodyState[] states, float gravity, float softening, bool is2D)
-    {
-        return GravityMath.Acceleration(states, _stateIndex, gravity, softening, is2D);
     }
 
     public void ApplyState(BodyState state, SimulationDimension dimension)
