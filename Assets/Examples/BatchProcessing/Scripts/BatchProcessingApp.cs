@@ -2,10 +2,67 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Profiling;
 using UnityEngine;
+
+/// <summary>Parallel processing strategies compared by the batch example.</summary>
+public enum BatchMode
+{
+    SingleThreaded,
+    CSharpAsync,
+    CSharpParallel,
+    UnityJobs,
+    UnityCoroutine,
+    UnityJobsBurst
+}
+
+/// <summary>Shared calculation and job types used by this single-file example.</summary>
+public static class BatchProcessingMath
+{
+    public static float ProcessValue(float value, int iterations)
+    {
+        for (int i = 0; i < iterations; i++)
+        {
+            value = value * 1.00001f + 0.00002f;
+            if (value >= 1f)
+                value -= 1f;
+        }
+        return value;
+    }
+
+    public static void ProcessRange(float[] values, int iterations, int start, int count)
+    {
+        int end = start + count;
+        for (int i = start; i < end; i++)
+            values[i] = ProcessValue(values[i], iterations);
+    }
+}
+
+public struct SimpleBatchJob : IJobParallelFor
+{
+    public NativeArray<float> Values;
+    public int Iterations;
+
+    public void Execute(int index)
+    {
+        Values[index] = BatchProcessingMath.ProcessValue(Values[index], Iterations);
+    }
+}
+
+[BurstCompile]
+public struct SimpleBatchBurstJob : IJobParallelFor
+{
+    public NativeArray<float> Values;
+    public int Iterations;
+
+    public void Execute(int index)
+    {
+        Values[index] = BatchProcessingMath.ProcessValue(Values[index], Iterations);
+    }
+}
 
 /// <summary>
 /// Runs one selected batch-processing strategy with inspector-configured inputs.
@@ -24,7 +81,6 @@ public sealed class BatchProcessingApp : MonoBehaviour
     [SerializeField, Min(1)] private int _itemCount = DefaultItemCount;
     [SerializeField, Min(1)] private int _iterations = DefaultIterations;
     [SerializeField] private bool _runOnStart = true;
-    [SerializeField] private ProcessingModule _module;
 
     [Header("Last Run")]
     [SerializeField] private string _resultChecksum = "—";
@@ -36,17 +92,9 @@ public sealed class BatchProcessingApp : MonoBehaviour
     private Coroutine _coroutine;
     private ProfilerMarker _marker;
 
-    private void Awake()
-    {
-        if (_module == null)
-            _module = GetComponentInChildren<ProcessingModule>();
-        if (_module == null)
-            _module = gameObject.AddComponent<ProcessingModule>();
-        _marker = new ProfilerMarker("BatchProcessing." + _mode);
-    }
-
     private void Start()
     {
+        _marker = new ProfilerMarker("BatchProcessing." + _mode);
         if (_runOnStart)
             StartBatch();
     }
@@ -106,9 +154,6 @@ public sealed class BatchProcessingApp : MonoBehaviour
             case BatchMode.CSharpParallel:
                 RunOnMainThread(() => Parallel.For(0, _values.Length, i =>
                     _values[i] = BatchProcessingMath.ProcessValue(_values[i], _iterations)));
-                break;
-            case BatchMode.UnityModularMainThread:
-                RunOnMainThread(() => _module.Process(_values, _iterations));
                 break;
             case BatchMode.UnityJobs:
                 RunJob(false);

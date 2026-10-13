@@ -25,9 +25,6 @@ public static class BatchProcessingSceneGeneration
 
         var appObject = new GameObject("Batch Processing App");
         appObject.AddComponent<BatchProcessingApp>();
-        var moduleObject = new GameObject("Processing Module");
-        moduleObject.transform.SetParent(appObject.transform);
-        moduleObject.AddComponent<ProcessingModule>();
 
         if (!EditorSceneManager.SaveScene(scene, ScenePath))
             throw new System.Exception("Could not save batch-processing scene: " + ScenePath);
