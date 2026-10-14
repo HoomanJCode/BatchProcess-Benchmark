@@ -64,6 +64,20 @@ The gravity examples allocate their arrays and worker resources once during scen
 
 The live chart shows the current strategy marker, main-thread CPU time, and frame time. The completed-run chart compares average marker time per measured frame or P95 frame time. The profiler recorder sums marker samples within each frame. C# async uses its worker-thread calculation marker, while Unity coroutine marks each yielded chunk, so coroutine work is spread across multiple frames and its marker value is not the full calculation time. Use marker timings to compare measured work per frame and frame timing for overall responsiveness. The Editor and physics engine add shared overhead. For a formal performance claim, use a Development Build on the same machine and compare repeated runs.
 
+#### Run the comparison headless
+
+For repeatable command-line runs without a graphics window or browser dashboard, close the Unity Editor and run the PowerShell helper from the project folder. It builds a Windows x64 Development player (so `ProfilerRecorder` can read strategy markers) and then runs the same six-scene comparison with Unity's `-batchmode -nographics` options:
+
+```powershell
+.\Tools\Run-HeadlessGravityBenchmark.ps1 `
+  -UnityEditorPath "C:\Program Files\Unity\Hub\Editor\6000.5.1f1\Editor\Unity.exe" `
+  -Dimension 2D `
+  -WarmupSeconds 2 `
+  -MeasurementSeconds 8
+```
+
+Use `-Dimension 3D` for the 3D scenes. The JSON and CSV reports are written under `Build/Headless/` by default; pass `-OutputPath "C:\path\report.json"` to choose another JSON location (the CSV uses the same name). `Build/Headless/` is ignored by Git. The player still runs Unity's physics, gravity scripts, and profiler recorders; it skips rendering, browser serving, and dashboard chart updates. Headless measurement samples use preallocated buffers so sample collection does not grow a list during the measured pass. This removes dashboard overhead, but Unity startup, scene loading, physics, and the OS can still allocate or affect timings. For a GUI-free command-line run use a built player, not Editor Play mode.
+
 Choose **Tools → Gravity Simulation → Create Comparison Scenes** to regenerate both launchers and their equal-size benchmark copies after changing scene setup.
 
 Each gravity strategy has one self-contained implementation script in its own assembly under `Assets/Examples/GravitySimulation/Scripts`. Setup, the gravity formula, physics-body creation, and force application are repeated in every script on purpose. This keeps the code for each strategy in one place, so beginners can read and present one script without navigating a shared base class or helper library. The repetition is intentional; the scheduling difference is the main thing to compare.

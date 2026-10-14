@@ -46,8 +46,9 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         new ComparisonMode("Unity Jobs + Burst", "UnityJobsBurst", "GravitySimulation.UnityJobsBurst")
     };
 
-    private readonly List<float> _profileSamplesMs = new List<float>();
-    private readonly List<float> _frameSamplesMs = new List<float>();
+    // Capacity covers several minutes of samples at common frame rates, avoiding List growth during measurement.
+    private readonly List<float> _profileSamplesMs = new List<float>(120000);
+    private readonly List<float> _frameSamplesMs = new List<float>(120000);
     private readonly List<BenchmarkResult> _results = new List<BenchmarkResult>();
     private readonly BenchmarkState _state = new BenchmarkState();
 
@@ -56,25 +57,57 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
     private LocalDashboardServer _dashboardServer;
     private float _sampleTimer;
     private bool _hasStarted;
+    private bool _headlessMode;
+    private string _headlessOutputPath;
 
     private void Start()
     {
         // The runner must survive while each example scene is loaded in turn.
         DontDestroyOnLoad(gameObject);
+        _headlessMode = HasCommandLineArgument("-gravity-benchmark-headless");
+        if (_headlessMode)
+        {
+            string dimension = GetCommandLineValue("-gravity-benchmark-dimension");
+            if (!string.IsNullOrEmpty(dimension))
+                _is2D = string.Equals(dimension, "2D", StringComparison.OrdinalIgnoreCase);
+
+            string measurement = GetCommandLineValue("-gravity-benchmark-measurement-seconds");
+            int parsedMeasurement;
+            if (int.TryParse(measurement, out parsedMeasurement) && parsedMeasurement > 0)
+                _measurementSeconds = parsedMeasurement;
+
+            string warmup = GetCommandLineValue("-gravity-benchmark-warmup-seconds");
+            int parsedWarmup;
+            if (int.TryParse(warmup, out parsedWarmup) && parsedWarmup >= 0)
+                _warmupSeconds = parsedWarmup;
+
+            _headlessOutputPath = GetCommandLineValue("-gravity-benchmark-output");
+            if (string.IsNullOrEmpty(_headlessOutputPath))
+            {
+                string dimensionName = _is2D ? "2d" : "3d";
+                _headlessOutputPath = Path.Combine(
+                    Application.dataPath, "..", "Build", "Headless", "gravity-benchmark-" + dimensionName + ".json");
+            }
+            _headlessOutputPath = Path.GetFullPath(_headlessOutputPath);
+        }
+
         _state.dimension = _is2D ? "2D" : "3D";
         _state.status = "starting";
-        _state.phase = "Starting local profiler stream";
+        _state.phase = _headlessMode ? "Starting headless profiler run" : "Starting local profiler stream";
         _state.measurementSeconds = _measurementSeconds;
         _state.warmupSeconds = _warmupSeconds;
-        string dashboardHtmlPath = Path.GetFullPath(Path.Combine(
-            Application.dataPath, "..", "Presentation", "index.html"));
-        _dashboardServer = new LocalDashboardServer(_dashboardPort);
-        _dashboardServer.Start(dashboardHtmlPath);
-        _state.dashboardMessage = _dashboardServer.Message;
+        if (!_headlessMode)
+        {
+            string dashboardHtmlPath = Path.GetFullPath(Path.Combine(
+                Application.dataPath, "..", "Presentation", "index.html"));
+            _dashboardServer = new LocalDashboardServer(_dashboardPort);
+            _dashboardServer.Start(dashboardHtmlPath);
+            _state.dashboardMessage = _dashboardServer.Message;
+        }
         _mainThreadRecorder = ProfilerRecorder.StartNew(
             ProfilerCategory.Internal, "Main Thread", RecorderCapacity, FrameRecorderOptions);
         PublishState();
-        if (_openDashboardInBrowser && _dashboardServer.IsRunning)
+        if (!_headlessMode && _openDashboardInBrowser && _dashboardServer.IsRunning)
             Application.OpenURL("http://127.0.0.1:" + _dashboardPort + "/");
 
         // Starting Play mode in a comparison scene immediately begins the run.
@@ -105,7 +138,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
             }
 
             _sampleTimer += Time.unscaledDeltaTime;
-            if (_sampleTimer >= DashboardUpdateInterval)
+            if (!_headlessMode && _sampleTimer >= DashboardUpdateInterval)
             {
                 _sampleTimer = 0f;
                 AddChartPoint(_state.profileMs, _state.mainThreadMs, _state.frameMs);
@@ -148,6 +181,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
                 _state.phase = "A comparison scene is missing from Build Settings";
                 _state.dashboardMessage = scenePath;
                 PublishState();
+                FinishHeadlessRun(2);
                 yield break;
             }
 
@@ -158,6 +192,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
                 _state.phase = "Unity could not load an example scene";
                 _state.dashboardMessage = scenePath;
                 PublishState();
+                FinishHeadlessRun(3);
                 yield break;
             }
             yield return load;
@@ -195,7 +230,8 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
             _profileRecorder.Dispose();
             _state.completed = modeIndex + 1;
             PublishState();
-            yield return new WaitForSecondsRealtime(0.4f);
+            if (!_headlessMode)
+                yield return new WaitForSecondsRealtime(0.4f);
         }
 
         _state.status = "complete";
@@ -204,6 +240,82 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         _state.activeExample = "Complete";
         _state.results = _results.ToArray();
         PublishState();
+        FinishHeadlessRun(0);
+    }
+
+    // A standalone player in batch mode writes a report instead of publishing dashboard updates.
+    private void FinishHeadlessRun(int exitCode)
+    {
+        if (!_headlessMode)
+            return;
+
+        try
+        {
+            string directory = Path.GetDirectoryName(_headlessOutputPath);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
+            File.WriteAllText(_headlessOutputPath, JsonUtility.ToJson(_state, true));
+            File.WriteAllText(Path.ChangeExtension(_headlessOutputPath, ".csv"), BuildCsvReport());
+            Debug.Log("Gravity benchmark report written to " + _headlessOutputPath);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("Could not write gravity benchmark report: " + exception);
+            exitCode = 4;
+        }
+
+        // Application.Quit ends a standalone player and leaves the Unity Editor alone.
+        if (!Application.isEditor)
+            Application.Quit(exitCode);
+    }
+
+    private string BuildCsvReport()
+    {
+        StringBuilder csv = new StringBuilder();
+        csv.AppendLine("dimension,strategy,marker,balls,samples,warmup_seconds,measurement_seconds,average_profile_ms,median_profile_ms,p95_profile_ms,average_frame_ms,p95_frame_ms");
+        for (int i = 0; i < _results.Count; i++)
+        {
+            BenchmarkResult result = _results[i];
+            csv.Append(_state.dimension).Append(',')
+                .Append(CsvCell(result.strategy)).Append(',')
+                .Append(CsvCell(result.markerName)).Append(',')
+                .Append(result.balls).Append(',').Append(result.sampleCount).Append(',')
+                .Append(_warmupSeconds).Append(',').Append(_measurementSeconds).Append(',')
+                .Append(result.averageProfileMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
+                .Append(result.medianProfileMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
+                .Append(result.p95ProfileMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
+                .Append(result.averageFrameMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
+                .AppendLine(result.p95FrameMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+        }
+        return csv.ToString();
+    }
+
+    private static string CsvCell(string value)
+    {
+        return "\"" + (value ?? string.Empty).Replace("\"", "\"\"") + "\"";
+    }
+
+    private static bool HasCommandLineArgument(string name)
+    {
+        string[] arguments = Environment.GetCommandLineArgs();
+        for (int i = 0; i < arguments.Length; i++)
+            if (string.Equals(arguments[i], name, StringComparison.OrdinalIgnoreCase))
+                return true;
+        return false;
+    }
+
+    private static string GetCommandLineValue(string name)
+    {
+        string[] arguments = Environment.GetCommandLineArgs();
+        string prefix = name + "=";
+        for (int i = 0; i < arguments.Length; i++)
+        {
+            if (arguments[i].StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return arguments[i].Substring(prefix.Length).Trim('"');
+            if (string.Equals(arguments[i], name, StringComparison.OrdinalIgnoreCase) && i + 1 < arguments.Length)
+                return arguments[i + 1].Trim('"');
+        }
+        return string.Empty;
     }
 
     private BenchmarkResult CreateResult(ComparisonMode mode)
@@ -225,9 +337,17 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
     private void UpdateRollingStatistics()
     {
         int start = Mathf.Max(0, _profileSamplesMs.Count - 100);
-        List<float> recent = _profileSamplesMs.GetRange(start, _profileSamplesMs.Count - start);
-        _state.averageProfileMs = Average(recent);
-        _state.p95ProfileMs = Percentile(recent, 0.95f);
+        int count = _profileSamplesMs.Count - start;
+        double total = 0d;
+        for (int i = start; i < _profileSamplesMs.Count; i++)
+            total += _profileSamplesMs[i];
+        _state.averageProfileMs = count == 0 ? 0f : (float)(total / count);
+        // The dashboard's rolling percentile is intentionally omitted in headless measurements.
+        if (!_headlessMode)
+        {
+            List<float> recent = _profileSamplesMs.GetRange(start, count);
+            _state.p95ProfileMs = Percentile(recent, 0.95f);
+        }
     }
 
     private void AddChartPoint(float profileMs, float mainThreadMs, float frameMs)
