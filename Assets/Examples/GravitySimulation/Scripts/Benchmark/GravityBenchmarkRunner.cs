@@ -157,6 +157,8 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         for (int modeIndex = 0; modeIndex < modes.Length; modeIndex++)
         {
             ComparisonMode mode = modes[modeIndex];
+            if (_headlessMode)
+                Debug.Log("Headless comparison loading " + mode.displayName);
             List<float> computeSamples = new List<float>(_batchRunsPerStrategy);
             List<float> wallSamples = new List<float>(_batchRunsPerStrategy);
             List<float> optimizationScoreSamples = _isOptimizationComparison ? new List<float>(_batchRunsPerStrategy) : null;
@@ -254,9 +256,14 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
 
                 if (example == null || checksum == "—")
                 {
+                    Debug.LogError("Headless comparison timed out: exampleFound=" + (example != null) + ", checksum=" + checksum);
                     SetBatchError(mode.displayName + " did not finish before the 120-second timeout", scenePath, 4);
                     yield break;
                 }
+
+                if (_headlessMode)
+                    Debug.Log("Headless comparison read " + mode.displayName + ": evaluations=" + evaluationCount +
+                        ", bestScore=" + runBestScore + ", meanBestScore=" + runAverageBestScore);
 
                 computeSamples.Add(computeMs);
                 wallSamples.Add(wallMs);
@@ -320,6 +327,9 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         _state.activeExample = "Complete";
         _state.results = _results.ToArray();
         PublishState();
+        if (_headlessMode)
+            Debug.Log("Headless comparison finished with " + _results.Count + " results.");
+        FinishHeadlessRun(0);
     }
 
     private bool TryReadBatchValues(MonoBehaviour example, out float computeMs, out float wallMs,
@@ -527,11 +537,11 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
                 Directory.CreateDirectory(directory);
             File.WriteAllText(_headlessOutputPath, JsonUtility.ToJson(_state, true));
             File.WriteAllText(Path.ChangeExtension(_headlessOutputPath, ".csv"), BuildCsvReport());
-            Debug.Log("Gravity benchmark report written to " + _headlessOutputPath);
+            Debug.Log("Benchmark report written to " + _headlessOutputPath);
         }
         catch (Exception exception)
         {
-            Debug.LogError("Could not write gravity benchmark report: " + exception);
+            Debug.LogError("Could not write benchmark report: " + exception);
             exitCode = 4;
         }
 
@@ -543,14 +553,21 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
     private string BuildCsvReport()
     {
         StringBuilder csv = new StringBuilder();
-        csv.AppendLine("dimension,strategy,marker,balls,samples,warmup_seconds,measurement_seconds,average_profile_ms,median_profile_ms,p95_profile_ms,average_frame_ms,p95_frame_ms");
+        csv.AppendLine("workload,dimension,strategy,marker,balls,work_items,iterations,evaluation_count,best_score,mean_best_score,best_x,best_y,samples,warmup_seconds,measurement_seconds,average_profile_ms,median_profile_ms,p95_profile_ms,average_frame_ms,p95_frame_ms");
         for (int i = 0; i < _results.Count; i++)
         {
             BenchmarkResult result = _results[i];
-            csv.Append(_state.dimension).Append(',')
+            csv.Append(_state.workload).Append(',')
+                .Append(_state.dimension).Append(',')
                 .Append(CsvCell(result.strategy)).Append(',')
                 .Append(CsvCell(result.markerName)).Append(',')
-                .Append(result.balls).Append(',').Append(result.sampleCount).Append(',')
+                .Append(result.balls).Append(',').Append(result.workItems).Append(',').Append(result.iterations).Append(',')
+                .Append(result.evaluationCount).Append(',')
+                .Append(result.bestScore.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
+                .Append(result.averageBestScore.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
+                .Append(result.bestX.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
+                .Append(result.bestY.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
+                .Append(result.sampleCount).Append(',')
                 .Append(_warmupSeconds).Append(',').Append(_measurementSeconds).Append(',')
                 .Append(result.averageProfileMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
                 .Append(result.medianProfileMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')

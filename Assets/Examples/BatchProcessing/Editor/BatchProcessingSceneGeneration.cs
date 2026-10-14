@@ -43,8 +43,9 @@ public static class BatchProcessingSceneGeneration
         for (int i = 0; i < sceneNames.Length; i++)
         {
             string path = SceneFolder + "/" + sceneNames[i] + ".unity";
-            // Work additively so generating examples does not close the user's current scene.
-            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+            // Batch mode starts with an untitled scene, so replace scenes there; in the Editor, preserve the open scene.
+            NewSceneMode sceneMode = Application.isBatchMode ? NewSceneMode.Single : NewSceneMode.Additive;
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, sceneMode);
             scene.name = sceneNames[i];
 
             GameObject cameraObject = new GameObject("Main Camera");
@@ -77,7 +78,8 @@ public static class BatchProcessingSceneGeneration
 
             if (!EditorSceneManager.SaveScene(scene, path))
                 throw new System.Exception("Could not save batch example scene: " + path);
-            EditorSceneManager.CloseScene(scene, true);
+            if (sceneMode == NewSceneMode.Additive)
+                EditorSceneManager.CloseScene(scene, true);
             newScenes.Add(new EditorBuildSettingsScene(path, true));
         }
 
@@ -103,7 +105,8 @@ public static class BatchProcessingSceneGeneration
     private static void CreateBatchBenchmarkScene()
     {
         // The batch launcher uses the same local dashboard as the gravity comparisons.
-        Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+        NewSceneMode sceneMode = Application.isBatchMode ? NewSceneMode.Single : NewSceneMode.Additive;
+        Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, sceneMode);
         scene.name = "Batch Benchmark";
 
         GameObject runnerObject = new GameObject("Batch Benchmark Runner");
@@ -117,13 +120,15 @@ public static class BatchProcessingSceneGeneration
 
         if (!EditorSceneManager.SaveScene(scene, BenchmarkScenePath))
             throw new System.Exception("Could not save batch comparison scene: " + BenchmarkScenePath);
-        EditorSceneManager.CloseScene(scene, true);
+        if (sceneMode == NewSceneMode.Additive)
+            EditorSceneManager.CloseScene(scene, true);
     }
 
     private static void CreateOptimizationBenchmarkScene()
     {
         // This launcher compares PSO with random search on the same objective function.
-        Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+        NewSceneMode sceneMode = Application.isBatchMode ? NewSceneMode.Single : NewSceneMode.Additive;
+        Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, sceneMode);
         scene.name = "Batch Optimization Benchmark";
 
         GameObject runnerObject = new GameObject("Optimization Benchmark Runner");
@@ -138,6 +143,7 @@ public static class BatchProcessingSceneGeneration
 
         if (!EditorSceneManager.SaveScene(scene, OptimizationScenePath))
             throw new System.Exception("Could not save optimization comparison scene: " + OptimizationScenePath);
-        EditorSceneManager.CloseScene(scene, true);
+        if (sceneMode == NewSceneMode.Additive)
+            EditorSceneManager.CloseScene(scene, true);
     }
 }

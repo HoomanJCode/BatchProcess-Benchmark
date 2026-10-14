@@ -65,6 +65,17 @@ Let **P** be the particle count, **T** the number of PSO iterations, **B** the n
 
 Choose **Tools → Batch Processing → Create Example Scenes** to generate the two example scenes and the **Batch_OptimizationBenchmark** launcher along with the other batch scenes. Open **Batch_OptimizationBenchmark.unity** and press **Play**. The existing local analysis page compares calculation time, total wall time, mean best score, best score, and the best (x, y) found. Lower scores are better; zero is the known optimum.
 
+#### Run the optimization comparison headless
+
+The headless helper regenerates the batch scenes, builds a small Windows player containing the optimization launcher and both algorithm scenes, runs the comparison without a graphics window, and writes JSON and CSV results under `Build/Headless/`:
+
+```powershell
+.\Tools\Run-HeadlessOptimizationBenchmark.ps1 `
+  -UnityEditorPath "C:\Program Files\Unity\Hub\Editor\6000.5.1f1\Editor\Unity.exe"
+```
+
+The report includes both algorithms, equal evaluation counts, best and mean best scores, best coordinates, compute time, and total wall time. The helper builds in the project, so close the Unity Editor before running it.
+
 For an algorithm comparison, equal objective-evaluation budgets make solution quality comparable. The time includes each algorithm's search work and its random-number generation; array setup for PSO happens before timing. It is a small demonstration problem, not evidence that either method is best for every optimization task.
 
 ## Open the gravity example

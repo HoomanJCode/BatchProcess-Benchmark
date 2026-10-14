@@ -10,10 +10,26 @@ public static class GravityBenchmarkBuild
     /// <summary>Build target for -executeMethod when running Unity in batch mode.</summary>
     public static void BuildWindowsPlayer()
     {
-        string projectRoot = Directory.GetParent(Application.dataPath).FullName;
-        string outputDirectory = Path.Combine(projectRoot, "Build", "Headless");
-        Directory.CreateDirectory(outputDirectory);
+        BuildWindowsPlayer(GetEnabledScenePaths());
+    }
 
+    /// <summary>Creates the batch scenes and builds a player for the PSO versus Random Search comparison.</summary>
+    public static void BuildOptimizationPlayer()
+    {
+        // Generate the same comparison and example scenes used by the local dashboard.
+        BatchProcessingSceneGeneration.Build();
+
+        string[] scenes =
+        {
+            "Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationBenchmark.unity",
+            "Assets/Examples/BatchProcessing/Scenes/Batch_ParticleSwarm.unity",
+            "Assets/Examples/BatchProcessing/Scenes/Batch_RandomSearch.unity"
+        };
+        BuildWindowsPlayer(scenes, "OptimizationBenchmark.exe");
+    }
+
+    private static string[] GetEnabledScenePaths()
+    {
         EditorBuildSettingsScene[] enabledScenes = EditorBuildSettings.scenes;
         int enabledCount = 0;
         for (int i = 0; i < enabledScenes.Length; i++)
@@ -27,11 +43,19 @@ public static class GravityBenchmarkBuild
             if (enabledScenes[i].enabled)
                 scenes[sceneIndex++] = enabledScenes[i].path;
         }
+        return scenes;
+    }
+
+    private static void BuildWindowsPlayer(string[] scenes, string fileName = "GravityBenchmark.exe")
+    {
+        string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+        string outputDirectory = Path.Combine(projectRoot, "Build", "Headless");
+        Directory.CreateDirectory(outputDirectory);
 
         BuildPlayerOptions options = new BuildPlayerOptions
         {
             scenes = scenes,
-            locationPathName = Path.Combine(outputDirectory, "GravityBenchmark.exe"),
+            locationPathName = Path.Combine(outputDirectory, fileName),
             target = BuildTarget.StandaloneWindows64,
             // Development builds keep profiler marker data available to ProfilerRecorder in the player.
             options = BuildOptions.Development
@@ -39,7 +63,7 @@ public static class GravityBenchmarkBuild
 
         BuildReport report = BuildPipeline.BuildPlayer(options);
         if (report.summary.result != BuildResult.Succeeded)
-            throw new BuildFailedException("Headless gravity benchmark build failed: " + report.summary.result);
+            throw new BuildFailedException("Headless benchmark build failed: " + report.summary.result);
 
         Debug.Log("Headless gravity benchmark built at " + options.locationPathName);
     }

@@ -6,6 +6,36 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_SingleThreaded.unity
+    guid: 0e21a9c8dcf64f15841c712811119629
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_CSharpAsync.unity
+    guid: 1a3abcd9eff149be98111fbe6b13b282
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_CSharpParallel.unity
+    guid: 8a80711289a84fb2a7f443bc890f0eb6
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_UnityJobs.unity
+    guid: fe987ee6c08848699f86247607983bd6
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_UnityCoroutine.unity
+    guid: 3a41a7a8bb844111bd8a232cd9c5637d
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_UnityJobsBurst.unity
+    guid: 2d0a7d1dd7a44f8483a2f9c21793f61c
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_ParticleSwarm.unity
+    guid: 3b6d4e888fa1cd243be68ad1732ccb40
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_RandomSearch.unity
+    guid: c76d646e01156ea4bb5d1d5818bf0fc8
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_Benchmark.unity
+    guid: 6a7258f5516a9d14f946e5e524f2b236
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationBenchmark.unity
+    guid: 7dea564a9a312cc4aac483600a52924e
+  - enabled: 1
     path: Assets/Examples/GravitySimulation/Scenes/2D/Gravity_Benchmark.unity
     guid: 0ffcf863d1efbf940a91fc3c46267551
   - enabled: 1
@@ -47,24 +77,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityJobsBurst.unity
     guid: b2c8dc9000b8ddc4b926712bf3533fbd
-  - enabled: 1
-    path: Assets/Examples/BatchProcessing/Scenes/Batch_SingleThreaded.unity
-    guid: 0e21a9c8dcf64f15841c712811119629
-  - enabled: 1
-    path: Assets/Examples/BatchProcessing/Scenes/Batch_CSharpAsync.unity
-    guid: 1a3abcd9eff149be98111fbe6b13b282
-  - enabled: 1
-    path: Assets/Examples/BatchProcessing/Scenes/Batch_CSharpParallel.unity
-    guid: 8a80711289a84fb2a7f443bc890f0eb6
-  - enabled: 1
-    path: Assets/Examples/BatchProcessing/Scenes/Batch_UnityJobs.unity
-    guid: fe987ee6c08848699f86247607983bd6
-  - enabled: 1
-    path: Assets/Examples/BatchProcessing/Scenes/Batch_UnityCoroutine.unity
-    guid: 3a41a7a8bb844111bd8a232cd9c5637d
-  - enabled: 1
-    path: Assets/Examples/BatchProcessing/Scenes/Batch_UnityJobsBurst.unity
-    guid: 2d0a7d1dd7a44f8483a2f9c21793f61c
   - enabled: 1
     path: Assets/Examples/GravitySimulation/Scenes/2D/Benchmark/Gravity_SingleThreaded.unity
     guid: 2d92386f9382dba448ca0ac7a94bb666
