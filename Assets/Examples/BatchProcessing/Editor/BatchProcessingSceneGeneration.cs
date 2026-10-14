@@ -10,6 +10,7 @@ public static class BatchProcessingSceneGeneration
 {
     private const string SceneFolder = "Assets/Examples/BatchProcessing/Scenes";
     private const string OldScenePath = SceneFolder + "/BatchProcessing.unity";
+    private const string BenchmarkScenePath = SceneFolder + "/Batch_Benchmark.unity";
 
     [MenuItem("Tools/Batch Processing/Create Example Scenes")]
     public static void Build()
@@ -56,6 +57,9 @@ public static class BatchProcessingSceneGeneration
             newScenes.Add(new EditorBuildSettingsScene(path, true));
         }
 
+        CreateBatchBenchmarkScene();
+        newScenes.Add(new EditorBuildSettingsScene(BenchmarkScenePath, true));
+
         // Replace the old selector scene while preserving unrelated Build Settings scenes.
         List<EditorBuildSettingsScene> buildScenes = newScenes;
         foreach (EditorBuildSettingsScene existing in EditorBuildSettings.scenes)
@@ -68,5 +72,25 @@ public static class BatchProcessingSceneGeneration
         AssetDatabase.DeleteAsset(OldScenePath);
         AssetDatabase.SaveAssets();
         Debug.Log("BATCH_PROCESSING_SCENES_GENERATED count=" + sceneNames.Length);
+    }
+
+    private static void CreateBatchBenchmarkScene()
+    {
+        // The batch launcher uses the same local dashboard as the gravity comparisons.
+        Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+        scene.name = "Batch Benchmark";
+
+        GameObject runnerObject = new GameObject("Batch Benchmark Runner");
+        GravityBenchmarkRunner runner = runnerObject.AddComponent<GravityBenchmarkRunner>();
+        SerializedObject settings = new SerializedObject(runner);
+        settings.FindProperty("_isBatchComparison").boolValue = true;
+        settings.FindProperty("_batchRunsPerStrategy").intValue = 5;
+        settings.FindProperty("_dashboardPort").intValue = 8765;
+        settings.FindProperty("_openDashboardInBrowser").boolValue = true;
+        settings.ApplyModifiedPropertiesWithoutUndo();
+
+        if (!EditorSceneManager.SaveScene(scene, BenchmarkScenePath))
+            throw new System.Exception("Could not save batch comparison scene: " + BenchmarkScenePath);
+        EditorSceneManager.CloseScene(scene, true);
     }
 }

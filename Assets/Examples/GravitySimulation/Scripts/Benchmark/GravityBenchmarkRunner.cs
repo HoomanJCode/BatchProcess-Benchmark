@@ -23,6 +23,8 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
     [SerializeField, Min(1)] private int _measurementSeconds = 8;
     [SerializeField, Min(1)] private int _dashboardPort = 8765;
     [SerializeField] private bool _is2D;
+    [SerializeField] private bool _isBatchComparison;
+    [SerializeField, Min(1)] private int _batchRunsPerStrategy = 5;
     [SerializeField] private bool _openDashboardInBrowser = true;
 
     private const int RecorderCapacity = 512;
@@ -32,6 +34,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         ProfilerRecorderOptions.SumAllSamplesInFrame | ProfilerRecorderOptions.WrapAroundWhenCapacityReached;
     private const string TwoDBenchmarkSceneFolder = "Assets/Examples/GravitySimulation/Scenes/2D/Benchmark/";
     private const string ThreeDBenchmarkSceneFolder = "Assets/Examples/GravitySimulation/Scenes/3D/Benchmark/";
+    private const string BatchSceneFolder = "Assets/Examples/BatchProcessing/Scenes/";
 
     // Keep these entries in the same order as the strategies listed in the README.
     // Async and coroutine work use their own markers because those calculations can
@@ -44,6 +47,17 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         new ComparisonMode("Unity Jobs", "UnityJobs", "GravitySimulation.UnityJobs"),
         new ComparisonMode("Unity coroutine", "UnityCoroutine", "GravitySimulation.UnityCoroutine.Chunk"),
         new ComparisonMode("Unity Jobs + Burst", "UnityJobsBurst", "GravitySimulation.UnityJobsBurst")
+    };
+
+    // Each batch strategy uses the same input size and calculation in its own scene.
+    private static readonly ComparisonMode[] BatchModes =
+    {
+        new ComparisonMode("Single threaded", "SingleThreaded", "BatchProcessing.SingleThreaded"),
+        new ComparisonMode("C# async", "CSharpAsync", "BatchProcessing.CSharpAsync.Worker"),
+        new ComparisonMode("C# parallel", "CSharpParallel", "BatchProcessing.CSharpParallel"),
+        new ComparisonMode("Unity Jobs", "UnityJobs", "BatchProcessing.UnityJobs"),
+        new ComparisonMode("Unity coroutine", "UnityCoroutine", "BatchProcessing.UnityCoroutine.Chunk"),
+        new ComparisonMode("Unity Jobs + Burst", "UnityJobsBurst", "BatchProcessing.UnityJobsBurst")
     };
 
     // Capacity covers several minutes of samples at common frame rates, avoiding List growth during measurement.
@@ -91,7 +105,10 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
             _headlessOutputPath = Path.GetFullPath(_headlessOutputPath);
         }
 
-        _state.dimension = _is2D ? "2D" : "3D";
+        _state.workload = _isBatchComparison ? "batch" : "gravity";
+        _state.dimension = _isBatchComparison ? "Batch processing" : (_is2D ? "2D" : "3D");
+        _batchRunsPerStrategy = Mathf.Max(1, _batchRunsPerStrategy);
+        _state.batchRunsPerStrategy = _batchRunsPerStrategy;
         _state.status = "starting";
         _state.phase = _headlessMode ? "Starting headless profiler run" : "Starting local profiler stream";
         _state.measurementSeconds = _measurementSeconds;
@@ -114,12 +131,177 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         if (!_hasStarted)
         {
             _hasStarted = true;
-            StartCoroutine(RunComparison());
+            StartCoroutine(_isBatchComparison ? RunBatchComparison() : RunComparison());
         }
+    }
+
+    // Run each self-contained batch scene several times and compare its own timings.
+    // The measured calculation stays inside the beginner example scripts.
+    private IEnumerator RunBatchComparison()
+    {
+        _state.status = "running";
+        _state.total = BatchModes.Length;
+        _state.completed = 0;
+        _results.Clear();
+        PublishState();
+
+        for (int modeIndex = 0; modeIndex < BatchModes.Length; modeIndex++)
+        {
+            ComparisonMode mode = BatchModes[modeIndex];
+            List<float> computeSamples = new List<float>(_batchRunsPerStrategy);
+            List<float> wallSamples = new List<float>(_batchRunsPerStrategy);
+            int itemCount = 0;
+            int iterations = 0;
+            _state.activeExample = mode.displayName;
+            _state.markerName = mode.markerName;
+            _state.phase = "Preparing repeated batch runs";
+            _state.completed = modeIndex;
+            _state.progress = (float)modeIndex / BatchModes.Length;
+            _state.chartProfileMs = new float[0];
+            _state.chartMainThreadMs = new float[0];
+            _state.chartFrameMs = new float[0];
+            PublishState();
+
+            for (int runIndex = 0; runIndex < _batchRunsPerStrategy; runIndex++)
+            {
+                string scenePath = BatchSceneFolder + "Batch_" + mode.sceneName + ".unity";
+                int buildIndex = SceneUtility.GetBuildIndexByScenePath(scenePath);
+                if (buildIndex < 0)
+                {
+                    SetBatchError("A batch example scene is missing from Build Settings", scenePath, 2);
+                    yield break;
+                }
+
+                _state.phase = "Loading " + mode.displayName + " · run " + (runIndex + 1) + " of " + _batchRunsPerStrategy;
+                _state.progress = (modeIndex + (float)runIndex / _batchRunsPerStrategy) / BatchModes.Length;
+                PublishState();
+                AsyncOperation load = SceneManager.LoadSceneAsync(buildIndex, LoadSceneMode.Single);
+                if (load == null)
+                {
+                    SetBatchError("Unity could not load a batch example scene", scenePath, 3);
+                    yield break;
+                }
+                yield return load;
+
+                MonoBehaviour example = null;
+                float computeMs = 0f;
+                float wallMs = 0f;
+                string checksum = "—";
+                float timeout = Time.realtimeSinceStartup + 120f;
+                while (Time.realtimeSinceStartup < timeout)
+                {
+                    GameObject exampleObject = GameObject.Find("Batch Example");
+                    if (exampleObject != null)
+                    {
+                        MonoBehaviour[] behaviours = exampleObject.GetComponents<MonoBehaviour>();
+                        for (int behaviourIndex = 0; behaviourIndex < behaviours.Length; behaviourIndex++)
+                        {
+                            if (behaviours[behaviourIndex] != null &&
+                                behaviours[behaviourIndex].GetType().Name == "Batch" + mode.sceneName + "Example")
+                            {
+                                example = behaviours[behaviourIndex];
+                                break;
+                            }
+                        }
+                    }
+
+                    if (example != null && TryReadBatchValues(example, out computeMs, out wallMs, out itemCount, out iterations, out checksum))
+                        break;
+
+                    _state.phase = "Waiting for " + mode.displayName + " to finish";
+                    yield return null;
+                }
+
+                if (example == null || checksum == "—")
+                {
+                    SetBatchError(mode.displayName + " did not finish before the 120-second timeout", scenePath, 4);
+                    yield break;
+                }
+
+                computeSamples.Add(computeMs);
+                wallSamples.Add(wallMs);
+                _state.profileMs = computeMs;
+                _state.mainThreadMs = 0f;
+                _state.frameMs = wallMs;
+                _state.averageProfileMs = Average(computeSamples);
+                _state.p95ProfileMs = Percentile(computeSamples, 0.95f);
+                _state.ballCount = itemCount;
+                _state.progress = (modeIndex + (runIndex + 1f) / _batchRunsPerStrategy) / BatchModes.Length;
+                AddChartPoint(computeMs, 0f, wallMs);
+                _state.phase = "Finished run " + (runIndex + 1) + " of " + _batchRunsPerStrategy;
+                PublishState();
+                yield return null;
+            }
+
+            BenchmarkResult result = new BenchmarkResult
+            {
+                strategy = mode.displayName,
+                markerName = mode.markerName,
+                balls = itemCount,
+                workItems = itemCount,
+                iterations = iterations,
+                sampleCount = computeSamples.Count,
+                averageProfileMs = Average(computeSamples),
+                medianProfileMs = Percentile(computeSamples, 0.50f),
+                p95ProfileMs = Percentile(computeSamples, 0.95f),
+                averageFrameMs = Average(wallSamples),
+                p95FrameMs = Percentile(wallSamples, 0.95f)
+            };
+            _results.Add(result);
+            _state.results = _results.ToArray();
+            _state.completed = modeIndex + 1;
+            PublishState();
+        }
+
+        _state.status = "complete";
+        _state.phase = "All batch strategies measured";
+        _state.progress = 1f;
+        _state.activeExample = "Complete";
+        _state.results = _results.ToArray();
+        PublishState();
+    }
+
+    private bool TryReadBatchValues(MonoBehaviour example, out float computeMs, out float wallMs,
+        out int itemCount, out int iterations, out string checksum)
+    {
+        BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        FieldInfo computeField = example.GetType().GetField("_computeMilliseconds", flags);
+        FieldInfo wallField = example.GetType().GetField("_wallMilliseconds", flags);
+        FieldInfo countField = example.GetType().GetField("_itemCount", flags);
+        FieldInfo iterationField = example.GetType().GetField("_iterations", flags);
+        FieldInfo checksumField = example.GetType().GetField("_checksum", flags);
+        computeMs = computeField == null ? 0f : (float)computeField.GetValue(example);
+        wallMs = wallField == null ? 0f : (float)wallField.GetValue(example);
+        itemCount = countField == null ? 0 : (int)countField.GetValue(example);
+        iterations = iterationField == null ? 0 : (int)iterationField.GetValue(example);
+        checksum = checksumField == null ? "—" : (string)checksumField.GetValue(example);
+        return computeField != null && wallField != null && checksumField != null && checksum != "—";
+    }
+
+    private void SetBatchError(string message, string scenePath, int exitCode)
+    {
+        _state.status = "error";
+        _state.phase = message;
+        _state.dashboardMessage = scenePath;
+        PublishState();
+        FinishHeadlessRun(exitCode);
     }
 
     private void LateUpdate()
     {
+        if (_state.status == "running" && _isBatchComparison)
+        {
+            // Batch examples finish once per scene, so they publish measured runs directly.
+            // Only refresh the browser while an async or coroutine example is still working.
+            _sampleTimer += Time.unscaledDeltaTime;
+            if (!_headlessMode && _sampleTimer >= DashboardUpdateInterval)
+            {
+                _sampleTimer = 0f;
+                PublishState();
+            }
+            return;
+        }
+
         if (_state.status == "running")
         {
             float frameMs = Time.unscaledDeltaTime * 1000f;
@@ -439,7 +621,9 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
     private sealed class BenchmarkState
     {
         public string status = "offline";
+        public string workload = "gravity";
         public string dimension = "";
+        public int batchRunsPerStrategy;
         public string activeExample = "Waiting for Unity";
         public string phase = "";
         public string markerName = "";
@@ -468,6 +652,8 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         public string strategy;
         public string markerName;
         public int balls;
+        public int workItems;
+        public int iterations;
         public int sampleCount;
         public float averageProfileMs;
         public float medianProfileMs;

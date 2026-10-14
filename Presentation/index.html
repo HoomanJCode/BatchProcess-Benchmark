@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Gravity Lab — live comparison</title>
+  <title>Simulation Lab — live comparison</title>
   <style>
     :root {
       color-scheme: dark;
@@ -99,7 +99,7 @@
     <header>
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">◎</div>
-        <div><p class="eyebrow">Local profiler · Unity</p><h1>Gravity Lab</h1></div>
+        <div><p class="eyebrow">Local profiler · Unity</p><h1>Simulation Lab</h1></div>
       </div>
       <div id="connection" class="connection"><i class="light"></i><span>Waiting for Unity…</span></div>
     </header>
@@ -114,19 +114,19 @@
         <progress id="progress" max="1" value="0" aria-label="Benchmark progress"></progress>
       </article>
       <article class="panel metric-grid" aria-label="Live measurements">
-        <div class="metric"><span>Current work marker</span><strong id="profile-ms">—</strong><em>milliseconds / sample</em></div>
-        <div class="metric"><span>Main thread</span><strong id="main-ms">—</strong><em>CPU time per frame</em></div>
-        <div class="metric"><span>Frame time</span><strong id="frame-ms">—</strong><em>elapsed milliseconds</em></div>
-        <div class="metric"><span>Recent P95 marker</span><strong id="p95-ms">—</strong><em>rolling samples</em></div>
+        <div class="metric"><span id="profile-label">Current work marker</span><strong id="profile-ms">—</strong><em id="profile-hint">milliseconds / sample</em></div>
+        <div class="metric"><span id="main-label">Main thread</span><strong id="main-ms">—</strong><em id="main-hint">CPU time per frame</em></div>
+        <div class="metric"><span id="frame-label">Frame time</span><strong id="frame-ms">—</strong><em id="frame-hint">elapsed milliseconds</em></div>
+        <div class="metric"><span id="p95-label">Recent P95 marker</span><strong id="p95-ms">—</strong><em id="p95-hint">rolling samples</em></div>
       </article>
     </section>
 
-    <div class="section-head"><div><h2>Live profile</h2><p>Profiler samples update while the current Unity scene is running.</p></div><span class="pill" id="balls-pill">Balls: waiting</span></div>
+    <div class="section-head"><div><h2 id="live-title">Live profile</h2><p id="live-description">Profiler samples update while the current Unity scene is running.</p></div><span class="pill" id="balls-pill">Balls: waiting</span></div>
     <section class="chart-grid">
       <article class="panel chart-panel">
-        <div class="chart-title"><div><h3>Frame and CPU timeline</h3><p>Recent samples · milliseconds</p></div><span class="pill" id="marker-pill">No marker yet</span></div>
+        <div class="chart-title"><div><h3 id="timeline-title">Frame and CPU timeline</h3><p id="timeline-subtitle">Recent samples · milliseconds</p></div><span class="pill" id="marker-pill">No marker yet</span></div>
         <canvas id="timeline" aria-label="Live frame, main thread, and gravity marker timings"></canvas>
-        <div class="legend"><span><i></i>Gravity marker</span><span><i class="cyan"></i>Main thread</span><span><i class="amber"></i>Frame time</span></div>
+        <div class="legend"><span><i></i><span id="legend-profile">Gravity marker</span></span><span><i class="cyan"></i><span id="legend-main">Main thread</span></span><span><i class="amber"></i><span id="legend-frame">Frame time</span></span></div>
       </article>
       <article class="panel chart-panel">
         <div class="chart-title"><div><h3>Compare completed runs</h3><p id="comparison-caption">Complete a pass to fill the chart.</p></div>
@@ -138,17 +138,17 @@
 
     <div class="section-head"><div><h2>Results so far</h2><p>Each pass uses the configured warm-up and measurement duration.</p></div></div>
     <section class="panel chart-panel table-wrap">
-      <table><thead><tr><th>Strategy</th><th>Balls</th><th>Marker avg/frame</th><th>Marker P95/frame</th><th>Frame avg</th><th>Frame P95</th><th>Samples</th></tr></thead><tbody id="results"><tr><td colspan="7" class="empty">No completed runs yet.</td></tr></tbody></table>
+      <table><thead><tr><th>Strategy</th><th id="count-heading">Balls</th><th id="iterations-heading" hidden>Iterations</th><th id="average-heading">Marker avg/frame</th><th id="p95-heading">Marker P95/frame</th><th id="frame-average-heading">Frame avg</th><th id="frame-p95-heading">Frame P95</th><th id="samples-heading">Samples</th></tr></thead><tbody id="results"><tr><td colspan="8" class="empty">No completed runs yet.</td></tr></tbody></table>
       <p class="note">Marker timings are summed within each frame and then averaged across measured frames. Unity coroutine marks one yielded calculation chunk, so its work is spread across frames; its marker value is not the full calculation time. C# async records its worker-thread calculation. Main-thread and frame times include Unity and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.</p>
     </section>
 
     <div class="section-head"><div><h2>Present it live</h2><p>The browser is a local monitor; Unity still performs every simulation.</p></div></div>
     <section class="how" aria-label="How to use the dashboard">
       <div class="step"><b>1</b><div><strong>Start the dashboard</strong><span>Use the local command in the project README, then open this page in your browser.</span></div></div>
-      <div class="step"><b>2</b><div><strong>Run a comparison scene</strong><span>Open Gravity_Benchmark in the 2D or 3D folder and press Play. The runner loads each example in turn.</span></div></div>
+      <div class="step"><b>2</b><div><strong>Run a comparison scene</strong><span>Open Gravity_Benchmark for 2D/3D gravity or Batch_Benchmark for processing examples, then press Play.</span></div></div>
       <div class="step"><b>3</b><div><strong>Compare as it runs</strong><span>Watch the live line chart, progress, and completed strategy bars update from Unity.</span></div></div>
     </section>
-    <footer><span>Gravity Lab · localhost only · no cloud connection</span><span id="updated">Waiting for first sample</span></footer>
+    <footer><span>Simulation Lab · localhost only · no cloud connection</span><span id="updated">Waiting for first sample</span></footer>
   </main>
   <script>
     // Unity serves its latest snapshot on loopback; this page never sends data off the PC.
@@ -166,22 +166,47 @@
 
     function updatePage(state) {
       lastState = state;
+      const isBatch = state.workload === 'batch';
       connection.className = 'connection connected';
       connection.innerHTML = '<i class="light"></i><span>Unity connected · live on this PC</span>';
       document.getElementById('active-example').textContent = state.activeExample || 'Preparing…';
       document.getElementById('run-kicker').textContent = (state.status === 'complete' ? 'COMPARISON COMPLETE' : 'LIVE COMPARISON') + ' · ' + (state.dimension || 'Unity');
       document.getElementById('run-meta').textContent = state.status === 'complete'
-        ? 'Measured ' + (state.results || []).length + ' strategies · ' + state.measurementSeconds + ' seconds per pass'
-        : (state.ballCount ? state.ballCount + ' balls · ' : '') + (state.measurementSeconds || 8) + ' second measurement';
+        ? (isBatch ? 'Measured ' + (state.results || []).length + ' strategies · ' + (state.batchRunsPerStrategy || 5) + ' runs each' : 'Measured ' + (state.results || []).length + ' strategies · ' + state.measurementSeconds + ' seconds per pass')
+        : (isBatch ? (state.ballCount ? state.ballCount + ' items · ' : '') + (state.batchRunsPerStrategy || 5) + ' runs per strategy' : (state.ballCount ? state.ballCount + ' balls · ' : '') + (state.measurementSeconds || 8) + ' second measurement');
       document.getElementById('dimension-pill').textContent = state.dimension ? state.dimension + ' · LOCAL ONLY' : 'LOCAL ONLY';
       document.getElementById('phase-label').textContent = state.phase || 'Waiting';
       document.getElementById('progress-label').textContent = (state.completed || 0) + ' / ' + (state.total || 6);
       document.getElementById('progress').value = Math.max(0, Math.min(1, state.progress || 0));
       document.getElementById('profile-ms').textContent = formatMs(state.profileMs);
-      document.getElementById('main-ms').textContent = formatMs(state.mainThreadMs);
+      document.getElementById('main-ms').textContent = formatMs(isBatch ? state.averageProfileMs : state.mainThreadMs);
       document.getElementById('frame-ms').textContent = formatMs(state.frameMs);
       document.getElementById('p95-ms').textContent = formatMs(state.p95ProfileMs);
-      document.getElementById('balls-pill').textContent = 'Balls: ' + (state.ballCount || '—');
+      document.getElementById('balls-pill').textContent = (isBatch ? 'Items: ' : 'Balls: ') + (state.ballCount || '—');
+      document.getElementById('live-title').textContent = isBatch ? 'Batch run timings' : 'Live profile';
+      document.getElementById('live-description').textContent = isBatch ? 'Each completed scene run adds its calculation and total wall time.' : 'Profiler samples update while the current Unity scene is running.';
+      document.getElementById('profile-label').textContent = isBatch ? 'Latest calculation' : 'Current work marker';
+      document.getElementById('profile-hint').textContent = isBatch ? 'milliseconds for one run' : 'milliseconds / sample';
+      document.getElementById('main-label').textContent = isBatch ? 'Calculation average' : 'Main thread';
+      document.getElementById('main-hint').textContent = isBatch ? 'average across completed runs' : 'CPU time per frame';
+      document.getElementById('frame-label').textContent = isBatch ? 'Latest wall time' : 'Frame time';
+      document.getElementById('frame-hint').textContent = isBatch ? 'includes waiting and yields' : 'elapsed milliseconds';
+      document.getElementById('p95-label').textContent = isBatch ? 'Calculation P95' : 'Recent P95 marker';
+      document.getElementById('p95-hint').textContent = isBatch ? 'across completed runs' : 'rolling samples';
+      document.getElementById('legend-profile').textContent = isBatch ? 'Calculation time' : 'Gravity marker';
+      document.getElementById('legend-main').textContent = isBatch ? 'Unused' : 'Main thread';
+      document.getElementById('legend-frame').textContent = isBatch ? 'Wall time' : 'Frame time';
+      document.getElementById('timeline-title').textContent = isBatch ? 'Batch calculation and wall time' : 'Frame and CPU timeline';
+      document.getElementById('timeline-subtitle').textContent = isBatch ? 'Completed runs · milliseconds' : 'Recent samples · milliseconds';
+      document.querySelector('[data-metric="averageProfileMs"]').textContent = isBatch ? 'Compute avg' : 'Marker avg/frame';
+      document.querySelector('[data-metric="p95FrameMs"]').textContent = isBatch ? 'Wall P95' : 'Frame P95';
+      document.getElementById('count-heading').textContent = isBatch ? 'Items' : 'Balls';
+      document.getElementById('iterations-heading').hidden = !isBatch;
+      document.getElementById('average-heading').textContent = isBatch ? 'Compute avg' : 'Marker avg/frame';
+      document.getElementById('p95-heading').textContent = isBatch ? 'Compute P95' : 'Marker P95/frame';
+      document.getElementById('frame-average-heading').textContent = isBatch ? 'Wall avg' : 'Frame avg';
+      document.getElementById('frame-p95-heading').textContent = isBatch ? 'Wall P95' : 'Frame P95';
+      document.getElementById('samples-heading').textContent = isBatch ? 'Runs' : 'Samples';
       document.getElementById('marker-pill').textContent = state.markerName || 'No marker yet';
       document.getElementById('updated').textContent = state.updatedUtc ? 'Updated ' + new Date(state.updatedUtc).toLocaleTimeString() : 'Waiting for first sample';
       drawTimeline(state);
@@ -199,7 +224,11 @@
       const margin = { left: 35, right: 7, top: 8, bottom: 21 };
       const plotWidth = width - margin.left - margin.right;
       const plotHeight = height - margin.top - margin.bottom;
-      const series = [
+      const isBatch = lastState && lastState.workload === 'batch';
+      const series = isBatch ? [
+        { values: state.chartProfileMs || [], color: '#bcf36a' },
+        { values: state.chartFrameMs || [], color: '#f3bf68' }
+      ] : [
         { values: state.chartProfileMs || [], color: '#bcf36a' },
         { values: state.chartMainThreadMs || [], color: '#72d6e8' },
         { values: state.chartFrameMs || [], color: '#f3bf68' }
@@ -233,19 +262,22 @@
       const body = document.getElementById('results');
       const bars = document.getElementById('bars');
       if (!results.length) {
-        body.innerHTML = '<tr><td colspan="7" class="empty">No completed runs yet.</td></tr>';
+        body.innerHTML = '<tr><td colspan="8" class="empty">No completed runs yet.</td></tr>';
         bars.innerHTML = '<div class="empty">Run the comparison scene.<br>Each strategy appears here when its pass finishes.</div>';
         document.getElementById('comparison-caption').textContent = 'Complete a pass to fill the chart.';
         return;
       }
-      body.innerHTML = results.map(result => '<tr><td>' + escapeText(result.strategy) + '</td><td>' + result.balls + '</td><td>' + formatMs(result.averageProfileMs) + '</td><td>' + formatMs(result.p95ProfileMs) + '</td><td>' + formatMs(result.averageFrameMs) + '</td><td>' + formatMs(result.p95FrameMs) + '</td><td>' + result.sampleCount + '</td></tr>').join('');
+      const isBatch = lastState && lastState.workload === 'batch';
+      body.innerHTML = results.map(result => '<tr><td>' + escapeText(result.strategy) + '</td><td>' + (isBatch ? result.workItems : result.balls) + '</td>' + (isBatch ? '<td>' + result.iterations + '</td>' : '') + '<td>' + formatMs(result.averageProfileMs) + '</td><td>' + formatMs(result.p95ProfileMs) + '</td><td>' + formatMs(result.averageFrameMs) + '</td><td>' + formatMs(result.p95FrameMs) + '</td><td>' + result.sampleCount + '</td></tr>').join('');
       const maximum = Math.max(...results.map(result => result[selectedMetric] || 0), 0.0001);
       bars.innerHTML = results.map(result => {
         const value = result[selectedMetric] || 0;
         const width = Math.max(1, value / maximum * 100);
         return '<div class="bar-row"><span class="bar-label" title="' + escapeText(result.strategy) + '">' + escapeText(result.strategy) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + width + '%"></div></div><span class="bar-value">' + (value < 1 ? value.toFixed(3) : value.toFixed(2)) + ' ms</span></div>';
       }).join('');
-      document.getElementById('comparison-caption').textContent = selectedMetric === 'averageProfileMs' ? 'Average strategy marker time per measured frame.' : '95th percentile of full frame elapsed time.';
+      document.getElementById('comparison-caption').textContent = isBatch
+        ? (selectedMetric === 'averageProfileMs' ? 'Average calculation time across repeated runs.' : '95th percentile total wall time across repeated runs.')
+        : (selectedMetric === 'averageProfileMs' ? 'Average strategy marker time per measured frame.' : '95th percentile of full frame elapsed time.');
     }
 
     function escapeText(value) {

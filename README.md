@@ -22,6 +22,12 @@ Each processing strategy has its own scene and its own self-contained script. Op
 
 Each scene's Inspector has the item count and iteration count. After it runs, the same component shows the checksum and compute/wall timings; the Console prints them too. Compare the matching `BatchProcessing.*` marker in **Window → Analysis → Profiler**. Each mode starts from the same deterministic values. Burst can produce small floating-point checksum differences.
 
+### Compare batch strategies in the local analysis page
+
+Choose **Tools → Batch Processing → Create Example Scenes** to create or refresh the six teaching scenes and the `Batch_Benchmark` launcher. Open [`Batch_Benchmark.unity`](Assets/Examples/BatchProcessing/Scenes/Batch_Benchmark.unity) and press **Play**. It serves the same local analysis page as the gravity comparisons and runs each batch scene five times in sequence. The page compares average and P95 calculation time, average and P95 total wall time, item count, and iteration count.
+
+The batch comparison measures one complete calculation per run. Coroutine calculation time adds up its chunk work, while wall time also includes the frames spent yielding. C# async wall time includes waiting for its worker task; Unity Jobs includes scheduling and completing the job. Use the same machine and project settings for all runs. The first Burst run in the Editor can include compilation overhead, so repeat the comparison before presenting results.
+
 These scenes do not create spheres or simulate gravity. They isolate batch scheduling: every strategy performs the same made-up calculation over the same values. For each value, it multiplies by `1.00001`, adds `0.00002`, and subtracts `1` whenever the result reaches `1`. For example, `0.5` becomes `0.500025`, then `0.500050`. This calculation only creates computer work; it does not describe a real-world process.
 
 | Mode | Simple explanation | Complexity |
@@ -50,7 +56,7 @@ The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/
 | Unity coroutine | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityCoroutine.unity) | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityCoroutine.unity) |
 | Unity Jobs with Burst | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityJobsBurst.unity) | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityJobsBurst.unity) |
 
-The 12 individual gravity scenes, two comparison launchers, their 12 equal-size generated benchmark copies, and the batch scene are in **Build Settings**. Use **Tools → Gravity Simulation → Regenerate Example Scenes** for the individual examples and **Tools → Gravity Simulation → Create Comparison Scenes** for the comparison launchers and their copies.
+The 12 individual gravity scenes, two gravity comparison launchers, their 12 equal-size generated benchmark copies, six batch example scenes, and the batch comparison launcher are in **Build Settings** after running both scene-generation menu items. Use **Tools → Gravity Simulation → Regenerate Example Scenes** and **Tools → Gravity Simulation → Create Comparison Scenes** for gravity, plus **Tools → Batch Processing → Create Example Scenes** for batch processing.
 
 ### Live 2D and 3D comparison dashboard
 
@@ -130,7 +136,7 @@ Each batch component shows **compute time** for the measured calculation and **w
 Assets/Examples/
 ├── BatchProcessing/
 │   ├── Editor/       Scene creation command
-│   ├── Scenes/       One standalone scene per strategy
+│   ├── Scenes/       One scene per strategy and a comparison launcher
 │   └── Scripts/      One self-contained script per strategy
 └── GravitySimulation/
     ├── Editor/       Gravity mode scene generator
