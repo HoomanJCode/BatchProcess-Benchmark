@@ -86,7 +86,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
             {
                 string dimensionName = _is2D ? "2d" : "3d";
                 _headlessOutputPath = Path.Combine(
-                    Application.dataPath, "..", "Build", "Headless", "gravity-benchmark-" + dimensionName + ".json");
+                    Path.GetDirectoryName(Application.dataPath), "gravity-benchmark-" + dimensionName + ".json");
             }
             _headlessOutputPath = Path.GetFullPath(_headlessOutputPath);
         }
