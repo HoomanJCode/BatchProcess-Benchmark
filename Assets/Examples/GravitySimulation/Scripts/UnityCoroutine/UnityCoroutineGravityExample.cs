@@ -26,6 +26,8 @@ public sealed class UnityCoroutineGravityExample : MonoBehaviour
     private Vector3[] _nextAccelerations; // Reusable output buffer for the active calculation.
     private readonly ProfilerMarker _gravityMarker = new ProfilerMarker("GravitySimulation.UnityCoroutine");
     private const int BodiesPerFrame = 16;
+    private readonly ProfilerMarker _loopStartMarker =
+        new ProfilerMarker("GravitySimulation.UnityCoroutine.LoopStart");
     private readonly ProfilerMarker _chunkMarker =
         new ProfilerMarker("GravitySimulation.UnityCoroutine.Chunk");
     private bool _calculationRequested;
@@ -190,7 +192,9 @@ public sealed class UnityCoroutineGravityExample : MonoBehaviour
             }
 
             _calculationRequested = false;
-            _calculationRunning = true;
+            // Mark the first frame so the benchmark can sum this loop's later chunks.
+            using (_loopStartMarker.Auto())
+                _calculationRunning = true;
             for (int start = 0; start < _ballCount; start += BodiesPerFrame)
             {
                 int end = Mathf.Min(start + BodiesPerFrame, _ballCount);

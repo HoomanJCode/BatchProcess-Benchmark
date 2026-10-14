@@ -30,6 +30,8 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
 
     private const int RecorderCapacity = 512;
     private const float DashboardUpdateInterval = 0.2f;
+    // Keep this in sync with UnityCoroutineGravityExample.BodiesPerFrame.
+    private const int CoroutineBodiesPerFrame = 16;
     // Collect one summed value for the current frame, even if a marker runs more than once.
     private const ProfilerRecorderOptions FrameRecorderOptions =
         ProfilerRecorderOptions.SumAllSamplesInFrame | ProfilerRecorderOptions.WrapAroundWhenCapacityReached;
@@ -75,11 +77,16 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
     private readonly BenchmarkState _state = new BenchmarkState();
 
     private ProfilerRecorder _profileRecorder;
+    private ProfilerRecorder _coroutineLoopStartRecorder;
     private ProfilerRecorder _mainThreadRecorder;
     private LocalDashboardServer _dashboardServer;
     private float _sampleTimer;
     private bool _hasStarted;
     private bool _headlessMode;
+    private bool _recordingCoroutineLoop;
+    private float _coroutineLoopComputeMs;
+    private int _coroutineLoopChunkCount;
+    private int _coroutineChunksPerLoop;
     private string _headlessOutputPath;
 
     private void Start()
@@ -419,8 +426,37 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
             {
                 // LateUpdate reads the marker after this frame's coroutine chunks have run.
                 float profileMs = _profileRecorder.CurrentValue / 1000000f;
-                _profileSamplesMs.Add(profileMs);
-                _state.profileMs = profileMs;
+
+                if (_recordingCoroutineLoop)
+                {
+                    // One coroutine loop spans multiple frames, so sum its chunk times.
+                    if (_coroutineLoopStartRecorder.Valid && _coroutineLoopStartRecorder.CurrentValue > 0)
+                    {
+                        _coroutineLoopComputeMs = 0f;
+                        _coroutineLoopChunkCount = 0;
+                    }
+
+                    if (profileMs > 0f && _coroutineChunksPerLoop > 0)
+                    {
+                        _coroutineLoopComputeMs += profileMs;
+                        _coroutineLoopChunkCount++;
+                        if (_coroutineLoopChunkCount == _coroutineChunksPerLoop)
+                        {
+                            // Store one full gravity-loop cost, not the cost of one chunk.
+                            _profileSamplesMs.Add(_coroutineLoopComputeMs);
+                            _state.profileMs = _coroutineLoopComputeMs;
+                            _coroutineLoopComputeMs = 0f;
+                            _coroutineLoopChunkCount = 0;
+                        }
+                    }
+                }
+                else
+                {
+                    _state.profileMs = profileMs;
+                    // Ignore frames where the strategy had no calculation to run.
+                    if (profileMs > 0f)
+                        _profileSamplesMs.Add(profileMs);
+                }
             }
 
             _sampleTimer += Time.unscaledDeltaTime;
@@ -453,6 +489,12 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
             _state.frameMs = 0f;
             _profileSamplesMs.Clear();
             _frameSamplesMs.Clear();
+            _recordingCoroutineLoop = false;
+            _coroutineLoopComputeMs = 0f;
+            _coroutineLoopChunkCount = 0;
+            _coroutineChunksPerLoop = 0;
+            if (_coroutineLoopStartRecorder.Valid)
+                _coroutineLoopStartRecorder.Dispose();
             _state.chartProfileMs = new float[0];
             _state.chartMainThreadMs = new float[0];
             _state.chartFrameMs = new float[0];
@@ -488,6 +530,15 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
             _state.ballCount = ReadBallCountFromActiveExample();
             _profileRecorder = ProfilerRecorder.StartNew(
                 ProfilerCategory.Scripts, mode.markerName, RecorderCapacity, FrameRecorderOptions);
+            bool isCoroutineMode = mode.sceneName == "UnityCoroutine";
+            if (isCoroutineMode)
+            {
+                _coroutineChunksPerLoop = Mathf.CeilToInt(
+                    _state.ballCount / (float)CoroutineBodiesPerFrame);
+                _coroutineLoopStartRecorder = ProfilerRecorder.StartNew(
+                    ProfilerCategory.Scripts, "GravitySimulation.UnityCoroutine.LoopStart",
+                    RecorderCapacity, FrameRecorderOptions);
+            }
 
             _state.phase = "Warm-up";
             _state.progress = modeIndex / (float)Modes.Length;
@@ -498,6 +549,9 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
 
             _profileSamplesMs.Clear();
             _frameSamplesMs.Clear();
+            _coroutineLoopComputeMs = 0f;
+            _coroutineLoopChunkCount = 0;
+            _recordingCoroutineLoop = isCoroutineMode;
             float measurementStart = Time.realtimeSinceStartup;
             float measurementEnd = measurementStart + _measurementSeconds;
             _state.phase = "Measuring";
@@ -514,6 +568,9 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
             _results.Add(result);
             _state.results = _results.ToArray();
             _profileRecorder.Dispose();
+            if (_coroutineLoopStartRecorder.Valid)
+                _coroutineLoopStartRecorder.Dispose();
+            _recordingCoroutineLoop = false;
             _state.completed = modeIndex + 1;
             PublishState();
             if (!_headlessMode)
