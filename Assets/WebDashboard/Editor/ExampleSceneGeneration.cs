@@ -22,6 +22,7 @@ public static class ExampleSceneGeneration
         {
             "SimpleIteration_SingleThreaded",
             "SimpleIteration_CSharpAsync",
+            "SimpleIteration_CSharpAsyncTasks",
             "SimpleIteration_CSharpParallel",
             "SimpleIteration_UnityJobs",
             "SimpleIteration_UnityCoroutine",
@@ -31,6 +32,7 @@ public static class ExampleSceneGeneration
         {
             typeof(BatchSingleThreadedExample),
             typeof(BatchCSharpAsyncExample),
+            typeof(BatchCSharpAsyncTasksExample),
             typeof(BatchCSharpParallelExample),
             typeof(BatchUnityJobsExample),
             typeof(BatchUnityCoroutineExample),

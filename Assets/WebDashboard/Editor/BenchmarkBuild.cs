@@ -56,7 +56,7 @@ public static class GravityBenchmarkBuild
         BuildWindowsPlayer(scenes, "OptimizationBenchmark.exe");
     }
 
-    /// <summary>Creates a player for the six beginner batch-processing methods.</summary>
+    /// <summary>Creates a player for the seven beginner batch-processing methods.</summary>
     public static void BuildBatchPlayer()
     {
         // Regenerate the same standalone scenes used by the Editor comparison launcher.
@@ -67,6 +67,7 @@ public static class GravityBenchmarkBuild
             "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_Benchmark.unity",
             "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_SingleThreaded.unity",
             "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_CSharpAsync.unity",
+            "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_CSharpAsyncTasks.unity",
             "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_CSharpParallel.unity",
             "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_UnityJobs.unity",
             "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_UnityCoroutine.unity",

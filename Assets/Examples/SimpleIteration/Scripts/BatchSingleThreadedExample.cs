@@ -8,6 +8,7 @@ public sealed class BatchSingleThreadedExample : MonoBehaviour
     #region Settings and reusable data
     [SerializeField, Min(1)] private int _itemCount = 100000;
     [SerializeField, Min(1)] private int _iterations = 100;
+    [SerializeField, Min(1)] private int _batchSize = 1000;
     [SerializeField] private string _checksum = "—";
     [SerializeField] private float _computeMilliseconds;
     [SerializeField] private float _wallMilliseconds;
@@ -21,6 +22,7 @@ public sealed class BatchSingleThreadedExample : MonoBehaviour
     {
         _itemCount = Mathf.Max(1, _itemCount);
         _iterations = Mathf.Max(1, _iterations);
+        _batchSize = Mathf.Max(1, _batchSize);
         float[] values = new float[_itemCount];
         for (int i = 0; i < values.Length; i++)
             values[i] = ((i * 104729L) % 1000003L) / 1000003f;
@@ -28,18 +30,23 @@ public sealed class BatchSingleThreadedExample : MonoBehaviour
         long startedAt = Stopwatch.GetTimestamp();
         using (_marker.Auto())
         {
-            for (int i = 0; i < values.Length; i++)
+            for (int batchStart = 0; batchStart < values.Length; batchStart += _batchSize)
             {
-                float value = values[i];
-                for (int step = 0; step < _iterations; step++)
+                int batchEnd = Mathf.Min(batchStart + _batchSize, values.Length);
+                for (int i = batchStart; i < batchEnd; i++)
                 {
-                    // This made-up calculation creates work; it is not a real-world formula.
-                    // Example: 0.5 becomes 0.500025, then 0.500050, and so on.
-                    value = value * 1.00001f + 0.00002f;
-                    if (value >= 1f)
-                        value -= 1f; // Wrap the value back into the 0-to-1 range.
+                    float value = values[i];
+                    for (int step = 0; step < _iterations; step++)
+                    {
+                        // This made-up calculation creates work; it is not a real-world formula.
+                        // Example: 0.5 becomes 0.500025, then 0.500050, and so on.
+                        float product = (float)((double)value * 1.00001f);
+                        value = (float)((double)product + 0.00002f);
+                        if (value >= 1f)
+                            value -= 1f; // Wrap the value back into the 0-to-1 range.
+                    }
+                    values[i] = value;
                 }
-                values[i] = value;
             }
         }
         _computeMilliseconds = (float)((Stopwatch.GetTimestamp() - startedAt) * 1000d / Stopwatch.Frequency);

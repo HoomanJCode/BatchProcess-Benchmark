@@ -1,6 +1,6 @@
 # Unity Processing and Simulation Examples
 
-This Unity project presents five workloads, each measured with the same six processing methods: single-threaded, C# async, C# parallel, Unity Jobs, Unity coroutine, and Unity Jobs with Burst.
+This Unity project presents five workloads. Gravity, PSO, and Random Search use six processing methods. Simple Iteration adds a seventh batched C# Tasks method and lets every method use a configurable batch size.
 
 ## The five examples
 

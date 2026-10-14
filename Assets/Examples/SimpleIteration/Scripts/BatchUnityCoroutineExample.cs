@@ -9,7 +9,7 @@ public sealed class BatchUnityCoroutineExample : MonoBehaviour
     #region Settings and reusable data
     [SerializeField, Min(1)] private int _itemCount = 100000;
     [SerializeField, Min(1)] private int _iterations = 100;
-    [SerializeField, Min(1)] private int _itemsPerFrame = 4096;
+    [SerializeField, Min(1)] private int _batchSize = 1000;
     [SerializeField] private string _checksum = "—";
     [SerializeField] private float _computeMilliseconds;
     [SerializeField] private float _wallMilliseconds;
@@ -23,16 +23,16 @@ public sealed class BatchUnityCoroutineExample : MonoBehaviour
     {
         _itemCount = Mathf.Max(1, _itemCount);
         _iterations = Mathf.Max(1, _iterations);
-        _itemsPerFrame = Mathf.Max(1, _itemsPerFrame);
+        _batchSize = Mathf.Max(1, _batchSize);
         float[] values = new float[_itemCount];
         for (int i = 0; i < values.Length; i++)
             values[i] = ((i * 104729L) % 1000003L) / 1000003f;
 
         long startedAt = Stopwatch.GetTimestamp();
         double computeMilliseconds = 0d;
-        for (int firstItem = 0; firstItem < values.Length; firstItem += _itemsPerFrame)
+        for (int firstItem = 0; firstItem < values.Length; firstItem += _batchSize)
         {
-            int afterLastItem = Mathf.Min(firstItem + _itemsPerFrame, values.Length);
+            int afterLastItem = Mathf.Min(firstItem + _batchSize, values.Length);
             long chunkStartedAt = Stopwatch.GetTimestamp();
             using (_marker.Auto())
             {
@@ -42,7 +42,8 @@ public sealed class BatchUnityCoroutineExample : MonoBehaviour
                     for (int step = 0; step < _iterations; step++)
                     {
                         // This same made-up calculation runs for each item in this frame's chunk.
-                        value = value * 1.00001f + 0.00002f;
+                        float product = (float)((double)value * 1.00001f);
+                        value = (float)((double)product + 0.00002f);
                         if (value >= 1f)
                             value -= 1f;
                     }

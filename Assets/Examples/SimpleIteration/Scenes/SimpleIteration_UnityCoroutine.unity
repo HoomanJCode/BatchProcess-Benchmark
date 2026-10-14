@@ -242,6 +242,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BatchUnityCoroutineExample
   _itemCount: 100000
   _iterations: 100
+  _batchSize: 1000
   _itemsPerFrame: 4096
   _checksum: "\u2014"
   _computeMilliseconds: 0

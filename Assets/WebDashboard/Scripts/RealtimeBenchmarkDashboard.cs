@@ -55,11 +55,12 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         new ComparisonMode("Unity Jobs + Burst", "UnityJobsBurst", "GravitySimulation.UnityJobsBurst")
     };
 
-    // Each batch strategy uses the same input size and calculation in its own scene.
+    // Each batch strategy uses the same input size, batch size, and calculation in its own scene.
     private static readonly ComparisonMode[] BatchModes =
     {
         new ComparisonMode("Single threaded", "SingleThreaded", "SimpleIteration.SingleThreaded"),
         new ComparisonMode("C# async", "CSharpAsync", "SimpleIteration.CSharpAsync.Worker"),
+        new ComparisonMode("C# async tasks (batched)", "CSharpAsyncTasks", "SimpleIteration.CSharpAsyncTasks.Batch"),
         new ComparisonMode("C# parallel", "CSharpParallel", "SimpleIteration.CSharpParallel"),
         new ComparisonMode("Unity Jobs", "UnityJobs", "SimpleIteration.UnityJobs"),
         new ComparisonMode("Unity coroutine", "UnityCoroutine", "SimpleIteration.UnityCoroutine.Chunk"),
@@ -249,6 +250,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             List<float> optimizationScoreSamples = _isOptimizationComparison ? new List<float>(_batchRunsPerStrategy) : null;
             int itemCount = 0;
             int iterations = 0;
+            int batchSize = 0;
             int evaluationCount = 0;
             int trialCount = 0;
             int particleCount = 0;
@@ -266,6 +268,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             _state.chartFrameMs = new float[0];
             _state.evaluationCount = 0;
             _state.trialCount = 0;
+            _state.batchSize = 0;
             _state.bestScore = 0f;
             _state.averageBestScore = 0f;
             _state.bestX = 0f;
@@ -347,7 +350,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                         else
                         {
                             hasFinished = TryReadBatchValues(example, out computeMs, out wallMs,
-                                out itemCount, out iterations, out checksum);
+                                out itemCount, out iterations, out batchSize, out checksum);
                         }
                     }
                     if (hasFinished)
@@ -395,6 +398,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 _state.averageProfileMs = Average(computeSamples);
                 _state.p95ProfileMs = Percentile(computeSamples, 0.95f);
                 _state.ballCount = itemCount;
+                _state.batchSize = batchSize;
                 _state.evaluationCount = evaluationCount;
                 _state.trialCount = trialCount * computeSamples.Count;
                 _state.bestScore = bestScore;
@@ -416,6 +420,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 balls = itemCount,
                 workItems = itemCount,
                 iterations = iterations,
+                batchSize = batchSize,
                 evaluationCount = evaluationCount,
                 particleCount = particleCount,
                 bestScore = _isOptimizationComparison ? bestScore : 0f,
@@ -449,20 +454,22 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     }
 
     private bool TryReadBatchValues(MonoBehaviour example, out float computeMs, out float wallMs,
-        out int itemCount, out int iterations, out string checksum)
+        out int itemCount, out int iterations, out int batchSize, out string checksum)
     {
         BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
         FieldInfo computeField = example.GetType().GetField("_computeMilliseconds", flags);
         FieldInfo wallField = example.GetType().GetField("_wallMilliseconds", flags);
         FieldInfo countField = example.GetType().GetField("_itemCount", flags);
         FieldInfo iterationField = example.GetType().GetField("_iterations", flags);
+        FieldInfo batchSizeField = example.GetType().GetField("_batchSize", flags);
         FieldInfo checksumField = example.GetType().GetField("_checksum", flags);
         computeMs = computeField == null ? 0f : (float)computeField.GetValue(example);
         wallMs = wallField == null ? 0f : (float)wallField.GetValue(example);
         itemCount = countField == null ? 0 : (int)countField.GetValue(example);
         iterations = iterationField == null ? 0 : (int)iterationField.GetValue(example);
+        batchSize = batchSizeField == null ? 0 : (int)batchSizeField.GetValue(example);
         checksum = checksumField == null ? "—" : (string)checksumField.GetValue(example);
-        return computeField != null && wallField != null && checksumField != null && checksum != "—";
+        return computeField != null && wallField != null && batchSizeField != null && checksumField != null && checksum != "—";
     }
 
     private bool TryReadOptimizationValues(MonoBehaviour example, out float computeMs, out float wallMs,
@@ -937,6 +944,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public float mainThreadMs;
         public float frameMs;
         public int ballCount;
+        public int batchSize;
         public int evaluationCount;
         public int trialCount;
         public float bestScore;
@@ -962,6 +970,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public int balls;
         public int workItems;
         public int iterations;
+        public int batchSize;
         public int evaluationCount;
         public int particleCount;
         public float bestScore;

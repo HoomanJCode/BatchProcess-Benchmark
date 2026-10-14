@@ -9,6 +9,7 @@ public sealed class BatchCSharpParallelExample : MonoBehaviour
     #region Settings and reusable data
     [SerializeField, Min(1)] private int _itemCount = 100000;
     [SerializeField, Min(1)] private int _iterations = 100;
+    [SerializeField, Min(1)] private int _batchSize = 1000;
     [SerializeField] private string _checksum = "—";
     [SerializeField] private float _computeMilliseconds;
     [SerializeField] private float _wallMilliseconds;
@@ -27,6 +28,7 @@ public sealed class BatchCSharpParallelExample : MonoBehaviour
     {
         _itemCount = Mathf.Max(1, _itemCount);
         _iterations = Mathf.Max(1, _iterations);
+        _batchSize = Mathf.Max(1, _batchSize);
         _values = new float[_itemCount];
         for (int i = 0; i < _values.Length; i++)
             _values[i] = ((i * 104729L) % 1000003L) / 1000003f;
@@ -75,17 +77,24 @@ public sealed class BatchCSharpParallelExample : MonoBehaviour
             if (_stopWorkers)
                 return;
 
-            for (int i = firstItem; i < afterLastItem; i++)
+            for (int batchStart = firstItem; batchStart < afterLastItem; batchStart += _batchSize)
             {
-                float value = _values[i];
-                for (int step = 0; step < _iterations; step++)
+                int batchEnd = batchStart + _batchSize;
+                if (batchEnd > afterLastItem)
+                    batchEnd = afterLastItem;
+                for (int i = batchStart; i < batchEnd; i++)
                 {
-                    // Each worker repeats the same made-up calculation for its values.
-                    value = value * 1.00001f + 0.00002f;
-                    if (value >= 1f)
-                        value -= 1f;
+                    float value = _values[i];
+                    for (int step = 0; step < _iterations; step++)
+                    {
+                        // Each worker repeats the same made-up calculation for its values.
+                        float product = (float)((double)value * 1.00001f);
+                        value = (float)((double)product + 0.00002f);
+                        if (value >= 1f)
+                            value -= 1f;
+                    }
+                    _values[i] = value;
                 }
-                _values[i] = value;
             }
             _workersDone.Signal();
         }

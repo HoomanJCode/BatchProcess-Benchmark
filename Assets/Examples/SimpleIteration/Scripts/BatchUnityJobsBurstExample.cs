@@ -11,6 +11,7 @@ public sealed class BatchUnityJobsBurstExample : MonoBehaviour
     #region Settings and reusable data
     [SerializeField, Min(1)] private int _itemCount = 100000;
     [SerializeField, Min(1)] private int _iterations = 100;
+    [SerializeField, Min(1)] private int _batchSize = 1000;
     [SerializeField] private string _checksum = "—";
     [SerializeField] private float _computeMilliseconds;
     [SerializeField] private float _wallMilliseconds;
@@ -20,7 +21,7 @@ public sealed class BatchUnityJobsBurstExample : MonoBehaviour
     #endregion
 
     #region Example implementation
-    [BurstCompile]
+    [BurstCompile(FloatMode = FloatMode.Strict)]
     private struct BatchBurstJob : IJobParallelFor
     {
         public NativeArray<float> Values;
@@ -32,7 +33,9 @@ public sealed class BatchUnityJobsBurstExample : MonoBehaviour
             for (int step = 0; step < Iterations; step++)
             {
                 // Burst compiles this same made-up calculation for each item.
-                value = value * 1.00001f + 0.00002f;
+                // Round multiplication before addition so Burst and ordinary C# follow the same steps.
+                float product = (float)((double)value * 1.00001f);
+                value = (float)((double)product + 0.00002f);
                 if (value >= 1f)
                     value -= 1f;
             }
@@ -44,6 +47,7 @@ public sealed class BatchUnityJobsBurstExample : MonoBehaviour
     {
         _itemCount = Mathf.Max(1, _itemCount);
         _iterations = Mathf.Max(1, _iterations);
+        _batchSize = Mathf.Max(1, _batchSize);
         NativeArray<float> values = new NativeArray<float>(_itemCount, Allocator.TempJob);
         for (int i = 0; i < values.Length; i++)
             values[i] = ((i * 104729L) % 1000003L) / 1000003f;
@@ -52,7 +56,7 @@ public sealed class BatchUnityJobsBurstExample : MonoBehaviour
         using (_marker.Auto())
         {
             BatchBurstJob job = new BatchBurstJob { Values = values, Iterations = _iterations };
-            JobHandle handle = job.Schedule(_itemCount, 64);
+            JobHandle handle = job.Schedule(_itemCount, _batchSize);
             handle.Complete();
         }
         _computeMilliseconds = (float)((Stopwatch.GetTimestamp() - startedAt) * 1000d / Stopwatch.Frequency);

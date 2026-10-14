@@ -146,7 +146,7 @@
     <div class="section-head"><div><h2>All comparison examples</h2><p>Run All Examples Benchmark to fill every tab; this page keeps the latest completed results in this browser.</p></div><span class="pill">5 EXAMPLES</span></div>
     <section class="overview-grid" aria-label="Overview of every comparison example">
       <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare the six gravity strategies in dedicated 2D and 3D Unity scenes.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene and press Play.</p><p class="overview-settings" id="gravity-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through six processing approaches.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><p class="overview-settings" id="batch-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through seven processing approaches with a shared batch size.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><p class="overview-settings" id="batch-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
       <article class="panel overview-card"><h3>PSO simulation</h3><p>Compare PSO processing methods using the same optimization workload.</p><strong id="pso-overview-title">No completed run yet</strong><p id="pso-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="pso-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="pso-overview-results" class="overview-strategies">No results saved.</div></details></article>
       <article class="panel overview-card"><h3>Random Search</h3><p>Compare Random Search processing methods using the same optimization workload.</p><strong id="random-overview-title">No completed run yet</strong><p id="random-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="random-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="random-overview-results" class="overview-strategies">No results saved.</div></details></article>
     </section>
@@ -187,7 +187,7 @@
 
     <div class="section-head"><div><h2 id="results-title">Selected comparison results</h2><p id="results-description">Each pass uses the configured warm-up and measurement duration.</p></div></div>
     <section class="panel chart-panel table-wrap">
-      <table><thead><tr><th>Strategy</th><th id="count-heading">Balls</th><th id="iterations-heading" hidden>Iterations</th><th id="average-heading">Compute avg</th><th id="p95-heading">Compute P95</th><th id="solution-x-heading" hidden>Best X</th><th id="solution-y-heading" hidden>Best Y</th><th id="frame-average-heading">Frame avg</th><th id="frame-p95-heading">Frame P95</th><th id="samples-heading">Samples</th></tr></thead><tbody id="results"><tr><td colspan="10" class="empty">No completed runs yet.</td></tr></tbody></table>
+      <table><thead><tr><th>Strategy</th><th id="count-heading">Balls</th><th id="iterations-heading" hidden>Iterations</th><th id="batch-size-heading" hidden>Batch size</th><th id="average-heading">Compute avg</th><th id="p95-heading">Compute P95</th><th id="solution-x-heading" hidden>Best X</th><th id="solution-y-heading" hidden>Best Y</th><th id="frame-average-heading">Frame avg</th><th id="frame-p95-heading">Frame P95</th><th id="samples-heading">Samples</th></tr></thead><tbody id="results"><tr><td colspan="11" class="empty">No completed runs yet.</td></tr></tbody></table>
       <p class="note" id="results-note">Compute average and P95 use active calculation samples; frames with no strategy work are skipped. Unity coroutine adds the measured time from every chunk in one complete gravity loop, even when that loop spans several frames. Frame times separately show overall responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.</p>
     </section>
 
@@ -380,6 +380,7 @@
       const isOptimization = isOptimizationSelection() || state.workload === 'optimization';
       document.getElementById('count-heading').textContent = isOptimization ? 'Evaluations' : (isBatch ? 'Items' : 'Balls');
       document.getElementById('iterations-heading').hidden = !isBatch;
+      document.getElementById('batch-size-heading').hidden = !isBatch;
       document.getElementById('solution-x-heading').hidden = true;
       document.getElementById('solution-y-heading').hidden = true;
       document.getElementById('average-heading').textContent = 'Compute avg';
@@ -388,9 +389,9 @@
       document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : 'Frame P95';
       document.getElementById('samples-heading').textContent = isOptimization ? 'Trials' : (isBatch ? 'Runs' : 'Samples');
       document.getElementById('results-note').textContent = isOptimization
-        ? 'This dedicated example uses the same deterministic inputs and trial count across its six processing methods. Compare compute and wall time within this example. Lower times are better.'
+          ? 'This dedicated example uses the same deterministic inputs and trial count across its six processing methods. Compare compute and wall time within this example. Lower times are better.'
         : (isBatch
-          ? 'All methods process the same input count and calculation. Compute time measures the calculation; wall time also includes scheduling, waiting, or frames spent yielding. Lower times are better.'
+          ? 'All methods process the same input count and calculation in batches of the same size. The batched C# Tasks method starts one task per batch. Compute time includes method scheduling; coroutine wall time includes yielded frames. Lower times are better.'
           : 'Compute average and P95 use active calculation samples; frames with no strategy work are skipped. Unity coroutine adds the measured time from every chunk in one complete gravity loop, even when that loop spans several frames. Frame timing separately shows overall responsiveness and includes Unity physics and Editor overhead. Lower times are better.');
     }
 
@@ -438,7 +439,7 @@
         ? current.results[0]
         : (comparison && comparison.results && comparison.results[0] ? comparison.results[0] : null);
       settings.textContent = settingsResult
-        ? 'Settings: ' + Number(settingsResult.workItems || 0).toLocaleString() + ' items · ' + Number(settingsResult.iterations || 0).toLocaleString() + ' iterations · ' + Number(settingsResult.sampleCount || 0).toLocaleString() + ' runs'
+        ? 'Settings: ' + Number(settingsResult.workItems || 0).toLocaleString() + ' items · batches of ' + Number(settingsResult.batchSize || 0).toLocaleString() + ' · ' + Number(settingsResult.iterations || 0).toLocaleString() + ' iterations · ' + Number(settingsResult.sampleCount || 0).toLocaleString() + ' runs'
         : 'Settings: waiting for results';
       if (isRunning) {
         title.textContent = 'Running · ' + ((lastState && lastState.completed) || 0) + ' strategies complete';
@@ -579,6 +580,7 @@
       document.querySelector('[data-metric="p95FrameMs"]').hidden = false;
       document.getElementById('count-heading').textContent = isOptimization ? 'Evaluations' : (isBatch ? 'Items' : 'Balls');
       document.getElementById('iterations-heading').hidden = !isBatch;
+      document.getElementById('batch-size-heading').hidden = !isBatch;
       document.getElementById('solution-x-heading').hidden = true;
       document.getElementById('solution-y-heading').hidden = true;
       document.getElementById('average-heading').textContent = 'Compute avg';
@@ -589,7 +591,7 @@
       document.getElementById('results-note').textContent = isOptimization
         ? 'This dedicated example runs the same deterministic inputs through single-threaded, C# async, C# parallel, Unity Jobs, Unity coroutine, and Jobs + Burst. This table compares processing times for ' + getSelectedAlgorithm() + ' only; it does not compare optimization quality.'
         : (isBatch
-          ? 'Batch timings come from each example’s calculation and total wall time. Coroutine wall time includes the frames spent yielding.'
+          ? 'All methods use the same batch size. The batched C# Tasks method creates one task per batch. Coroutine wall time includes the frames spent yielding.'
           : 'Compute average and P95 use active calculation samples; frames with no strategy work are skipped. Unity coroutine adds the measured time from every chunk in one complete gravity loop, even when that loop spans several frames. Frame times separately show overall responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.');
       document.getElementById('marker-pill').textContent = state.markerName || 'No marker yet';
       document.getElementById('updated').textContent = state.updatedUtc ? 'Updated ' + new Date(state.updatedUtc).toLocaleTimeString() : 'Waiting for first sample';
@@ -646,7 +648,7 @@
       const body = document.getElementById('results');
       const bars = document.getElementById('bars');
       if (!results.length) {
-        body.innerHTML = '<tr><td colspan="10" class="empty">No completed runs yet.</td></tr>';
+        body.innerHTML = '<tr><td colspan="11" class="empty">No completed runs yet.</td></tr>';
         bars.innerHTML = '<div class="empty">Run the comparison scene.<br>Each strategy appears here when its pass finishes.</div>';
         document.getElementById('comparison-caption').textContent = 'Complete a pass to fill the chart.';
         document.getElementById('comparison-verdict').hidden = true;
@@ -656,6 +658,7 @@
       const isOptimization = state && state.workload === 'optimization';
       body.innerHTML = results.map(result => '<tr><td>' + escapeText(result.strategy) + '</td><td>' + (isOptimization ? result.evaluationCount : (isBatch ? result.workItems : result.balls)) + '</td>' +
         (isBatch ? '<td>' + result.iterations + '</td>' : '<td hidden></td>') +
+        (isBatch ? '<td>' + Number(result.batchSize || 0).toLocaleString() + '</td>' : '<td hidden></td>') +
         '<td>' + formatMs(result.averageProfileMs) + '</td>' +
         '<td>' + formatMs(result.p95ProfileMs) + '</td>' +
         '<td hidden></td><td hidden></td>' +

@@ -10,6 +10,7 @@ public sealed class BatchUnityJobsExample : MonoBehaviour
     #region Settings and reusable data
     [SerializeField, Min(1)] private int _itemCount = 100000;
     [SerializeField, Min(1)] private int _iterations = 100;
+    [SerializeField, Min(1)] private int _batchSize = 1000;
     [SerializeField] private string _checksum = "—";
     [SerializeField] private float _computeMilliseconds;
     [SerializeField] private float _wallMilliseconds;
@@ -30,7 +31,8 @@ public sealed class BatchUnityJobsExample : MonoBehaviour
             for (int step = 0; step < Iterations; step++)
             {
                 // This same made-up calculation is repeated for every item.
-                value = value * 1.00001f + 0.00002f;
+                float product = (float)((double)value * 1.00001f);
+                value = (float)((double)product + 0.00002f);
                 if (value >= 1f)
                     value -= 1f;
             }
@@ -42,6 +44,7 @@ public sealed class BatchUnityJobsExample : MonoBehaviour
     {
         _itemCount = Mathf.Max(1, _itemCount);
         _iterations = Mathf.Max(1, _iterations);
+        _batchSize = Mathf.Max(1, _batchSize);
         NativeArray<float> values = new NativeArray<float>(_itemCount, Allocator.TempJob);
         for (int i = 0; i < values.Length; i++)
             values[i] = ((i * 104729L) % 1000003L) / 1000003f;
@@ -50,7 +53,7 @@ public sealed class BatchUnityJobsExample : MonoBehaviour
         using (_marker.Auto())
         {
             BatchJob job = new BatchJob { Values = values, Iterations = _iterations };
-            JobHandle handle = job.Schedule(_itemCount, 64);
+            JobHandle handle = job.Schedule(_itemCount, _batchSize);
             handle.Complete();
         }
         _computeMilliseconds = (float)((Stopwatch.GetTimestamp() - startedAt) * 1000d / Stopwatch.Frequency);
