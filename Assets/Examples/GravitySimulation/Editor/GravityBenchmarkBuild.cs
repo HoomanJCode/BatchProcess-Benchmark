@@ -28,6 +28,25 @@ public static class GravityBenchmarkBuild
         BuildWindowsPlayer(scenes, "OptimizationBenchmark.exe");
     }
 
+    /// <summary>Creates a player for the six beginner batch-processing methods.</summary>
+    public static void BuildBatchPlayer()
+    {
+        // Regenerate the same standalone scenes used by the Editor comparison launcher.
+        BatchProcessingSceneGeneration.Build();
+
+        string[] scenes =
+        {
+            "Assets/Examples/BatchProcessing/Scenes/Batch_Benchmark.unity",
+            "Assets/Examples/BatchProcessing/Scenes/Batch_SingleThreaded.unity",
+            "Assets/Examples/BatchProcessing/Scenes/Batch_CSharpAsync.unity",
+            "Assets/Examples/BatchProcessing/Scenes/Batch_CSharpParallel.unity",
+            "Assets/Examples/BatchProcessing/Scenes/Batch_UnityJobs.unity",
+            "Assets/Examples/BatchProcessing/Scenes/Batch_UnityCoroutine.unity",
+            "Assets/Examples/BatchProcessing/Scenes/Batch_UnityJobsBurst.unity"
+        };
+        BuildWindowsPlayer(scenes, "BatchBenchmark.exe");
+    }
+
     private static string[] GetEnabledScenePaths()
     {
         EditorBuildSettingsScene[] enabledScenes = EditorBuildSettings.scenes;

@@ -28,6 +28,13 @@ Choose **Tools → Batch Processing → Create Example Scenes** to create or ref
 
 The batch comparison measures one complete calculation per run. Coroutine calculation time adds up its chunk work, while wall time also includes the frames spent yielding. C# async wall time includes waiting for its worker task; Unity Jobs includes scheduling and completing the job. Use the same machine and project settings for all runs. The first Burst run in the Editor can include compilation overhead, so repeat the comparison before presenting results.
 
+To run the same six-method comparison without a graphics window, close the Unity Editor and use the headless helper. It builds a standalone Development player, runs all six strategies five times with the same settings as the launcher, and saves JSON and CSV reports under `Build/Headless/`:
+
+```powershell
+.\Tools\Run-HeadlessBatchBenchmark.ps1 `
+  -UnityEditorPath "C:\Program Files\Unity\Hub\Editor\6000.5.1f1\Editor\Unity.exe"
+```
+
 These scenes do not create spheres or simulate gravity. They isolate batch scheduling: every strategy performs the same made-up calculation over the same values. For each value, it multiplies by `1.00001`, adds `0.00002`, and subtracts `1` whenever the result reaches `1`. For example, `0.5` becomes `0.500025`, then `0.500050`. This calculation only creates computer work; it does not describe a real-world process.
 
 | Mode | Simple explanation | Complexity |
@@ -100,7 +107,7 @@ The comparison launcher scenes run each implemented strategy one at a time and s
 1. In Unity, open [`Scenes/2D/Gravity_Benchmark.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_Benchmark.unity) or [`Scenes/3D/Gravity_Benchmark.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_Benchmark.unity), then press **Play**.
 2. The runner starts a loopback-only web server and opens the dashboard in your default browser. If the browser does not open automatically, visit [http://127.0.0.1:8765](http://127.0.0.1:8765).
 3. The runner loads each example scene in order. The dashboard updates while each scene is warming up and being measured. Stop Play mode when the comparison finishes.
-4. To present every example, run its comparison launcher: `Gravity_Benchmark` for 2D or 3D gravity, `Batch_Benchmark` for simple batch processing, and `Batch_OptimizationBenchmark` for heuristic optimization. The dashboard keeps each completed comparison's latest results in the current browser's local storage, so you can stop Play mode, open another launcher, and build a combined overview as you go. Gravity results are remembered separately for 2D and 3D. This browser-side history stays on this PC and is cleared if you clear the site's local storage.
+4. To present every example, run its comparison launcher one at a time: `Gravity_Benchmark` for 2D or 3D gravity, `Batch_Benchmark` for simple batch processing, and `Batch_OptimizationBenchmark` for heuristic optimization. After the runs, select a workload tab to compare its methods in the chart and results table; Gravity has separate 2D and 3D tabs. The dashboard keeps each completed comparison's latest results in this browser's local storage, so you can stop Play mode and open another launcher without losing the prior results. This browser-side history stays on this PC and is cleared if you clear the site's local storage.
 
 Unity serves the page and its live JSON endpoint from `127.0.0.1:8765`; the server binds only to the local PC. No result or simulation data is sent to a public service. The page source is under [`Presentation/index.html`](Presentation/index.html).
 
