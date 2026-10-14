@@ -12,9 +12,9 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Runs the existing gravity scenes one at a time and sends live profiler readings
-/// to the local browser dashboard. The gravity calculation stays in each beginner
-/// example; this script only controls the comparison and reads profiler data.
+/// Runs gravity, batch, or optimization examples one at a time and sends readings
+/// to the local browser dashboard. Each calculation stays in its own beginner
+/// example script; this runner only controls the comparison and reads results.
 /// </summary>
 public sealed class GravityBenchmarkRunner : MonoBehaviour
 {
@@ -24,6 +24,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
     [SerializeField, Min(1)] private int _dashboardPort = 8765;
     [SerializeField] private bool _is2D;
     [SerializeField] private bool _isBatchComparison;
+    [SerializeField] private bool _isOptimizationComparison;
     [SerializeField, Min(1)] private int _batchRunsPerStrategy = 5;
     [SerializeField] private bool _openDashboardInBrowser = true;
 
@@ -58,6 +59,13 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         new ComparisonMode("Unity Jobs", "UnityJobs", "BatchProcessing.UnityJobs"),
         new ComparisonMode("Unity coroutine", "UnityCoroutine", "BatchProcessing.UnityCoroutine.Chunk"),
         new ComparisonMode("Unity Jobs + Burst", "UnityJobsBurst", "BatchProcessing.UnityJobsBurst")
+    };
+
+    // These algorithms solve the same simple two-dimensional minimization problem.
+    private static readonly ComparisonMode[] OptimizationModes =
+    {
+        new ComparisonMode("Particle swarm (PSO)", "ParticleSwarm", "BatchProcessing.Optimization.PSO"),
+        new ComparisonMode("Random search", "RandomSearch", "BatchProcessing.Optimization.RandomSearch")
     };
 
     // Capacity covers several minutes of samples at common frame rates, avoiding List growth during measurement.
@@ -105,8 +113,8 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
             _headlessOutputPath = Path.GetFullPath(_headlessOutputPath);
         }
 
-        _state.workload = _isBatchComparison ? "batch" : "gravity";
-        _state.dimension = _isBatchComparison ? "Batch processing" : (_is2D ? "2D" : "3D");
+        _state.workload = _isOptimizationComparison ? "optimization" : (_isBatchComparison ? "batch" : "gravity");
+        _state.dimension = _isOptimizationComparison ? "Optimization" : (_isBatchComparison ? "Batch processing" : (_is2D ? "2D" : "3D"));
         _batchRunsPerStrategy = Mathf.Max(1, _batchRunsPerStrategy);
         _state.batchRunsPerStrategy = _batchRunsPerStrategy;
         _state.status = "starting";
@@ -131,35 +139,48 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         if (!_hasStarted)
         {
             _hasStarted = true;
-            StartCoroutine(_isBatchComparison ? RunBatchComparison() : RunComparison());
+            StartCoroutine(_isBatchComparison || _isOptimizationComparison ? RunBatchComparison() : RunComparison());
         }
     }
 
-    // Run each self-contained batch scene several times and compare its own timings.
-    // The measured calculation stays inside the beginner example scripts.
+    // Run each self-contained batch or optimization scene and collect its timings.
+    // The measured calculations stay inside their beginner example scripts.
     private IEnumerator RunBatchComparison()
     {
+        ComparisonMode[] modes = _isOptimizationComparison ? OptimizationModes : BatchModes;
         _state.status = "running";
-        _state.total = BatchModes.Length;
+        _state.total = modes.Length;
         _state.completed = 0;
         _results.Clear();
         PublishState();
 
-        for (int modeIndex = 0; modeIndex < BatchModes.Length; modeIndex++)
+        for (int modeIndex = 0; modeIndex < modes.Length; modeIndex++)
         {
-            ComparisonMode mode = BatchModes[modeIndex];
+            ComparisonMode mode = modes[modeIndex];
             List<float> computeSamples = new List<float>(_batchRunsPerStrategy);
             List<float> wallSamples = new List<float>(_batchRunsPerStrategy);
+            List<float> optimizationScoreSamples = _isOptimizationComparison ? new List<float>(_batchRunsPerStrategy) : null;
             int itemCount = 0;
             int iterations = 0;
+            int evaluationCount = 0;
+            int trialCount = 0;
+            float bestScore = float.MaxValue;
+            float bestX = 0f;
+            float bestY = 0f;
             _state.activeExample = mode.displayName;
             _state.markerName = mode.markerName;
-            _state.phase = "Preparing repeated batch runs";
+            _state.phase = _isOptimizationComparison ? "Preparing search algorithms" : "Preparing repeated batch runs";
             _state.completed = modeIndex;
-            _state.progress = (float)modeIndex / BatchModes.Length;
+            _state.progress = (float)modeIndex / modes.Length;
             _state.chartProfileMs = new float[0];
             _state.chartMainThreadMs = new float[0];
             _state.chartFrameMs = new float[0];
+            _state.evaluationCount = 0;
+            _state.trialCount = 0;
+            _state.bestScore = 0f;
+            _state.averageBestScore = 0f;
+            _state.bestX = 0f;
+            _state.bestY = 0f;
             PublishState();
 
             for (int runIndex = 0; runIndex < _batchRunsPerStrategy; runIndex++)
@@ -173,7 +194,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
                 }
 
                 _state.phase = "Loading " + mode.displayName + " · run " + (runIndex + 1) + " of " + _batchRunsPerStrategy;
-                _state.progress = (modeIndex + (float)runIndex / _batchRunsPerStrategy) / BatchModes.Length;
+                _state.progress = (modeIndex + (float)runIndex / _batchRunsPerStrategy) / modes.Length;
                 PublishState();
                 AsyncOperation load = SceneManager.LoadSceneAsync(buildIndex, LoadSceneMode.Single);
                 if (load == null)
@@ -186,6 +207,10 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
                 MonoBehaviour example = null;
                 float computeMs = 0f;
                 float wallMs = 0f;
+                float runBestScore = 0f;
+                float runAverageBestScore = 0f;
+                float runBestX = 0f;
+                float runBestY = 0f;
                 string checksum = "—";
                 float timeout = Time.realtimeSinceStartup + 120f;
                 while (Time.realtimeSinceStartup < timeout)
@@ -205,7 +230,22 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
                         }
                     }
 
-                    if (example != null && TryReadBatchValues(example, out computeMs, out wallMs, out itemCount, out iterations, out checksum))
+                    bool hasFinished = false;
+                    if (example != null)
+                    {
+                        if (_isOptimizationComparison)
+                        {
+                            hasFinished = TryReadOptimizationValues(example, out computeMs, out wallMs,
+                                out evaluationCount, out trialCount, out runBestScore, out runAverageBestScore,
+                                out runBestX, out runBestY, out checksum);
+                        }
+                        else
+                        {
+                            hasFinished = TryReadBatchValues(example, out computeMs, out wallMs,
+                                out itemCount, out iterations, out checksum);
+                        }
+                    }
+                    if (hasFinished)
                         break;
 
                     _state.phase = "Waiting for " + mode.displayName + " to finish";
@@ -220,13 +260,29 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
 
                 computeSamples.Add(computeMs);
                 wallSamples.Add(wallMs);
+                if (_isOptimizationComparison)
+                {
+                    optimizationScoreSamples.Add(runAverageBestScore);
+                    if (runBestScore < bestScore)
+                    {
+                        bestScore = runBestScore;
+                        bestX = runBestX;
+                        bestY = runBestY;
+                    }
+                }
                 _state.profileMs = computeMs;
                 _state.mainThreadMs = 0f;
                 _state.frameMs = wallMs;
                 _state.averageProfileMs = Average(computeSamples);
                 _state.p95ProfileMs = Percentile(computeSamples, 0.95f);
                 _state.ballCount = itemCount;
-                _state.progress = (modeIndex + (runIndex + 1f) / _batchRunsPerStrategy) / BatchModes.Length;
+                _state.evaluationCount = evaluationCount;
+                _state.trialCount = trialCount * computeSamples.Count;
+                _state.bestScore = bestScore;
+                _state.averageBestScore = _isOptimizationComparison ? Average(optimizationScoreSamples) : 0f;
+                _state.bestX = bestX;
+                _state.bestY = bestY;
+                _state.progress = (modeIndex + (runIndex + 1f) / _batchRunsPerStrategy) / modes.Length;
                 AddChartPoint(computeMs, 0f, wallMs);
                 _state.phase = "Finished run " + (runIndex + 1) + " of " + _batchRunsPerStrategy;
                 PublishState();
@@ -240,7 +296,12 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
                 balls = itemCount,
                 workItems = itemCount,
                 iterations = iterations,
-                sampleCount = computeSamples.Count,
+                evaluationCount = evaluationCount,
+                bestScore = _isOptimizationComparison ? bestScore : 0f,
+                averageBestScore = _isOptimizationComparison ? Average(optimizationScoreSamples) : 0f,
+                bestX = bestX,
+                bestY = bestY,
+                sampleCount = _isOptimizationComparison ? trialCount * computeSamples.Count : computeSamples.Count,
                 averageProfileMs = Average(computeSamples),
                 medianProfileMs = Percentile(computeSamples, 0.50f),
                 p95ProfileMs = Percentile(computeSamples, 0.95f),
@@ -254,7 +315,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         }
 
         _state.status = "complete";
-        _state.phase = "All batch strategies measured";
+        _state.phase = _isOptimizationComparison ? "Both search algorithms measured" : "All batch strategies measured";
         _state.progress = 1f;
         _state.activeExample = "Complete";
         _state.results = _results.ToArray();
@@ -278,6 +339,34 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         return computeField != null && wallField != null && checksumField != null && checksum != "—";
     }
 
+    private bool TryReadOptimizationValues(MonoBehaviour example, out float computeMs, out float wallMs,
+        out int evaluationCount, out int trialCount, out float bestScore, out float averageBestScore,
+        out float bestX, out float bestY, out string checksum)
+    {
+        BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        Type exampleType = example.GetType();
+        FieldInfo computeField = exampleType.GetField("_computeMilliseconds", flags);
+        FieldInfo wallField = exampleType.GetField("_wallMilliseconds", flags);
+        FieldInfo countField = exampleType.GetField("_evaluationCount", flags);
+        FieldInfo trialField = exampleType.GetField("_trialCount", flags);
+        FieldInfo scoreField = exampleType.GetField("_bestScore", flags);
+        FieldInfo averageField = exampleType.GetField("_averageBestScore", flags);
+        FieldInfo xField = exampleType.GetField("_bestX", flags);
+        FieldInfo yField = exampleType.GetField("_bestY", flags);
+        FieldInfo checksumField = exampleType.GetField("_checksum", flags);
+        computeMs = computeField == null ? 0f : (float)computeField.GetValue(example);
+        wallMs = wallField == null ? 0f : (float)wallField.GetValue(example);
+        evaluationCount = countField == null ? 0 : (int)countField.GetValue(example);
+        trialCount = trialField == null ? 0 : (int)trialField.GetValue(example);
+        bestScore = scoreField == null ? 0f : (float)scoreField.GetValue(example);
+        averageBestScore = averageField == null ? 0f : (float)averageField.GetValue(example);
+        bestX = xField == null ? 0f : (float)xField.GetValue(example);
+        bestY = yField == null ? 0f : (float)yField.GetValue(example);
+        checksum = checksumField == null ? "—" : (string)checksumField.GetValue(example);
+        return computeField != null && wallField != null && countField != null && trialField != null && scoreField != null &&
+            averageField != null && xField != null && yField != null && checksumField != null && checksum != "—";
+    }
+
     private void SetBatchError(string message, string scenePath, int exitCode)
     {
         _state.status = "error";
@@ -289,7 +378,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (_state.status == "running" && _isBatchComparison)
+        if (_state.status == "running" && (_isBatchComparison || _isOptimizationComparison))
         {
             // Batch examples finish once per scene, so they publish measured runs directly.
             // Only refresh the browser while an async or coroutine example is still working.
@@ -636,6 +725,12 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         public float mainThreadMs;
         public float frameMs;
         public int ballCount;
+        public int evaluationCount;
+        public int trialCount;
+        public float bestScore;
+        public float averageBestScore;
+        public float bestX;
+        public float bestY;
         public int completed;
         public int total;
         public int warmupSeconds;
@@ -654,6 +749,11 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         public int balls;
         public int workItems;
         public int iterations;
+        public int evaluationCount;
+        public float bestScore;
+        public float averageBestScore;
+        public float bestX;
+        public float bestY;
         public int sampleCount;
         public float averageProfileMs;
         public float medianProfileMs;

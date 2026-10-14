@@ -24,7 +24,7 @@ Each scene's Inspector has the item count and iteration count. After it runs, th
 
 ### Compare batch strategies in the local analysis page
 
-Choose **Tools → Batch Processing → Create Example Scenes** to create or refresh the six teaching scenes and the `Batch_Benchmark` launcher. Open [`Batch_Benchmark.unity`](Assets/Examples/BatchProcessing/Scenes/Batch_Benchmark.unity) and press **Play**. It serves the same local analysis page as the gravity comparisons and runs each batch scene five times in sequence. The page compares average and P95 calculation time, average and P95 total wall time, item count, and iteration count.
+Choose **Tools → Batch Processing → Create Example Scenes** to create or refresh the teaching scenes and both comparison launchers. Open [`Batch_Benchmark.unity`](Assets/Examples/BatchProcessing/Scenes/Batch_Benchmark.unity) and press **Play**. It serves the same local analysis page as the gravity comparisons and runs each batch scene five times in sequence. The page compares average and P95 calculation time, average and P95 total wall time, item count, and iteration count.
 
 The batch comparison measures one complete calculation per run. Coroutine calculation time adds up its chunk work, while wall time also includes the frames spent yielding. C# async wall time includes waiting for its worker task; Unity Jobs includes scheduling and completing the job. Use the same machine and project settings for all runs. The first Burst run in the Editor can include compilation overhead, so repeat the comparison before presenting results.
 
@@ -41,7 +41,31 @@ These scenes do not create spheres or simulate gravity. They isolate batch sched
 
 Here, `N` is the number of values and `I` is the number of iterations per value. Every strategy does O(N × I) work and stores O(N) values. Parallel modes can finish sooner when enough work is available, but scheduling has a cost.
 
-Choose **Tools → Batch Processing → Create Example Scenes** to regenerate the six scenes and their Build Settings entries. Each runtime script contains its own copy of the short calculation so you can read one strategy at a time without following shared calculation helpers.
+Choose **Tools → Batch Processing → Create Example Scenes** to regenerate the batch scenes and their Build Settings entries. Each runtime script contains its own copy of the short calculation so you can read one strategy at a time without following shared calculation helpers.
+
+### Compare an optimization algorithm
+
+The same folder also contains a simple optimization problem and two search approaches:
+
+| Method | Scene | What it does |
+| --- | --- | --- |
+| Particle Swarm Optimization (PSO) | **Batch_ParticleSwarm.unity** | Moves candidate answers toward each candidate's best answer and the swarm's best answer. |
+| Random Search | **Batch_RandomSearch.unity** | Tries randomly selected answers as a simple baseline. |
+
+Both minimize the 2D Sphere function:
+
+~~~text
+score = x² + y²
+best x = 0, best y = 0, best score = 0
+~~~
+
+The function is deliberately simple: the search quality is easy to understand because the correct answer is known. Both methods test points in the range −5 to 5 and use 6,400 objective evaluations per trial over five fixed-seed trials (32,000 evaluations total). PSO uses 64 particles, scores their starting positions, then moves them for 99 iterations. That gives it the same evaluation budget as Random Search.
+
+Let **P** be the particle count, **T** the number of PSO iterations, **B** the number of random samples, and **D** the number of dimensions. PSO uses O(P × D × T) work and O(P × D) memory. Random Search uses O(B × D) work and O(1) extra memory. Here D is 2 and both methods evaluate the objective 6,400 times per trial.
+
+Choose **Tools → Batch Processing → Create Example Scenes** to generate the two example scenes and the **Batch_OptimizationBenchmark** launcher along with the other batch scenes. Open **Batch_OptimizationBenchmark.unity** and press **Play**. The existing local analysis page compares calculation time, total wall time, mean best score, best score, and the best (x, y) found. Lower scores are better; zero is the known optimum.
+
+For an algorithm comparison, equal objective-evaluation budgets make solution quality comparable. The time includes each algorithm's search work and its random-number generation; array setup for PSO happens before timing. It is a small demonstration problem, not evidence that either method is best for every optimization task.
 
 ## Open the gravity example
 
@@ -56,7 +80,7 @@ The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/
 | Unity coroutine | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityCoroutine.unity) | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityCoroutine.unity) |
 | Unity Jobs with Burst | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityJobsBurst.unity) | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityJobsBurst.unity) |
 
-The 12 individual gravity scenes, two gravity comparison launchers, their 12 equal-size generated benchmark copies, six batch example scenes, and the batch comparison launcher are in **Build Settings** after running both scene-generation menu items. Use **Tools → Gravity Simulation → Regenerate Example Scenes** and **Tools → Gravity Simulation → Create Comparison Scenes** for gravity, plus **Tools → Batch Processing → Create Example Scenes** for batch processing.
+The 12 individual gravity scenes, two gravity comparison launchers, their 12 equal-size generated benchmark copies, eight batch example scenes, and two batch comparison launchers are in **Build Settings** after running both scene-generation menu items. Use **Tools → Gravity Simulation → Regenerate Example Scenes** and **Tools → Gravity Simulation → Create Comparison Scenes** for gravity, plus **Tools → Batch Processing → Create Example Scenes** for batch processing.
 
 ### Live 2D and 3D comparison dashboard
 
@@ -136,8 +160,8 @@ Each batch component shows **compute time** for the measured calculation and **w
 Assets/Examples/
 ├── BatchProcessing/
 │   ├── Editor/       Scene creation command
-│   ├── Scenes/       One scene per strategy and a comparison launcher
-│   └── Scripts/      One self-contained script per strategy
+│   ├── Scenes/       One scene per example and two comparison launchers
+│   └── Scripts/      One self-contained script per example
 └── GravitySimulation/
     ├── Editor/       Gravity mode scene generator
     ├── Scenes/
