@@ -50,9 +50,11 @@ public abstract class GravitySimulationExample : MonoBehaviour
                 ? new GameObject()
                 : GameObject.CreatePrimitive(PrimitiveType.Sphere);
             bodyObject.name = "Gravity Body " + i.ToString("D3");
-            Collider collider = bodyObject.GetComponent<Collider>();
-            if (collider != null)
-                Destroy(collider);
+
+            // Match the collider type to the rendered shape in this scene dimension.
+            // The custom gravity solver moves bodies; these colliders do not add collision response.
+            if (_dimension == SimulationDimension.TwoD)
+                bodyObject.AddComponent<CircleCollider2D>();
 
             float scale = Mathf.Clamp(0.28f * Mathf.Pow(128f / States.Length, 0.22f), 0.11f, 0.32f);
             bodyObject.transform.localScale = Vector3.one * scale;

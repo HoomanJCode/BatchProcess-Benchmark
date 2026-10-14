@@ -49,7 +49,7 @@ All seven gravity scenes and the batch scene are in **Build Settings**. Regenera
 
 Each gravity strategy has one implementation script in its own assembly under `Assets/Examples/GravitySimulation/Scripts`. Those assemblies reference `GravitySimulation.Core` for the shared gravity formula and common scene setup.
 
-In 2D mode, bodies use `SpriteRenderer` with the controller's optional body sprite (a circle sprite is generated when none is assigned), and the camera looks straight at the simulation plane. In 3D mode, bodies use spheres. The demo uses deterministic initial positions and velocities, softened inverse-square attraction, and a simple semi-implicit Euler integration. It is a visual workload example, not a high-precision orbital solver. Body collisions are not simulated. At `N` bodies, each step performs roughly `N × (N - 1)` pair evaluations, so the workload grows quadratically.
+In 2D mode, bodies use `SpriteRenderer` with the controller's optional body sprite (a circle sprite is generated when none is assigned), a `CircleCollider2D`, and a camera aimed straight at the simulation plane. In 3D mode, bodies use spheres with `SphereCollider`. The demo uses deterministic initial positions and velocities, softened inverse-square attraction, and a simple semi-implicit Euler integration. It is a visual workload example, not a high-precision orbital solver. The custom gravity solver does not use the colliders for collision response. At `N` bodies, each step performs roughly `N × (N - 1)` pair evaluations, so the workload grows quadratically.
 
 ## Profiling
 
