@@ -89,6 +89,11 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         _headlessMode = HasCommandLineArgument("-gravity-benchmark-headless");
         if (_headlessMode)
         {
+            // A null graphics device can otherwise advance thousands of empty frames per second.
+            // Use the same fixed frame budget for every headless gravity strategy.
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = 60;
+
             string dimension = GetCommandLineValue("-gravity-benchmark-dimension");
             if (!string.IsNullOrEmpty(dimension))
                 _is2D = string.Equals(dimension, "2D", StringComparison.OrdinalIgnoreCase);

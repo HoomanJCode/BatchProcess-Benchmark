@@ -13,6 +13,31 @@ public static class GravityBenchmarkBuild
         BuildWindowsPlayer(GetEnabledScenePaths());
     }
 
+    /// <summary>Builds both gravity dimensions so one headless player can compare either one.</summary>
+    public static void BuildGravityPlayer()
+    {
+        // Use the generated benchmark scenes already in the project; the gravity
+        // scene generator creates additive scenes and cannot run in batch mode.
+        string[] scenes =
+        {
+            "Assets/Examples/GravitySimulation/Scenes/2D/Gravity_Benchmark.unity",
+            "Assets/Examples/GravitySimulation/Scenes/3D/Gravity_Benchmark.unity",
+            "Assets/Examples/GravitySimulation/Scenes/2D/Benchmark/Gravity_SingleThreaded.unity",
+            "Assets/Examples/GravitySimulation/Scenes/2D/Benchmark/Gravity_CSharpAsync.unity",
+            "Assets/Examples/GravitySimulation/Scenes/2D/Benchmark/Gravity_CSharpParallel.unity",
+            "Assets/Examples/GravitySimulation/Scenes/2D/Benchmark/Gravity_UnityJobs.unity",
+            "Assets/Examples/GravitySimulation/Scenes/2D/Benchmark/Gravity_UnityCoroutine.unity",
+            "Assets/Examples/GravitySimulation/Scenes/2D/Benchmark/Gravity_UnityJobsBurst.unity",
+            "Assets/Examples/GravitySimulation/Scenes/3D/Benchmark/Gravity_SingleThreaded.unity",
+            "Assets/Examples/GravitySimulation/Scenes/3D/Benchmark/Gravity_CSharpAsync.unity",
+            "Assets/Examples/GravitySimulation/Scenes/3D/Benchmark/Gravity_CSharpParallel.unity",
+            "Assets/Examples/GravitySimulation/Scenes/3D/Benchmark/Gravity_UnityJobs.unity",
+            "Assets/Examples/GravitySimulation/Scenes/3D/Benchmark/Gravity_UnityCoroutine.unity",
+            "Assets/Examples/GravitySimulation/Scenes/3D/Benchmark/Gravity_UnityJobsBurst.unity"
+        };
+        BuildWindowsPlayer(scenes);
+    }
+
     /// <summary>Creates the batch scenes and builds a player for the PSO versus Random Search comparison.</summary>
     public static void BuildOptimizationPlayer()
     {

@@ -32,19 +32,20 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
 
 New-Item -ItemType Directory -Path $buildDirectory -Force | Out-Null
 Write-Host "Building the standalone Unity player..."
-& $unityPath -batchmode -nographics -projectPath $projectRoot -buildTarget StandaloneWindows64 -executeMethod GravityBenchmarkBuild.BuildWindowsPlayer -quit -logFile $buildLog
-if ($LASTEXITCODE -ne 0) {
-    throw "Unity player build failed with exit code $LASTEXITCODE. See $buildLog"
+$buildArguments = "-batchmode -nographics -projectPath `"$projectRoot`" -buildTarget StandaloneWindows64 -executeMethod GravityBenchmarkBuild.BuildGravityPlayer -quit -logFile `"$buildLog`""
+$buildProcess = Start-Process -FilePath $unityPath -ArgumentList $buildArguments -Wait -PassThru
+if ($buildProcess.ExitCode -ne 0) {
+    throw "Unity player build failed with exit code $($buildProcess.ExitCode). See $buildLog"
 }
 if (-not (Test-Path -LiteralPath $playerPath)) {
     throw "Unity reported a successful build but the player was not found at $playerPath. See $buildLog"
 }
 
 Write-Host "Running $Dimension gravity benchmark without a graphics window..."
-& $playerPath -batchmode -nographics -logFile $playerLog -gravity-benchmark-headless -gravity-benchmark-dimension $Dimension -gravity-benchmark-warmup-seconds $WarmupSeconds -gravity-benchmark-measurement-seconds $MeasurementSeconds -gravity-benchmark-output $OutputPath
-if ($LASTEXITCODE -ne 0) {
-    throw "Headless benchmark failed with exit code $LASTEXITCODE. See $playerLog"
+$playerArguments = "-batchmode -nographics -logFile `"$playerLog`" -gravity-benchmark-headless -gravity-benchmark-dimension $Dimension -gravity-benchmark-warmup-seconds $WarmupSeconds -gravity-benchmark-measurement-seconds $MeasurementSeconds -gravity-benchmark-output `"$OutputPath`""
+$playerProcess = Start-Process -FilePath $playerPath -ArgumentList $playerArguments -Wait -PassThru
+if ($playerProcess.ExitCode -ne 0) {
+    throw "Headless benchmark failed with exit code $($playerProcess.ExitCode). See $playerLog"
 }
 
 Write-Host "JSON report: $OutputPath"
-Write-Host ("CSV report:  {0}" -f [System.IO.Path]::ChangeExtension($OutputPath, ".csv"))
