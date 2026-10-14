@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Gravity Lab — live comparison</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #0a0e13;
+      --panel: #111820;
+      --panel-soft: #151e27;
+      --line: #25313d;
+      --text: #f1f5f8;
+      --muted: #8c9aa8;
+      --green: #bcf36a;
+      --cyan: #72d6e8;
+      --amber: #f3bf68;
+      --red: #ff8079;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--page);
+      color: var(--text);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: radial-gradient(ellipse at 10% -10%, #172622 0, transparent 36%), var(--page); }
+    button { color: inherit; font: inherit; }
+    .shell { max-width: 1440px; margin: auto; padding: 28px clamp(16px, 4vw, 58px) 56px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); padding-bottom: 22px; }
+    .brand { display: flex; align-items: center; gap: 13px; }
+    .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #516c41; border-radius: 13px; color: var(--green); background: #17231b; font-size: 20px; }
+    .eyebrow { margin: 0 0 5px; color: var(--green); font-size: 10px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+    h1, h2, p { margin-top: 0; }
+    h1 { margin-bottom: 0; font-size: clamp(20px, 3vw, 26px); letter-spacing: -.04em; }
+    .connection { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; }
+    .light { width: 8px; height: 8px; background: var(--amber); border-radius: 50%; box-shadow: 0 0 12px currentColor; }
+    .connected .light { background: var(--green); }
+    .offline .light { background: var(--red); }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(270px, .8fr); gap: 18px; margin: 26px 0 18px; }
+    .panel { border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(150deg, #141c24, #10161d 72%); box-shadow: 0 18px 50px #0002; }
+    .run-card { min-height: 210px; padding: clamp(20px, 3vw, 34px); position: relative; overflow: hidden; }
+    .run-card::after { content: ""; position: absolute; width: 260px; height: 260px; border: 1px solid #bcf36a15; border-radius: 50%; right: -88px; top: -130px; box-shadow: 0 0 0 34px #bcf36a08, 0 0 0 68px #bcf36a05; pointer-events: none; }
+    .run-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .run-top h2 { font-size: clamp(26px, 4vw, 42px); margin: 4px 0 8px; letter-spacing: -.055em; }
+    .meta { color: var(--muted); font-size: 13px; }
+    .pill { white-space: nowrap; border: 1px solid var(--line); border-radius: 99px; padding: 7px 10px; color: var(--cyan); background: #112027; font-size: 11px; }
+    .progress-line { display: flex; justify-content: space-between; gap: 10px; margin: 25px 0 9px; color: #c1ccd5; font-size: 11px; }
+    progress { width: 100%; height: 7px; overflow: hidden; border: 0; border-radius: 20px; background: #27313a; }
+    progress::-webkit-progress-bar { background: #27313a; border-radius: 20px; }
+    progress::-webkit-progress-value { background: linear-gradient(90deg, #78c96c, var(--green)); border-radius: 20px; transition: width .25s ease; }
+    progress::-moz-progress-bar { background: var(--green); border-radius: 20px; }
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 17px; }
+    .metric { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #0d1319; }
+    .metric span { display: block; color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+    .metric strong { display: block; margin-top: 8px; font-size: clamp(20px, 3vw, 27px); font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+    .metric em { color: var(--muted); font-style: normal; font-size: 11px; }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin: 30px 2px 13px; }
+    .section-head h2 { font-size: 17px; letter-spacing: -.025em; margin: 0; }
+    .section-head p { color: var(--muted); font-size: 11px; margin: 5px 0 0; }
+    .chart-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+    .chart-panel { padding: 19px; min-height: 280px; }
+    .chart-title { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+    .chart-title h3 { font-size: 13px; margin: 0; }
+    .chart-title p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+    canvas { display: block; width: 100%; height: 205px; margin-top: 18px; }
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; color: var(--muted); font-size: 10px; }
+    .legend i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--green); }
+    .legend .cyan { background: var(--cyan); }
+    .legend .amber { background: var(--amber); }
+    .metric-switch { display: flex; padding: 3px; gap: 3px; border: 1px solid var(--line); border-radius: 9px; background: #0b1117; }
+    .metric-switch button { padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 10px; cursor: pointer; }
+    .metric-switch button[aria-pressed="true"] { background: #283421; color: var(--green); }
+    .bars { display: grid; gap: 14px; margin-top: 23px; }
+    .bar-row { display: grid; grid-template-columns: minmax(82px, 115px) 1fr 63px; gap: 10px; align-items: center; font-size: 10px; }
+    .bar-label { color: #c5d0d8; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .bar-track { background: #222d36; height: 11px; overflow: hidden; border-radius: 4px; }
+    .bar-fill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #66a957, var(--green)); transition: width .4s ease; }
+    .bar-value { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .empty { display: grid; place-items: center; min-height: 150px; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }
+    th, td { padding: 13px 12px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+    td:first-child { color: var(--text); font-weight: 650; }
+    .note { margin-top: 15px; color: var(--muted); font-size: 10px; line-height: 1.7; }
+    .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 26px; }
+    .step { display: flex; gap: 12px; padding: 15px; border: 1px solid var(--line); border-radius: 12px; background: #0e141a; }
+    .step b { display: grid; place-items: center; flex: 0 0 23px; height: 23px; border-radius: 7px; background: #293521; color: var(--green); font-size: 10px; }
+    .step strong { display: block; margin: 1px 0 4px; font-size: 11px; }
+    .step span { color: var(--muted); font-size: 10px; line-height: 1.55; }
+    footer { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); margin-top: 28px; padding-top: 17px; color: var(--muted); font-size: 10px; }
+    @media (max-width: 860px) { .hero, .chart-grid { grid-template-columns: 1fr; } .how { grid-template-columns: 1fr; } }
+    @media (max-width: 520px) { header { align-items: flex-start; flex-direction: column; } .run-top { flex-direction: column; } .section-head { align-items: flex-start; flex-direction: column; } .bar-row { grid-template-columns: 90px 1fr 54px; } footer { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">◎</div>
+        <div><p class="eyebrow">Local profiler · Unity</p><h1>Gravity Lab</h1></div>
+      </div>
+      <div id="connection" class="connection"><i class="light"></i><span>Waiting for Unity…</span></div>
+    </header>
+
+    <section class="hero" aria-label="Current benchmark">
+      <article class="panel run-card">
+        <div class="run-top">
+          <div><p class="eyebrow" id="run-kicker">LIVE COMPARISON</p><h2 id="active-example">Waiting for Unity</h2><p class="meta" id="run-meta">Open a comparison scene in Unity and press Play.</p></div>
+          <span class="pill" id="dimension-pill">LOCAL ONLY</span>
+        </div>
+        <div class="progress-line"><span id="phase-label">Connect to the Unity Editor</span><span id="progress-label">0 / 6</span></div>
+        <progress id="progress" max="1" value="0" aria-label="Benchmark progress"></progress>
+      </article>
+      <article class="panel metric-grid" aria-label="Live measurements">
+        <div class="metric"><span>Current work marker</span><strong id="profile-ms">—</strong><em>milliseconds / sample</em></div>
+        <div class="metric"><span>Main thread</span><strong id="main-ms">—</strong><em>CPU time per frame</em></div>
+        <div class="metric"><span>Frame time</span><strong id="frame-ms">—</strong><em>elapsed milliseconds</em></div>
+        <div class="metric"><span>Recent P95 marker</span><strong id="p95-ms">—</strong><em>rolling samples</em></div>
+      </article>
+    </section>
+
+    <div class="section-head"><div><h2>Live profile</h2><p>Profiler samples update while the current Unity scene is running.</p></div><span class="pill" id="balls-pill">Balls: waiting</span></div>
+    <section class="chart-grid">
+      <article class="panel chart-panel">
+        <div class="chart-title"><div><h3>Frame and CPU timeline</h3><p>Recent samples · milliseconds</p></div><span class="pill" id="marker-pill">No marker yet</span></div>
+        <canvas id="timeline" aria-label="Live frame, main thread, and gravity marker timings"></canvas>
+        <div class="legend"><span><i></i>Gravity marker</span><span><i class="cyan"></i>Main thread</span><span><i class="amber"></i>Frame time</span></div>
+      </article>
+      <article class="panel chart-panel">
+        <div class="chart-title"><div><h3>Compare completed runs</h3><p id="comparison-caption">Complete a pass to fill the chart.</p></div>
+          <div class="metric-switch" role="group" aria-label="Comparison metric"><button type="button" data-metric="averageProfileMs" aria-pressed="true">Marker avg/frame</button><button type="button" data-metric="p95FrameMs" aria-pressed="false">Frame P95</button></div>
+        </div>
+        <div id="bars" class="bars"><div class="empty">Run the comparison scene.<br>Each strategy appears here when its pass finishes.</div></div>
+      </article>
+    </section>
+
+    <div class="section-head"><div><h2>Results so far</h2><p>Each pass uses the configured warm-up and measurement duration.</p></div></div>
+    <section class="panel chart-panel table-wrap">
+      <table><thead><tr><th>Strategy</th><th>Balls</th><th>Marker avg/frame</th><th>Marker P95/frame</th><th>Frame avg</th><th>Frame P95</th><th>Samples</th></tr></thead><tbody id="results"><tr><td colspan="7" class="empty">No completed runs yet.</td></tr></tbody></table>
+      <p class="note">Marker timings are summed within each frame and then averaged across measured frames. Unity coroutine marks one yielded calculation chunk, so its work is spread across frames; its marker value is not the full calculation time. C# async records its worker-thread calculation. Main-thread and frame times include Unity and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.</p>
+    </section>
+
+    <div class="section-head"><div><h2>Present it live</h2><p>The browser is a local monitor; Unity still performs every simulation.</p></div></div>
+    <section class="how" aria-label="How to use the dashboard">
+      <div class="step"><b>1</b><div><strong>Start the dashboard</strong><span>Use the local command in the project README, then open this page in your browser.</span></div></div>
+      <div class="step"><b>2</b><div><strong>Run a comparison scene</strong><span>Open Gravity_Benchmark in the 2D or 3D folder and press Play. The runner loads each example in turn.</span></div></div>
+      <div class="step"><b>3</b><div><strong>Compare as it runs</strong><span>Watch the live line chart, progress, and completed strategy bars update from Unity.</span></div></div>
+    </section>
+    <footer><span>Gravity Lab · localhost only · no cloud connection</span><span id="updated">Waiting for first sample</span></footer>
+  </main>
+  <script>
+    // Unity serves its latest snapshot on loopback; this page never sends data off the PC.
+    // Unity serves both this page and its JSON, so the dashboard stays same-origin and local.
+    const stateUrl = location.origin + '/state';
+    const connection = document.getElementById('connection');
+    const timeline = document.getElementById('timeline');
+    const ctx = timeline.getContext('2d');
+    let selectedMetric = 'averageProfileMs';
+    let lastState = null;
+
+    function formatMs(value) {
+      return Number.isFinite(value) && value > 0 ? value.toFixed(value < 1 ? 3 : 2) + ' ms' : '0.00 ms';
+    }
+
+    function updatePage(state) {
+      lastState = state;
+      connection.className = 'connection connected';
+      connection.innerHTML = '<i class="light"></i><span>Unity connected · live on this PC</span>';
+      document.getElementById('active-example').textContent = state.activeExample || 'Preparing…';
+      document.getElementById('run-kicker').textContent = (state.status === 'complete' ? 'COMPARISON COMPLETE' : 'LIVE COMPARISON') + ' · ' + (state.dimension || 'Unity');
+      document.getElementById('run-meta').textContent = state.status === 'complete'
+        ? 'Measured ' + (state.results || []).length + ' strategies · ' + state.measurementSeconds + ' seconds per pass'
+        : (state.ballCount ? state.ballCount + ' balls · ' : '') + (state.measurementSeconds || 8) + ' second measurement';
+      document.getElementById('dimension-pill').textContent = state.dimension ? state.dimension + ' · LOCAL ONLY' : 'LOCAL ONLY';
+      document.getElementById('phase-label').textContent = state.phase || 'Waiting';
+      document.getElementById('progress-label').textContent = (state.completed || 0) + ' / ' + (state.total || 6);
+      document.getElementById('progress').value = Math.max(0, Math.min(1, state.progress || 0));
+      document.getElementById('profile-ms').textContent = formatMs(state.profileMs);
+      document.getElementById('main-ms').textContent = formatMs(state.mainThreadMs);
+      document.getElementById('frame-ms').textContent = formatMs(state.frameMs);
+      document.getElementById('p95-ms').textContent = formatMs(state.p95ProfileMs);
+      document.getElementById('balls-pill').textContent = 'Balls: ' + (state.ballCount || '—');
+      document.getElementById('marker-pill').textContent = state.markerName || 'No marker yet';
+      document.getElementById('updated').textContent = state.updatedUtc ? 'Updated ' + new Date(state.updatedUtc).toLocaleTimeString() : 'Waiting for first sample';
+      drawTimeline(state);
+      drawResults(state.results || []);
+    }
+
+    function drawTimeline(state) {
+      const width = timeline.clientWidth;
+      const height = timeline.clientHeight;
+      const ratio = window.devicePixelRatio || 1;
+      timeline.width = Math.round(width * ratio);
+      timeline.height = Math.round(height * ratio);
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+      const margin = { left: 35, right: 7, top: 8, bottom: 21 };
+      const plotWidth = width - margin.left - margin.right;
+      const plotHeight = height - margin.top - margin.bottom;
+      const series = [
+        { values: state.chartProfileMs || [], color: '#bcf36a' },
+        { values: state.chartMainThreadMs || [], color: '#72d6e8' },
+        { values: state.chartFrameMs || [], color: '#f3bf68' }
+      ];
+      const maxValue = Math.max(5, ...series.flatMap(line => line.values), 1);
+      ctx.font = '10px system-ui';
+      ctx.fillStyle = '#81909d';
+      ctx.strokeStyle = '#26313b';
+      ctx.lineWidth = 1;
+      for (let row = 0; row <= 3; row++) {
+        const y = margin.top + plotHeight * row / 3;
+        ctx.beginPath(); ctx.moveTo(margin.left, y); ctx.lineTo(width - margin.right, y); ctx.stroke();
+        ctx.fillText((maxValue * (1 - row / 3)).toFixed(0), 2, y + 3);
+      }
+      series.forEach(line => {
+        if (line.values.length < 2) return;
+        ctx.beginPath();
+        line.values.forEach((value, index) => {
+          const x = margin.left + plotWidth * index / Math.max(1, line.values.length - 1);
+          const y = margin.top + plotHeight * (1 - Math.min(value, maxValue) / maxValue);
+          if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = line.color; ctx.lineWidth = 2; ctx.stroke();
+      });
+      ctx.fillStyle = '#81909d';
+      ctx.fillText('older', margin.left, height - 3);
+      ctx.fillText('now', width - 27, height - 3);
+    }
+
+    function drawResults(results) {
+      const body = document.getElementById('results');
+      const bars = document.getElementById('bars');
+      if (!results.length) {
+        body.innerHTML = '<tr><td colspan="7" class="empty">No completed runs yet.</td></tr>';
+        bars.innerHTML = '<div class="empty">Run the comparison scene.<br>Each strategy appears here when its pass finishes.</div>';
+        document.getElementById('comparison-caption').textContent = 'Complete a pass to fill the chart.';
+        return;
+      }
+      body.innerHTML = results.map(result => '<tr><td>' + escapeText(result.strategy) + '</td><td>' + result.balls + '</td><td>' + formatMs(result.averageProfileMs) + '</td><td>' + formatMs(result.p95ProfileMs) + '</td><td>' + formatMs(result.averageFrameMs) + '</td><td>' + formatMs(result.p95FrameMs) + '</td><td>' + result.sampleCount + '</td></tr>').join('');
+      const maximum = Math.max(...results.map(result => result[selectedMetric] || 0), 0.0001);
+      bars.innerHTML = results.map(result => {
+        const value = result[selectedMetric] || 0;
+        const width = Math.max(1, value / maximum * 100);
+        return '<div class="bar-row"><span class="bar-label" title="' + escapeText(result.strategy) + '">' + escapeText(result.strategy) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + width + '%"></div></div><span class="bar-value">' + (value < 1 ? value.toFixed(3) : value.toFixed(2)) + ' ms</span></div>';
+      }).join('');
+      document.getElementById('comparison-caption').textContent = selectedMetric === 'averageProfileMs' ? 'Average strategy marker time per measured frame.' : '95th percentile of full frame elapsed time.';
+    }
+
+    function escapeText(value) {
+      return String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+    }
+
+    async function poll() {
+      try {
+        const response = await fetch(stateUrl, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Unity returned ' + response.status);
+        updatePage(await response.json());
+      } catch (error) {
+        connection.className = 'connection offline';
+        connection.innerHTML = '<i class="light"></i><span>Unity offline · waiting for local profiler</span>';
+      }
+    }
+
+    document.querySelectorAll('[data-metric]').forEach(button => button.addEventListener('click', () => {
+      selectedMetric = button.dataset.metric;
+      document.querySelectorAll('[data-metric]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+      if (lastState) drawResults(lastState.results || []);
+    }));
+    window.addEventListener('resize', () => { if (lastState) drawTimeline(lastState); });
+    poll();
+    window.setInterval(poll, 200);
+  </script>
+</body>
+</html>

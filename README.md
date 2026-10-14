@@ -46,7 +46,23 @@ The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/
 | Unity coroutine | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityCoroutine.unity) | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityCoroutine.unity) |
 | Unity Jobs with Burst | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityJobsBurst.unity) | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityJobsBurst.unity) |
 
-All 12 gravity scenes and the batch scene are in **Build Settings**. Regenerate them with **Tools → Gravity Simulation → Regenerate Example Scenes**.
+The 12 individual gravity scenes, two comparison launchers, their 12 equal-size generated benchmark copies, and the batch scene are in **Build Settings**. Use **Tools → Gravity Simulation → Regenerate Example Scenes** for the individual examples and **Tools → Gravity Simulation → Create Comparison Scenes** for the comparison launchers and their copies.
+
+### Live 2D and 3D comparison dashboard
+
+The comparison launcher scenes run each implemented strategy one at a time and stream its profiler readings to a browser page on the same PC. Unity still renders and simulates the balls; the browser is a live monitor for progress, charts, and the results table.
+
+1. In Unity, open [`Scenes/2D/Gravity_Benchmark.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_Benchmark.unity) or [`Scenes/3D/Gravity_Benchmark.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_Benchmark.unity), then press **Play**.
+2. The runner starts a loopback-only web server and opens the dashboard in your default browser. If the browser does not open automatically, visit [http://127.0.0.1:8765](http://127.0.0.1:8765).
+3. The runner loads each example scene in order. The dashboard updates while each scene is warming up and being measured. Stop Play mode when the comparison finishes.
+
+Unity serves the page and its live JSON endpoint from `127.0.0.1:8765`; the server binds only to the local PC. No result or simulation data is sent to a public service. The page source is under [`Presentation/index.html`](Presentation/index.html).
+
+The comparison runner makes generated copies of the example scenes with **128 balls in every run**, so the editable teaching scenes are left unchanged. It uses a two-second warm-up and an eight-second measured pass per strategy by default. Change these fields on the `Gravity Benchmark Runner` object in a comparison scene to adjust the run. Use the same settings when repeating a comparison.
+
+The live chart shows the current strategy marker, main-thread CPU time, and frame time. The completed-run chart compares average marker time per measured frame or P95 frame time. The profiler recorder sums marker samples within each frame. C# async uses its worker-thread calculation marker, while Unity coroutine marks each yielded chunk, so coroutine work is spread across multiple frames and its marker value is not the full calculation time. Use marker timings to compare measured work per frame and frame timing for overall responsiveness. The Editor and physics engine add shared overhead. For a formal performance claim, use a Development Build on the same machine and compare repeated runs.
+
+Choose **Tools → Gravity Simulation → Create Comparison Scenes** to regenerate both launchers and their equal-size benchmark copies after changing scene setup.
 
 Each gravity strategy has one self-contained implementation script in its own assembly under `Assets/Examples/GravitySimulation/Scripts`. Setup, the gravity formula, physics-body creation, and force application are repeated in every script on purpose. This keeps the code for each strategy in one place, so beginners can read and present one script without navigating a shared base class or helper library. The repetition is intentional; the scheduling difference is the main thing to compare.
 
@@ -99,9 +115,10 @@ Assets/Examples/
 └── GravitySimulation/
     ├── Editor/       Gravity mode scene generator
     ├── Scenes/
-    │   ├── 2D/       One scene per processing strategy
-    │   └── 3D/       One scene per processing strategy
-    └── Scripts/      One standalone, commented controller script per strategy
+    │   ├── 2D/       Example scenes, equal-size benchmark copies, and a launcher
+    │   └── 3D/       Example scenes, equal-size benchmark copies, and a launcher
+    └── Scripts/      Standalone strategy scripts and the comparison runner
+Presentation/         Local browser dashboard for live profiler readings
 ```
 
 Unity requires each controller to be a `MonoBehaviour` with lifecycle callbacks such as `Awake` and `FixedUpdate`. The jobs examples also need a small job struct with an `Execute` method, and the coroutine example needs an iterator. These are Unity's entry points; the gravity calculation itself stays directly in the strategy script.
