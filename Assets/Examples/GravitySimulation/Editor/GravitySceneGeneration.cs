@@ -9,6 +9,23 @@ using UnityEngine.SceneManagement;
 /// <summary>Rebuilds clean, standalone scenes for the gravity execution examples.</summary>
 public static class GravitySceneGeneration
 {
+    // These enums are editor-only: each runtime scene has its own simple controller script.
+    private enum SimulationMode
+    {
+        SingleThreaded,
+        CSharpAsync,
+        CSharpParallel,
+        UnityJobs,
+        UnityCoroutine,
+        UnityJobsBurst
+    }
+
+    private enum SimulationDimension
+    {
+        TwoD,
+        ThreeD
+    }
+
     private const string SceneFolder = "Assets/Examples/GravitySimulation/Scenes";
     private const string TwoDSceneFolder = SceneFolder + "/2D";
     private const string ThreeDSceneFolder = SceneFolder + "/3D";
@@ -16,6 +33,7 @@ public static class GravitySceneGeneration
     [MenuItem("Tools/Gravity Simulation/Regenerate Example Scenes")]
     public static void Build()
     {
+        // Build one 2D and one 3D scene for every strategy in the enum.
         EnsureSceneFolders();
         var generatedScenes = new List<EditorBuildSettingsScene>();
 
@@ -36,7 +54,7 @@ public static class GravitySceneGeneration
         // Remove the previous flat scene layout after all replacement scenes are saved.
         DeleteLegacyScenes();
 
-        // Keep the gravity examples first (as before) and preserve the order of other project scenes.
+        // Keep gravity scenes first and preserve any unrelated scenes already in Build Settings.
         var buildScenes = generatedScenes
             .Concat(EditorBuildSettings.scenes.Where(scene => !IsManagedGravityScene(scene.path)))
             .ToArray();
@@ -47,6 +65,7 @@ public static class GravitySceneGeneration
 
     private static void EnsureSceneFolders()
     {
+        // AssetDatabase creates folders inside the Unity project and keeps their metadata valid.
         if (!AssetDatabase.IsValidFolder(SceneFolder))
             AssetDatabase.CreateFolder("Assets/Examples/GravitySimulation", "Scenes");
         if (!AssetDatabase.IsValidFolder(TwoDSceneFolder))
@@ -57,6 +76,7 @@ public static class GravitySceneGeneration
 
     private static void DeleteLegacyScenes()
     {
+        // Remove scenes from the old flat layout after their replacements have been saved.
         AssetDatabase.DeleteAsset(SceneFolder + "/SampleScene.unity");
         AssetDatabase.DeleteAsset(SceneFolder + "/Gravity_UnityModularMainThread.unity");
         foreach (SimulationMode mode in System.Enum.GetValues(typeof(SimulationMode)))
@@ -65,6 +85,7 @@ public static class GravitySceneGeneration
 
     private static bool IsManagedGravityScene(string path)
     {
+        // This lets regeneration replace gravity scenes without removing other project scenes.
         if (path == SceneFolder + "/SampleScene.unity" ||
             path == SceneFolder + "/Gravity_UnityModularMainThread.unity")
             return true;
@@ -84,11 +105,12 @@ public static class GravitySceneGeneration
     private static void CreateScene(string path, string sceneName, SimulationMode mode,
         SimulationDimension dimension)
     {
+        // Start with an empty scene so each comparison contains only its camera, light, and controller.
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         scene.name = sceneName;
         CreateCamera(dimension);
-        if (dimension == SimulationDimension.ThreeD)
-            CreateKeyLight();
+        // The 2D scene uses 2D physics, but the sphere mesh still needs a light to be visible.
+        CreateKeyLight();
         CreateController(mode, dimension);
 
         if (!EditorSceneManager.SaveScene(scene, path))
@@ -97,6 +119,7 @@ public static class GravitySceneGeneration
 
     private static void CreateCamera(SimulationDimension dimension)
     {
+        // A top-down orthographic camera suits 2D; perspective gives the 3D scene depth.
         var cameraObject = new GameObject("Main Camera");
         cameraObject.tag = "MainCamera";
         Camera camera = cameraObject.AddComponent<Camera>();
@@ -123,6 +146,7 @@ public static class GravitySceneGeneration
 
     private static void CreateKeyLight()
     {
+        // Directional light keeps the generated sphere meshes visible and shaded.
         var lightObject = new GameObject("Key Light");
         Light light = lightObject.AddComponent<Light>();
         light.type = LightType.Directional;
@@ -134,20 +158,33 @@ public static class GravitySceneGeneration
 
     private static void CreateController(SimulationMode mode, SimulationDimension dimension)
     {
+        // Attach only the script that demonstrates the selected processing strategy.
         var controllerObject = new GameObject("Gravity Simulation");
-        GravitySimulationExample controller;
         switch (mode)
         {
-            case SimulationMode.CSharpAsync: controller = controllerObject.AddComponent<CSharpAsyncGravityExample>(); break;
-            case SimulationMode.CSharpParallel: controller = controllerObject.AddComponent<CSharpParallelGravityExample>(); break;
-            case SimulationMode.UnityJobs: controller = controllerObject.AddComponent<UnityJobsGravityExample>(); break;
-            case SimulationMode.UnityCoroutine: controller = controllerObject.AddComponent<UnityCoroutineGravityExample>(); break;
-            case SimulationMode.UnityJobsBurst: controller = controllerObject.AddComponent<UnityJobsBurstGravityExample>(); break;
-            default: controller = controllerObject.AddComponent<SingleThreadedGravityExample>(); break;
+            case SimulationMode.CSharpAsync:
+                controllerObject.AddComponent<CSharpAsyncGravityExample>();
+                break;
+            case SimulationMode.CSharpParallel:
+                controllerObject.AddComponent<CSharpParallelGravityExample>();
+                break;
+            case SimulationMode.UnityJobs:
+                controllerObject.AddComponent<UnityJobsGravityExample>();
+                break;
+            case SimulationMode.UnityCoroutine:
+                controllerObject.AddComponent<UnityCoroutineGravityExample>();
+                break;
+            case SimulationMode.UnityJobsBurst:
+                controllerObject.AddComponent<UnityJobsBurstGravityExample>();
+                break;
+            default:
+                controllerObject.AddComponent<SingleThreadedGravityExample>();
+                break;
         }
 
-        var serializedController = new SerializedObject(controller);
-        serializedController.FindProperty("_dimension").enumValueIndex = (int)dimension;
+        // Store the dimension in the scene so each controller script can stay self-contained.
+        var serializedController = new SerializedObject(controllerObject.GetComponent<MonoBehaviour>());
+        serializedController.FindProperty("_is2D").boolValue = dimension == SimulationDimension.TwoD;
         serializedController.ApplyModifiedPropertiesWithoutUndo();
     }
 

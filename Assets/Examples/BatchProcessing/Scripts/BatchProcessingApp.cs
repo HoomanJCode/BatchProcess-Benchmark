@@ -11,21 +11,26 @@ using UnityEngine;
 /// <summary>Parallel processing strategies compared by the batch example.</summary>
 public enum BatchMode
 {
-    SingleThreaded,
-    CSharpAsync,
-    CSharpParallel,
-    UnityJobs,
-    UnityCoroutine,
-    UnityJobsBurst
+    SingleThreaded, // One main-thread loop handles every value.
+    CSharpAsync, // One Task handles the array on a worker thread.
+    CSharpParallel, // Parallel.For shares values across worker threads.
+    UnityJobs, // Unity Jobs handles native data without Burst.
+    UnityCoroutine, // A coroutine handles a chunk each frame.
+    UnityJobsBurst // Unity Jobs with Burst compilation enabled.
 }
 
 /// <summary>Shared calculation and job types used by this single-file example.</summary>
 public static class BatchProcessingMath
 {
+    /// <summary>
+    /// Repeats the same small multiply-and-add calculation to create measurable work.
+    /// Keeping this calculation fixed lets the demo compare scheduling methods fairly.
+    /// </summary>
     public static float ProcessValue(float value, int iterations)
     {
         for (int i = 0; i < iterations; i++)
         {
+            // Keep the result in the 0-to-1 range while doing a little work each iteration.
             value = value * 1.00001f + 0.00002f;
             if (value >= 1f)
                 value -= 1f;
@@ -33,6 +38,7 @@ public static class BatchProcessingMath
         return value;
     }
 
+    /// <summary>Processes count values starting at the requested array index.</summary>
     public static void ProcessRange(float[] values, int iterations, int start, int count)
     {
         int end = start + count;
@@ -48,6 +54,7 @@ public struct SimpleBatchJob : IJobParallelFor
 
     public void Execute(int index)
     {
+        // Unity schedules one Execute call for each array element.
         float value = Values[index];
         for (int i = 0; i < Iterations; i++)
         {
@@ -67,6 +74,7 @@ public struct SimpleBatchBurstJob : IJobParallelFor
 
     public void Execute(int index)
     {
+        // This is the same per-value calculation as SimpleBatchJob, compiled with Burst.
         float value = Values[index];
         for (int i = 0; i < Iterations; i++)
         {
@@ -83,6 +91,7 @@ public struct SimpleBatchBurstJob : IJobParallelFor
 /// </summary>
 public sealed class BatchProcessingApp : MonoBehaviour
 {
+    // Separate marker identifies the part of async work that runs off the main thread.
     private static readonly ProfilerMarker AsyncWorkerMarker =
         new ProfilerMarker("BatchProcessing.CSharpAsync.Worker");
 
@@ -101,13 +110,14 @@ public sealed class BatchProcessingApp : MonoBehaviour
     [SerializeField] private float _computeMilliseconds;
     [SerializeField] private float _wallMilliseconds;
 
-    private float[] _values;
-    private Task<double> _worker;
-    private Coroutine _coroutine;
-    private ProfilerMarker _marker;
+    private float[] _values; // The input data, overwritten with the processed results.
+    private Task<double> _worker; // The running async task; Update collects its result.
+    private Coroutine _coroutine; // The running chunked calculation, if coroutine mode is selected.
+    private ProfilerMarker _marker; // Profiler label for the selected mode.
 
     private void Start()
     {
+        // Start runs when the scene opens; the Inspector can start a demo automatically.
         _marker = new ProfilerMarker("BatchProcessing." + _mode);
         if (_runOnStart)
             StartBatch();
@@ -134,6 +144,7 @@ public sealed class BatchProcessingApp : MonoBehaviour
     [ContextMenu("Run Batch")]
     private void StartBatch()
     {
+        // Start every comparison with new deterministic data and reset the displayed results.
         StopCurrentBatch();
         _values = CreateInput(_itemCount);
         _resultChecksum = "—";
@@ -146,10 +157,12 @@ public sealed class BatchProcessingApp : MonoBehaviour
         switch (_mode)
         {
             case BatchMode.SingleThreaded:
+                // Process the entire array on Unity's main thread.
                 RunOnMainThread(() => BatchProcessingMath.ProcessRange(_values, _iterations, 0, _values.Length));
                 break;
             case BatchMode.CSharpAsync:
             {
+                // Copy the references and settings the worker needs before it starts.
                 float[] workerValues = _values;
                 int iterations = _iterations;
                 int itemCount = _itemCount;
@@ -166,18 +179,22 @@ public sealed class BatchProcessingApp : MonoBehaviour
                 break;
             }
             case BatchMode.CSharpParallel:
+                // Parallel.For distributes different array indices among thread-pool workers.
                 RunOnMainThread(() => Parallel.For(0, _values.Length, i =>
                     _values[i] = BatchProcessingMath.ProcessValue(_values[i], _iterations)));
                 break;
             case BatchMode.UnityJobs:
+                // Jobs use native memory, then copy the finished values back to the managed array.
                 RunJob(false);
                 FinishSynchronous(startedAt);
                 break;
             case BatchMode.UnityJobsBurst:
+                // This job runs the same work with Burst compilation enabled.
                 RunJob(true);
                 FinishSynchronous(startedAt);
                 break;
             case BatchMode.UnityCoroutine:
+                // The coroutine processes a fixed-size chunk and yields between chunks.
                 _startedAt = startedAt;
                 _coroutine = StartCoroutine(ProcessInChunks());
                 break;
@@ -188,10 +205,11 @@ public sealed class BatchProcessingApp : MonoBehaviour
             FinishSynchronous(startedAt);
     }
 
-    private double _startedAt;
+    private double _startedAt; // Stopwatch timestamp used to calculate total wall time.
 
     private void RunOnMainThread(Action work)
     {
+        // The profiler marker and stopwatch measure only the selected calculation.
         var timer = Stopwatch.StartNew();
         using (_marker.Auto())
             work();
@@ -200,6 +218,7 @@ public sealed class BatchProcessingApp : MonoBehaviour
 
     private void RunJob(bool useBurst)
     {
+        // NativeArray is the memory type Unity Jobs can safely share with worker threads.
         var timer = Stopwatch.StartNew();
         using (var nativeValues = new NativeArray<float>(_values, Allocator.TempJob))
         {
@@ -224,6 +243,7 @@ public sealed class BatchProcessingApp : MonoBehaviour
 
     private IEnumerator ProcessInChunks()
     {
+        // Add each chunk's CPU time, while wall time also includes the frames spent yielding.
         double totalCpuMilliseconds = 0d;
         for (int start = 0; start < _values.Length; start += CoroutineChunkSize)
         {
@@ -242,12 +262,14 @@ public sealed class BatchProcessingApp : MonoBehaviour
 
     private void FinishSynchronous(double startedAt)
     {
+        // Main-thread and job modes finish immediately, so compute and wall time are close.
         _wallMilliseconds = (float)ElapsedMilliseconds(startedAt);
         FinishBatch();
     }
 
     private void FinishBatch()
     {
+        // The checksum helps verify that different strategies processed the same input.
         _wallMilliseconds = (float)ElapsedMilliseconds(_startedAt);
         _resultChecksum = SumValues(_values).ToString("0.000000");
         UnityEngine.Debug.Log($"BatchProcessing completed: mode={_mode}, items={_itemCount}, iterations={_iterations}, checksum={_resultChecksum}, computeMs={_computeMilliseconds:0.000}, wallMs={_wallMilliseconds:0.000}.", this);
@@ -255,6 +277,7 @@ public sealed class BatchProcessingApp : MonoBehaviour
 
     private static double ElapsedMilliseconds(double startedAt)
     {
+        // Stopwatch timestamps provide a monotonic clock suitable for elapsed-time measurements.
         return (Stopwatch.GetTimestamp() - startedAt) * 1000d / Stopwatch.Frequency;
     }
 
@@ -269,6 +292,7 @@ public sealed class BatchProcessingApp : MonoBehaviour
 
     private static double SumValues(float[] values)
     {
+        // A double accumulator reduces rounding error while creating the checksum.
         double sum = 0d;
         for (int i = 0; i < values.Length; i++)
             sum += values[i];
@@ -277,6 +301,7 @@ public sealed class BatchProcessingApp : MonoBehaviour
 
     private void StopCurrentBatch()
     {
+        // Stop an old coroutine before replacing the input for another run.
         if (_coroutine != null)
             StopCoroutine(_coroutine);
         _coroutine = null;
@@ -285,6 +310,7 @@ public sealed class BatchProcessingApp : MonoBehaviour
 
     private void OnDestroy()
     {
+        // Do not leave a chunked run active after this scene object is removed.
         StopCurrentBatch();
     }
 

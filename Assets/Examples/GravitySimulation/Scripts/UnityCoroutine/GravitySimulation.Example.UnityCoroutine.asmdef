@@ -1,6 +1,6 @@
 {
   "name": "GravitySimulation.Example.UnityCoroutine",
-  "references": ["GravitySimulation.Core"],
+  "references": [],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

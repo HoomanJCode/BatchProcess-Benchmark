@@ -1,6 +1,8 @@
 {
   "name": "GravitySimulation.Example.UnityJobs",
-  "references": ["GravitySimulation.Core", "Unity.Collections"],
+  "references": [
+    "Unity.Collections"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

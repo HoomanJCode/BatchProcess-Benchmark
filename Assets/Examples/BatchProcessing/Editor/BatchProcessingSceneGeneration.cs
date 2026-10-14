@@ -12,6 +12,7 @@ public static class BatchProcessingSceneGeneration
     [MenuItem("Tools/Batch Processing/Create Example Scene")]
     public static void Build()
     {
+        // Start from a clean scene so the batch component is the only comparison logic.
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         scene.name = "BatchProcessing";
 
@@ -23,12 +24,14 @@ public static class BatchProcessingSceneGeneration
         cameraObject.transform.position = new Vector3(0f, 0f, -10f);
         cameraObject.AddComponent<AudioListener>();
 
+        // The component exposes the mode and workload settings in the Inspector.
         var appObject = new GameObject("Batch Processing App");
         appObject.AddComponent<BatchProcessingApp>();
 
         if (!EditorSceneManager.SaveScene(scene, ScenePath))
             throw new System.Exception("Could not save batch-processing scene: " + ScenePath);
 
+        // Add the scene to Build Settings without removing any scenes already listed there.
         var buildScenes = EditorBuildSettings.scenes.ToList();
         if (!buildScenes.Any(item => item.path == ScenePath))
             buildScenes.Add(new EditorBuildSettingsScene(ScenePath, true));

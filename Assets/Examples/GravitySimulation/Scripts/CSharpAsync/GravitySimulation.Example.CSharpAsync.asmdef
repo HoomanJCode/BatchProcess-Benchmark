@@ -1,6 +1,6 @@
 {
   "name": "GravitySimulation.Example.CSharpAsync",
-  "references": ["GravitySimulation.Core"],
+  "references": [],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

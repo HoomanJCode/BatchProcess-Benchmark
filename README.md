@@ -33,7 +33,7 @@ Choose **Tools → Batch Processing → Create Example Scene** to regenerate the
 
 ## Open the gravity example
 
-The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/GravitySimulation). Every processing strategy has a dedicated 2D scene and a dedicated 3D scene. The scenes are grouped under `Scenes/2D` and `Scenes/3D`, with one controller and no runtime UI. Use the controller Inspector to set body count, gravity, softening, gravity scale, and dimension.
+The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/GravitySimulation). Every processing strategy has a dedicated 2D scene and a dedicated 3D scene. The scenes are grouped under `Scenes/2D` and `Scenes/3D`, with one controller and no runtime UI. Use the controller Inspector to set body count, gravity, softening, and gravity scale. Each scene already selects its own dimension.
 
 | Processing strategy | 2D scene | 3D scene |
 | --- | --- | --- |
@@ -46,9 +46,20 @@ The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/
 
 All 12 gravity scenes and the batch scene are in **Build Settings**. Regenerate them with **Tools → Gravity Simulation → Regenerate Example Scenes**.
 
-Each gravity strategy has one implementation script in its own assembly under `Assets/Examples/GravitySimulation/Scripts`. Those assemblies reference `GravitySimulation.Core` for the shared gravity formula and common scene setup.
+Each gravity strategy has one self-contained implementation script in its own assembly under `Assets/Examples/GravitySimulation/Scripts`. Setup, the gravity formula, physics-body creation, and force application are repeated in every script on purpose. This keeps the code for each strategy in one place, so beginners can read and present one script without navigating a shared base class or helper library. The repetition is intentional; the scheduling difference is the main thing to compare.
 
-In 2D mode, bodies use `SpriteRenderer`, a dynamic `Rigidbody2D`, and a non-trigger `CircleCollider2D`; a circle sprite is generated when no body sprite is assigned. In 3D mode, sphere bodies use a dynamic `Rigidbody` and a non-trigger `SphereCollider`. Unity's 2D or 3D physics engine integrates movement and resolves sphere contacts. Built-in world gravity is disabled because the selected strategy calculates custom softened inverse-square gravity and applies it through `Rigidbody.AddForce`; 2D converts acceleration to an equivalent mass-scaled force because `ForceMode2D` has no acceleration option.
+In 2D mode, each visible sphere mesh is a child of a dynamic `Rigidbody2D` with a non-trigger `CircleCollider2D`. The mesh's 3D sphere collider is disabled on the child so it does not mix 2D and 3D physics components on one object. In 3D mode, each sphere has a dynamic `Rigidbody` and a non-trigger `SphereCollider`. Unity's 2D or 3D physics engine integrates movement and resolves sphere contacts. Built-in world gravity is disabled because the selected strategy calculates custom softened inverse-square gravity and applies it through `AddForce`; 2D converts acceleration to a mass-scaled force because `ForceMode2D` has no acceleration option.
+
+### Gravity formula
+
+For target body *i*, every other body *j* adds this acceleration:
+
+```text
+r_ij = position_j - position_i
+a_i += G * mass_j * r_ij / (|r_ij|² + softening²)^(3/2)
+```
+
+This is Newton's inverse-square gravity written as a vector acceleration. Dividing the force by the target mass cancels `mass_i`, leaving the source mass `mass_j`. The `_softening` setting keeps the calculation finite when two centers get very close. In the 2D scenes the z component of `r_ij` is set to zero; the 3D scenes use all three components. Each gravity script includes this formula in comments next to its calculation loop.
 
 The initial positions and velocities are deterministic. This is a visual workload example, not a high-precision orbital solver. Async and coroutine scenes keep applying the last completed gravity calculation while the next calculation is in flight or split into chunks. At `N` bodies, each calculation performs roughly `N × (N - 1)` pair evaluations, so the workload grows quadratically.
 
@@ -57,7 +68,7 @@ The initial positions and velocities are deterministic. This is a visual workloa
 1. Open **Window → Analysis → Profiler** before running the example.
 2. Use the same workload settings for each mode. For gravity, reset the scene between captures; the batch scene recreates its same starting values for each run.
 3. Warm up each mode first. Discard the first Burst measurement in Editor Play mode because it may include JIT compilation.
-4. Compare frame time and main-thread cost. The gravity strategies expose `GravitySimulation.*` profiler markers around gravity calculation. Unity's Rigidbody integration and collision solving still run on the main thread and are shared by every mode, so use the markers to compare the processing strategies and total frame time to see the overall cost.
+4. Compare frame time and main-thread cost. The gravity strategies expose `GravitySimulation.*` profiler markers. The async worker calculation is marked `GravitySimulation.CSharpAsync.Worker`; coroutine chunks are marked `GravitySimulation.UnityCoroutine.Chunk`. Unity's Rigidbody integration and collision solving still run on the main thread and are shared by every mode, so use the markers to compare the processing strategies and total frame time to see the overall cost.
 5. Small workloads may be slower with parallel strategies because scheduling has a cost. Results depend on hardware, Editor load, Unity version, and Burst configuration.
 
 The batch component reports **compute time** for work within that mode (including job setup and copying for Unity Jobs), and **wall time** from start to completion. For async, wall time includes the wait until the worker finishes. For coroutines, wall time includes the frames spent yielding while compute time sums only the chunk work.
@@ -75,8 +86,10 @@ Assets/Examples/
     ├── Scenes/
     │   ├── 2D/       One scene per processing strategy
     │   └── 3D/       One scene per processing strategy
-    └── Scripts/      Shared gravity core and one script per strategy
+    └── Scripts/      One standalone, commented controller script per strategy
 ```
+
+Unity requires each controller to be a `MonoBehaviour` with lifecycle callbacks such as `Awake` and `FixedUpdate`. The jobs examples also need a small job struct with an `Execute` method, and the coroutine example needs an iterator. These are Unity's entry points; the gravity calculation itself stays directly in the strategy script.
 
 The batch example's settings, processing modes, jobs, and calculation are all in [`BatchProcessingApp.cs`](Assets/Examples/BatchProcessing/Scripts/BatchProcessingApp.cs).
 
