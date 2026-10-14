@@ -24,16 +24,19 @@ public enum BatchMode
 public static class BatchProcessingMath
 {
     /// <summary>
-    /// Repeats the same small multiply-and-add calculation to create measurable work.
-    /// Keeping this calculation fixed lets the demo compare scheduling methods fairly.
+    /// This is a made-up calculation that gives the computer work to process; it does not
+    /// represent gravity or a real-world formula. Every mode uses the same calculation,
+    /// so the comparison shows how each mode schedules the work.
     /// Complexity: O(iterations) for one value; processing N values takes O(N * iterations) time.
     /// </summary>
     public static float ProcessValue(float value, int iterations)
     {
         for (int i = 0; i < iterations; i++)
         {
-            // Keep the result in the 0-to-1 range while doing a little work each iteration.
+            // Example: 0.5 becomes 0.500025, then 0.500050, and so on.
             value = value * 1.00001f + 0.00002f;
+
+            // When the value reaches 1, subtract 1 to wrap it back into the 0-to-1 range.
             if (value >= 1f)
                 value -= 1f;
         }
@@ -57,6 +60,7 @@ public struct SimpleBatchJob : IJobParallelFor
     public void Execute(int index)
     {
         // Unity schedules one Execute call for each array element.
+        // Keep this calculation identical to ProcessValue so only the scheduling changes.
         float value = Values[index];
         for (int i = 0; i < Iterations; i++)
         {
@@ -77,6 +81,7 @@ public struct SimpleBatchBurstJob : IJobParallelFor
     public void Execute(int index)
     {
         // This is the same per-value calculation as SimpleBatchJob, compiled with Burst.
+        // Keep the math identical so this comparison focuses on Burst compilation.
         float value = Values[index];
         for (int i = 0; i < Iterations; i++)
         {
@@ -378,6 +383,7 @@ public sealed class BatchProcessingApp : MonoBehaviour
     private void ResetInput(float[] values)
     {
         // Deterministic input makes each mode start from identical data without a new array.
+        // The remainder (%) keeps these starting values between 0 and 1.
         for (int i = 0; i < values.Length; i++)
             values[i] = ((i * 104729) % 1000003) / 1000003f;
     }
