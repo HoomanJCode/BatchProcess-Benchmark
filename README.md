@@ -35,7 +35,7 @@ Choose **Tools → Batch Processing → Create Example Scene** to regenerate the
 
 ## Open the gravity example
 
-The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/GravitySimulation). Every processing strategy has a dedicated 2D scene and a dedicated 3D scene. The scenes are grouped under `Scenes/2D` and `Scenes/3D`, with one controller and no runtime UI. Use the controller Inspector to set body count, gravity, softening, and gravity scale. Each scene already selects its own dimension.
+The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/GravitySimulation). Every processing strategy has a dedicated 2D scene and a dedicated 3D scene. The scenes are grouped under `Scenes/2D` and `Scenes/3D`, with one controller and no runtime UI. Use the controller Inspector to set ball count, gravity, softening, and gravity scale. Each scene already selects its own dimension.
 
 | Processing strategy | 2D scene | 3D scene |
 | --- | --- | --- |

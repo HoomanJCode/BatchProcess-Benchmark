@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using Unity.Profiling;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// Beginner example: C# async: a Task calculates gravity from copied arrays on a worker thread; Unity objects stay on the main thread.
@@ -9,7 +10,7 @@ using UnityEngine;
 public sealed class CSharpAsyncGravityExample : MonoBehaviour
 {
     [Header("Beginner settings")]
-    [SerializeField, Min(1)] private int _bodyCount = 128; // Number of spheres in this example.
+    [FormerlySerializedAs("_bodyCount"), SerializeField, Min(1)] private int _ballCount = 128; // Number of spheres in this example.
     [SerializeField, Min(0f)] private float _gravity = 1.15f; // Gravitational constant G.
     [SerializeField, Min(0.001f)] private float _softening = 0.2f; // Softens the force when bodies get very close.
     [SerializeField, Min(0f)] private float _gravityScale = 1f; // Makes the force easier to tune in the Inspector.
@@ -29,18 +30,18 @@ public sealed class CSharpAsyncGravityExample : MonoBehaviour
     private void Awake()
     {
         // Arrays keep each body's position, mass, and calculated gravity easy to find.
-        _bodyCount = Mathf.Max(1, _bodyCount);
-        _bodies3D = new Rigidbody[_bodyCount];
-        _bodies2D = new Rigidbody2D[_bodyCount];
-        _positions = new Vector3[_bodyCount];
-        _masses = new float[_bodyCount];
-        _accelerations = new Vector3[_bodyCount];
+        _ballCount = Mathf.Max(1, _ballCount);
+        _bodies3D = new Rigidbody[_ballCount];
+        _bodies2D = new Rigidbody2D[_ballCount];
+        _positions = new Vector3[_ballCount];
+        _masses = new float[_ballCount];
+        _accelerations = new Vector3[_ballCount];
         // A fixed seed makes every scene start with the same bodies.
         uint randomState = 0xC0FFEEu;
-        for (int i = 0; i < _bodyCount; i++)
+        for (int i = 0; i < _ballCount; i++)
         {
             // The golden-angle spiral spreads bodies instead of placing them in a straight row.
-            float y = 1f - (i / (float)Mathf.Max(1, _bodyCount - 1)) * 2f;
+            float y = 1f - (i / (float)Mathf.Max(1, _ballCount - 1)) * 2f;
             float radius = Mathf.Sqrt(Mathf.Max(0f, 1f - y * y));
             float angle = i * 2.39996323f;
             Vector3 direction;
@@ -70,7 +71,7 @@ public sealed class CSharpAsyncGravityExample : MonoBehaviour
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.name = "Gravity Body " + i.ToString("D3");
             sphere.transform.position = position;
-            float sphereScale = Mathf.Clamp(0.2f * Mathf.Pow(128f / _bodyCount, 0.22f), 0.08f, 0.25f);
+            float sphereScale = Mathf.Clamp(0.2f * Mathf.Pow(128f / _ballCount, 0.22f), 0.08f, 0.25f);
             sphere.transform.localScale = Vector3.one * sphereScale;
             sphere.GetComponent<Renderer>().material.color =
                 Color.HSVToRGB((i * 0.6180339f) % 1f, 0.68f, 1f);
@@ -114,7 +115,7 @@ public sealed class CSharpAsyncGravityExample : MonoBehaviour
     private void FixedUpdate()
     {
         // Read positions after the previous physics step, then calculate and apply the next forces.
-        for (int i = 0; i < _bodyCount; i++)
+        for (int i = 0; i < _ballCount; i++)
         {
             if (_is2D)
             {
@@ -138,7 +139,7 @@ public sealed class CSharpAsyncGravityExample : MonoBehaviour
         // Unity physics objects are only touched on the main thread.
         using (_gravityMarker.Auto())
         {
-            for (int i = 0; i < _bodyCount; i++)
+            for (int i = 0; i < _ballCount; i++)
             {
                 if (_is2D)
                     _bodies2D[i].AddForce(
@@ -154,7 +155,7 @@ public sealed class CSharpAsyncGravityExample : MonoBehaviour
             // Clone inputs so FixedUpdate can update its arrays while the worker reads this snapshot.
             Vector3[] positionSnapshot = (Vector3[])_positions.Clone();
             float[] massSnapshot = (float[])_masses.Clone();
-            int bodyCount = _bodyCount;
+            int ballCount = _ballCount;
             float gravity = _gravity * _gravityScale;
             float softeningSquared = _softening * _softening;
             bool is2D = _is2D;
@@ -163,17 +164,17 @@ public sealed class CSharpAsyncGravityExample : MonoBehaviour
             {
                 using (WorkerMarker.Auto())
                 {
-                    Vector3[] results = new Vector3[bodyCount];
-                    for (int i = 0; i < bodyCount; i++)
+                    Vector3[] results = new Vector3[ballCount];
+                    for (int i = 0; i < ballCount; i++)
                     {
                         // GRAVITY FORMULA (one source body j acting on target body i):
                         // force_ij = G * mass_i * mass_j * offset / |offset|^3
                         // deltaAcceleration_i = G * mass_j * offset / (dot(offset, offset) + epsilon^2)^(3/2)
                         // offset = position_j - position_i; G = gravity * gravityScale; epsilon = softening.
                         // The target mass cancels when force is divided by mass_i. In 2D, offset.z is zero.
-                        // Complexity per physics step: O(N^2) gravity work and O(N) storage, where N is body count.
+                        // Complexity per physics step: O(N^2) gravity work and O(N) storage, where N is ball count.
                         Vector3 acceleration = Vector3.zero;
-                        for (int other = 0; other < bodyCount; other++)
+                        for (int other = 0; other < ballCount; other++)
                         {
                             if (other == i)
                                 continue;
