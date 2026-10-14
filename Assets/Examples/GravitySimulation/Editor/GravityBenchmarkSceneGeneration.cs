@@ -8,13 +8,13 @@ using UnityEngine.SceneManagement;
 /// <summary>Creates one 2D and one 3D scene that run every gravity example in order.</summary>
 public static class GravityBenchmarkSceneGeneration
 {
-    private const string SceneRoot = "Assets/Examples/GravitySimulation/Scenes";
-    private const string TwoDPath = SceneRoot + "/2D/Gravity_Benchmark.unity";
-    private const string ThreeDPath = SceneRoot + "/3D/Gravity_Benchmark.unity";
-    private const string TwoDBenchmarkFolder = SceneRoot + "/2D/Benchmark";
-    private const string ThreeDBenchmarkFolder = SceneRoot + "/3D/Benchmark";
-    private const string TwoDExampleFolder = SceneRoot + "/2D";
-    private const string ThreeDExampleFolder = SceneRoot + "/3D";
+    private const string SceneRoot = "Assets/Examples/GravitySimulation";
+    private const string TwoDPath = SceneRoot + "/2D/Scenes/Gravity_Benchmark.unity";
+    private const string ThreeDPath = SceneRoot + "/3D/Scenes/Gravity_Benchmark.unity";
+    private const string TwoDBenchmarkFolder = SceneRoot + "/2D/Scenes/Benchmark";
+    private const string ThreeDBenchmarkFolder = SceneRoot + "/3D/Scenes/Benchmark";
+    private const string TwoDExampleFolder = SceneRoot + "/2D/Scenes";
+    private const string ThreeDExampleFolder = SceneRoot + "/3D/Scenes";
     private const int ComparisonBallCount = 128;
     private static readonly string[] ExampleScenes =
     {
@@ -108,7 +108,7 @@ public static class GravityBenchmarkSceneGeneration
         scene.name = sceneName;
 
         GameObject runnerObject = new GameObject("Gravity Benchmark Runner");
-        GravityBenchmarkRunner runner = runnerObject.AddComponent<GravityBenchmarkRunner>();
+        RealtimeBenchmarkDashboard runner = runnerObject.AddComponent<RealtimeBenchmarkDashboard>();
         SerializedObject settings = new SerializedObject(runner);
         settings.FindProperty("_is2D").boolValue = is2D;
         settings.FindProperty("_warmupSeconds").intValue = 2;

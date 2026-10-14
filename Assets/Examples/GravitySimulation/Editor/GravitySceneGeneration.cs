@@ -27,8 +27,8 @@ public static class GravitySceneGeneration
     }
 
     private const string SceneFolder = "Assets/Examples/GravitySimulation/Scenes";
-    private const string TwoDSceneFolder = SceneFolder + "/2D";
-    private const string ThreeDSceneFolder = SceneFolder + "/3D";
+    private const string TwoDSceneFolder = "Assets/Examples/GravitySimulation/2D/Scenes";
+    private const string ThreeDSceneFolder = "Assets/Examples/GravitySimulation/3D/Scenes";
 
     [MenuItem("Tools/Gravity Simulation/Regenerate Example Scenes")]
     public static void Build()
@@ -63,15 +63,57 @@ public static class GravitySceneGeneration
         Debug.Log("GRAVITY_SCENES_REGENERATED count=" + generatedScenes.Count);
     }
 
+    public static void BuildTwoD()
+    {
+        BuildDimensionOnly(SimulationDimension.TwoD);
+    }
+
+    public static void BuildThreeD()
+    {
+        BuildDimensionOnly(SimulationDimension.ThreeD);
+    }
+
+    private static void BuildDimensionOnly(SimulationDimension dimension)
+    {
+        EnsureSceneFolders();
+        string sceneFolder = dimension == SimulationDimension.TwoD ? TwoDSceneFolder : ThreeDSceneFolder;
+        var generatedScenes = new List<EditorBuildSettingsScene>();
+
+        foreach (SimulationMode mode in System.Enum.GetValues(typeof(SimulationMode)))
+        {
+            string path = sceneFolder + "/Gravity_" + SceneName(mode) + ".unity";
+            CreateScene(path, "Gravity " + DisplayName(mode) + (dimension == SimulationDimension.TwoD ? " (2D)" : " (3D)"), mode, dimension);
+            generatedScenes.Add(new EditorBuildSettingsScene(path, true));
+        }
+
+        var buildScenes = generatedScenes
+            .Concat(EditorBuildSettings.scenes.Where(scene => !IsDimensionScene(scene.path, dimension)))
+            .ToArray();
+        EditorBuildSettings.scenes = buildScenes;
+        AssetDatabase.SaveAssets();
+        Debug.Log("GRAVITY_SCENES_REGENERATED dimension=" + dimension + " count=" + generatedScenes.Count);
+    }
+
+    private static bool IsDimensionScene(string path, SimulationDimension dimension)
+    {
+        string sceneFolder = dimension == SimulationDimension.TwoD ? TwoDSceneFolder : ThreeDSceneFolder;
+        foreach (SimulationMode mode in System.Enum.GetValues(typeof(SimulationMode)))
+            if (path == sceneFolder + "/Gravity_" + SceneName(mode) + ".unity")
+                return true;
+        return false;
+    }
+
     private static void EnsureSceneFolders()
     {
         // AssetDatabase creates folders inside the Unity project and keeps their metadata valid.
-        if (!AssetDatabase.IsValidFolder(SceneFolder))
-            AssetDatabase.CreateFolder("Assets/Examples/GravitySimulation", "Scenes");
+        if (!AssetDatabase.IsValidFolder("Assets/Examples/GravitySimulation/2D"))
+            AssetDatabase.CreateFolder("Assets/Examples/GravitySimulation", "2D");
+        if (!AssetDatabase.IsValidFolder("Assets/Examples/GravitySimulation/3D"))
+            AssetDatabase.CreateFolder("Assets/Examples/GravitySimulation", "3D");
         if (!AssetDatabase.IsValidFolder(TwoDSceneFolder))
-            AssetDatabase.CreateFolder(SceneFolder, "2D");
+            AssetDatabase.CreateFolder("Assets/Examples/GravitySimulation/2D", "Scenes");
         if (!AssetDatabase.IsValidFolder(ThreeDSceneFolder))
-            AssetDatabase.CreateFolder(SceneFolder, "3D");
+            AssetDatabase.CreateFolder("Assets/Examples/GravitySimulation/3D", "Scenes");
     }
 
     private static void DeleteLegacyScenes()
@@ -161,32 +203,34 @@ public static class GravitySceneGeneration
     {
         // Attach only the script that demonstrates the selected processing strategy.
         var controllerObject = new GameObject("Gravity Simulation");
-        switch (mode)
-        {
-            case SimulationMode.CSharpAsync:
-                controllerObject.AddComponent<CSharpAsyncGravityExample>();
-                break;
-            case SimulationMode.CSharpParallel:
-                controllerObject.AddComponent<CSharpParallelGravityExample>();
-                break;
-            case SimulationMode.UnityJobs:
-                controllerObject.AddComponent<UnityJobsGravityExample>();
-                break;
-            case SimulationMode.UnityCoroutine:
-                controllerObject.AddComponent<UnityCoroutineGravityExample>();
-                break;
-            case SimulationMode.UnityJobsBurst:
-                controllerObject.AddComponent<UnityJobsBurstGravityExample>();
-                break;
-            default:
-                controllerObject.AddComponent<SingleThreadedGravityExample>();
-                break;
-        }
+        // Each dimension owns its own copy so its scenes and scripts are easy to find together.
+        string dimensionName = dimension == SimulationDimension.TwoD ? "2D" : "3D";
+        string assemblyName = "GravitySimulation.Example." + dimensionName + "." + mode;
+        string className = "Gravity" + dimensionName + GetControllerClassName(mode);
+        System.Reflection.Assembly controllerAssembly = System.AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(assembly => assembly.GetName().Name == assemblyName);
+        System.Type controllerType = controllerAssembly == null ? null : controllerAssembly.GetType(className);
+        if (controllerType == null)
+            throw new System.Exception("Could not find gravity example script: " + assemblyName + "::" + className);
+        controllerObject.AddComponent(controllerType);
 
         // Store the dimension in the scene so each controller script can stay self-contained.
         var serializedController = new SerializedObject(controllerObject.GetComponent<MonoBehaviour>());
         serializedController.FindProperty("_is2D").boolValue = dimension == SimulationDimension.TwoD;
         serializedController.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static string GetControllerClassName(SimulationMode mode)
+    {
+        switch (mode)
+        {
+            case SimulationMode.CSharpAsync: return "CSharpAsyncGravityExample";
+            case SimulationMode.CSharpParallel: return "CSharpParallelGravityExample";
+            case SimulationMode.UnityJobs: return "UnityJobsGravityExample";
+            case SimulationMode.UnityCoroutine: return "UnityCoroutineGravityExample";
+            case SimulationMode.UnityJobsBurst: return "UnityJobsBurstGravityExample";
+            default: return "SingleThreadedGravityExample";
+        }
     }
 
     private static string SceneName(SimulationMode mode)

@@ -1,0 +1,1 @@
+# 3D spheres are created in code, so this example needs no resource assets.

@@ -1,0 +1,19 @@
+# Gravity simulation (3D)
+
+This example uses Unity's 3D scene and physics components. Each ball is a sphere with a dynamic `Rigidbody` and `SphereCollider` and moves in XYZ space.
+
+- Teaching scenes: `Scenes/Gravity_*.unity`
+- Equal-size profiling scenes: `Scenes/Benchmark/`
+- Strategy scripts: `Scripts/`
+- Dimension-specific scene menu: **Tools → Gravity 3D → Regenerate Scenes**
+
+Every strategy script is self-contained. The force uses softened Newtonian gravity:
+
+```text
+r_ij = position_j - position_i
+acceleration_i += G * mass_j * r_ij / (|r_ij|² + softening²)^(3/2)
+```
+
+The work per physics step is **O(N²)** for `N` balls. Positions, masses, and acceleration buffers use **O(N)** memory. The scene disables built-in world gravity because each strategy calculates and applies the attraction itself.
+
+Use `Scenes/Gravity_Benchmark.unity` to run all six processing methods in sequence and compare them in the local Web Dashboard.

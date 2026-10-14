@@ -1,0 +1,490 @@
+using System;
+using System.Collections;
+using System.Threading.Tasks;
+using Stopwatch = System.Diagnostics.Stopwatch;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using UnityEngine;
+
+/// <summary>
+/// Runs PSO or Random Search using one selected processing method.
+/// Time complexity: PSO O(particles × iterations); Random Search O(evaluations).
+/// </summary>
+public sealed class PSOProcessingExample : MonoBehaviour
+{
+    #region Settings and measured results
+    [SerializeField, Range(0, 1)] private int _algorithm; // 0 = PSO, 1 = Random Search.
+    [SerializeField, Range(0, 5)] private int _processingMethod; // six methods, in the README order.
+    [SerializeField, Min(2)] private int _particleCount = 64;
+    [SerializeField, Min(1)] private int _iterations = 99;
+    [SerializeField, Min(1)] private int _trialCount = 5;
+    [SerializeField] private int _randomSeed = 2468;
+    [SerializeField] private int _evaluationCount;
+    [SerializeField] private float _bestScore;
+    [SerializeField] private float _averageBestScore;
+    [SerializeField] private float _bestX;
+    [SerializeField] private float _bestY;
+    [SerializeField] private float _computeMilliseconds;
+    [SerializeField] private float _wallMilliseconds;
+    [SerializeField] private string _checksum = "—";
+    private long _coroutineComputeTicks;
+    #endregion
+
+    #region Workload entry points
+    private void Start()
+    {
+        // Coroutine is an iterator so it can yield while processing chunks over several frames.
+        if (_processingMethod == 4)
+        {
+            StartCoroutine(RunCoroutine());
+            return;
+        }
+
+        RunSelectedMethod();
+    }
+
+    private async void RunSelectedMethod()
+    {
+        long wallStart = Stopwatch.GetTimestamp();
+        long computeStart = wallStart;
+
+        // Async runs the same simple loop on a worker and awaits it before publishing results.
+        if (_processingMethod == 1)
+        {
+            await Task.Run(() => RunSearch(0));
+        }
+        else
+        {
+            RunSearch(_processingMethod);
+        }
+
+        FinishRun(computeStart, wallStart);
+    }
+
+    private IEnumerator RunCoroutine()
+    {
+        long wallStart = Stopwatch.GetTimestamp();
+        _coroutineComputeTicks = 0;
+        // RunSearchCoroutine does the calculation in bounded chunks and yields between them.
+        yield return StartCoroutine(RunSearchCoroutine());
+        FinishRun(0, wallStart, true);
+    }
+
+    private void RunSearch(int method)
+    {
+        // The method selection applies to the same seeded workload and evaluation budget.
+        if (_algorithm == 0)
+            RunParticleSwarm(method);
+        else
+            RunRandomSearch(method);
+    }
+    #endregion
+
+    #region Random Search workload
+    private void RunRandomSearch(int method)
+    {
+        _evaluationCount = _trialCount * _particleCount * (_iterations + 1);
+        _bestScore = float.MaxValue;
+        double trialScoreTotal = 0d;
+
+        // Each candidate point is generated from its index, so all six methods see identical inputs.
+        int evaluationsPerTrial = _particleCount * (_iterations + 1);
+        float[] scores = new float[evaluationsPerTrial];
+        NativeArray<float> jobScores = default;
+        if (method == 3 || method == 5)
+            jobScores = new NativeArray<float>(evaluationsPerTrial, Allocator.TempJob);
+
+        for (int trial = 0; trial < _trialCount; trial++)
+        {
+            if (method == 2)
+                System.Threading.Tasks.Parallel.For(0, evaluationsPerTrial, index => ScoreRandomPoint(index, trial, scores));
+            else if (method == 3 || method == 5)
+                RunRandomJob(trial, scores, jobScores, method == 5);
+            else
+                for (int index = 0; index < evaluationsPerTrial; index++)
+                    ScoreRandomPoint(index, trial, scores);
+
+            float trialBest = float.MaxValue;
+            for (int index = 0; index < evaluationsPerTrial; index++)
+            {
+                if (scores[index] < trialBest)
+                    trialBest = scores[index];
+            }
+            trialScoreTotal += trialBest;
+            if (trialBest < _bestScore)
+                _bestScore = trialBest;
+        }
+
+        _averageBestScore = (float)(trialScoreTotal / _trialCount);
+        _bestX = 0f;
+        _bestY = 0f;
+        if (jobScores.IsCreated)
+            jobScores.Dispose();
+    }
+
+    private void ScoreRandomPoint(int index, int trial, float[] scores)
+    {
+        float x = ToRange(StableValue(index * 2 + trial * 100003 + _randomSeed));
+        float y = ToRange(StableValue(index * 2 + 1 + trial * 100003 + _randomSeed));
+        // Sphere objective: f(x, y) = x² + y². The minimum is zero at (0, 0).
+        scores[index] = x * x + y * y;
+    }
+    #endregion
+
+    #region Particle Swarm workload
+    private void RunParticleSwarm(int method)
+    {
+        int particleCount = Mathf.Max(2, _particleCount);
+        _evaluationCount = _trialCount * particleCount * (_iterations + 1);
+        _bestScore = float.MaxValue;
+        double trialScoreTotal = 0d;
+        float[] x = new float[particleCount];
+        float[] y = new float[particleCount];
+        float[] vx = new float[particleCount];
+        float[] vy = new float[particleCount];
+        float[] personalX = new float[particleCount];
+        float[] personalY = new float[particleCount];
+        float[] personalScore = new float[particleCount];
+        float[] nextScore = new float[particleCount];
+        NativeArray<float> jobX = default; NativeArray<float> jobY = default;
+        NativeArray<float> jobVx = default; NativeArray<float> jobVy = default;
+        NativeArray<float> jobPersonalX = default; NativeArray<float> jobPersonalY = default;
+        NativeArray<float> jobScores = default;
+        if (method == 3 || method == 5)
+        {
+            // Reuse job buffers for every iteration instead of allocating native memory in the loop.
+            jobX = new NativeArray<float>(particleCount, Allocator.TempJob);
+            jobY = new NativeArray<float>(particleCount, Allocator.TempJob);
+            jobVx = new NativeArray<float>(particleCount, Allocator.TempJob);
+            jobVy = new NativeArray<float>(particleCount, Allocator.TempJob);
+            jobPersonalX = new NativeArray<float>(particleCount, Allocator.TempJob);
+            jobPersonalY = new NativeArray<float>(particleCount, Allocator.TempJob);
+            jobScores = new NativeArray<float>(particleCount, Allocator.TempJob);
+        }
+
+        for (int trial = 0; trial < _trialCount; trial++)
+        {
+            float globalScore = float.MaxValue;
+            float globalX = 0f;
+            float globalY = 0f;
+            for (int particle = 0; particle < particleCount; particle++)
+            {
+                x[particle] = ToRange(StableValue(particle * 4 + trial * 100003 + _randomSeed));
+                y[particle] = ToRange(StableValue(particle * 4 + 1 + trial * 100003 + _randomSeed));
+                vx[particle] = StableValue(particle * 4 + 2 + trial * 100003 + _randomSeed) - 0.5f;
+                vy[particle] = StableValue(particle * 4 + 3 + trial * 100003 + _randomSeed) - 0.5f;
+                personalX[particle] = x[particle];
+                personalY[particle] = y[particle];
+                personalScore[particle] = x[particle] * x[particle] + y[particle] * y[particle];
+                if (personalScore[particle] < globalScore)
+                {
+                    globalScore = personalScore[particle];
+                    globalX = x[particle];
+                    globalY = y[particle];
+                }
+            }
+
+            for (int iteration = 0; iteration < _iterations; iteration++)
+            {
+                if (method == 2)
+                {
+                    float sharedX = globalX;
+                    float sharedY = globalY;
+                    System.Threading.Tasks.Parallel.For(0, particleCount, particle =>
+                        UpdateParticle(particle, iteration, trial, sharedX, sharedY, x, y, vx, vy, personalX, personalY, nextScore));
+                }
+                else if (method == 3 || method == 5)
+                {
+                    RunParticleJob(iteration, trial, globalX, globalY, x, y, vx, vy, personalX, personalY, nextScore,
+                        jobX, jobY, jobVx, jobVy, jobPersonalX, jobPersonalY, jobScores, method == 5);
+                }
+                else
+                {
+                    for (int particle = 0; particle < particleCount; particle++)
+                        UpdateParticle(particle, iteration, trial, globalX, globalY, x, y, vx, vy, personalX, personalY, nextScore);
+                }
+
+                // Each particle writes only its own slot; this reduction stays in one simple loop.
+                for (int particle = 0; particle < particleCount; particle++)
+                {
+                    float score = nextScore[particle];
+                    if (score < personalScore[particle])
+                    {
+                        personalScore[particle] = score;
+                        personalX[particle] = x[particle];
+                        personalY[particle] = y[particle];
+                    }
+                    if (score < globalScore)
+                    {
+                        globalScore = score;
+                        globalX = x[particle];
+                        globalY = y[particle];
+                    }
+                }
+            }
+
+            trialScoreTotal += globalScore;
+            if (globalScore < _bestScore)
+                _bestScore = globalScore;
+        }
+
+        _averageBestScore = (float)(trialScoreTotal / _trialCount);
+        _bestX = 0f;
+        _bestY = 0f;
+        if (jobX.IsCreated) jobX.Dispose();
+        if (jobY.IsCreated) jobY.Dispose();
+        if (jobVx.IsCreated) jobVx.Dispose();
+        if (jobVy.IsCreated) jobVy.Dispose();
+        if (jobPersonalX.IsCreated) jobPersonalX.Dispose();
+        if (jobPersonalY.IsCreated) jobPersonalY.Dispose();
+        if (jobScores.IsCreated) jobScores.Dispose();
+    }
+
+    private void UpdateParticle(int particle, int iteration, int trial, float globalX, float globalY,
+        float[] x, float[] y, float[] vx, float[] vy, float[] personalX, float[] personalY, float[] scores)
+    {
+        float r1 = StableValue(particle * 4 + iteration * 7919 + trial * 100003 + _randomSeed);
+        float r2 = StableValue(particle * 4 + 1 + iteration * 7919 + trial * 100003 + _randomSeed);
+        float r3 = StableValue(particle * 4 + 2 + iteration * 7919 + trial * 100003 + _randomSeed);
+        float r4 = StableValue(particle * 4 + 3 + iteration * 7919 + trial * 100003 + _randomSeed);
+        // v = 0.7v + 1.4r1(pBest - x) + 1.4r2(gBest - x); position = position + v.
+        vx[particle] = 0.7f * vx[particle] + 1.4f * r1 * (personalX[particle] - x[particle]) + 1.4f * r2 * (globalX - x[particle]);
+        vy[particle] = 0.7f * vy[particle] + 1.4f * r3 * (personalY[particle] - y[particle]) + 1.4f * r4 * (globalY - y[particle]);
+        x[particle] = Mathf.Clamp(x[particle] + vx[particle], -5f, 5f);
+        y[particle] = Mathf.Clamp(y[particle] + vy[particle], -5f, 5f);
+        // Sphere objective: f(x, y) = x² + y². The minimum is zero at (0, 0).
+        scores[particle] = x[particle] * x[particle] + y[particle] * y[particle];
+    }
+    #endregion
+
+    #region Unity Jobs
+    private struct RandomJob : IJobParallelFor
+    {
+        public NativeArray<float> Scores;
+        public int Seed;
+        public int Trial;
+        public void Execute(int index)
+        {
+            float x = ToRange(StableValue(index * 2 + Trial * 100003 + Seed));
+            float y = ToRange(StableValue(index * 2 + 1 + Trial * 100003 + Seed));
+            Scores[index] = x * x + y * y;
+        }
+    }
+
+    [BurstCompile]
+    private struct RandomBurstJob : IJobParallelFor
+    {
+        public NativeArray<float> Scores;
+        public int Seed;
+        public int Trial;
+        public void Execute(int index)
+        {
+            float x = ToRange(StableValue(index * 2 + Trial * 100003 + Seed));
+            float y = ToRange(StableValue(index * 2 + 1 + Trial * 100003 + Seed));
+            Scores[index] = x * x + y * y;
+        }
+    }
+
+    private struct ParticleJob : IJobParallelFor
+    {
+        public NativeArray<float> X; public NativeArray<float> Y;
+        public NativeArray<float> VX; public NativeArray<float> VY;
+        public NativeArray<float> PersonalX; public NativeArray<float> PersonalY;
+        public NativeArray<float> Scores;
+        public float GlobalX; public float GlobalY;
+        public int Iteration; public int Trial; public int Seed;
+        public void Execute(int particle)
+        {
+            float r1 = StableValue(particle * 4 + Iteration * 7919 + Trial * 100003 + Seed);
+            float r2 = StableValue(particle * 4 + 1 + Iteration * 7919 + Trial * 100003 + Seed);
+            float r3 = StableValue(particle * 4 + 2 + Iteration * 7919 + Trial * 100003 + Seed);
+            float r4 = StableValue(particle * 4 + 3 + Iteration * 7919 + Trial * 100003 + Seed);
+            VX[particle] = 0.7f * VX[particle] + 1.4f * r1 * (PersonalX[particle] - X[particle]) + 1.4f * r2 * (GlobalX - X[particle]);
+            VY[particle] = 0.7f * VY[particle] + 1.4f * r3 * (PersonalY[particle] - Y[particle]) + 1.4f * r4 * (GlobalY - Y[particle]);
+            X[particle] = Mathf.Clamp(X[particle] + VX[particle], -5f, 5f);
+            Y[particle] = Mathf.Clamp(Y[particle] + VY[particle], -5f, 5f);
+            Scores[particle] = X[particle] * X[particle] + Y[particle] * Y[particle];
+        }
+    }
+
+    [BurstCompile]
+    private struct ParticleBurstJob : IJobParallelFor
+    {
+        public NativeArray<float> X; public NativeArray<float> Y;
+        public NativeArray<float> VX; public NativeArray<float> VY;
+        public NativeArray<float> PersonalX; public NativeArray<float> PersonalY;
+        public NativeArray<float> Scores;
+        public float GlobalX; public float GlobalY;
+        public int Iteration; public int Trial; public int Seed;
+        public void Execute(int particle)
+        {
+            float r1 = StableValue(particle * 4 + Iteration * 7919 + Trial * 100003 + Seed);
+            float r2 = StableValue(particle * 4 + 1 + Iteration * 7919 + Trial * 100003 + Seed);
+            float r3 = StableValue(particle * 4 + 2 + Iteration * 7919 + Trial * 100003 + Seed);
+            float r4 = StableValue(particle * 4 + 3 + Iteration * 7919 + Trial * 100003 + Seed);
+            VX[particle] = 0.7f * VX[particle] + 1.4f * r1 * (PersonalX[particle] - X[particle]) + 1.4f * r2 * (GlobalX - X[particle]);
+            VY[particle] = 0.7f * VY[particle] + 1.4f * r3 * (PersonalY[particle] - Y[particle]) + 1.4f * r4 * (GlobalY - Y[particle]);
+            X[particle] = Mathf.Clamp(X[particle] + VX[particle], -5f, 5f);
+            Y[particle] = Mathf.Clamp(Y[particle] + VY[particle], -5f, 5f);
+            Scores[particle] = X[particle] * X[particle] + Y[particle] * Y[particle];
+        }
+    }
+
+    private void RunRandomJob(int trial, float[] scores, NativeArray<float> jobScores, bool useBurst)
+    {
+        JobHandle handle;
+        if (useBurst)
+            handle = new RandomBurstJob { Scores = jobScores, Seed = _randomSeed, Trial = trial }.Schedule(scores.Length, 64);
+        else
+            handle = new RandomJob { Scores = jobScores, Seed = _randomSeed, Trial = trial }.Schedule(scores.Length, 64);
+        handle.Complete();
+        for (int index = 0; index < scores.Length; index++)
+            scores[index] = jobScores[index];
+    }
+
+    private void RunParticleJob(int iteration, int trial, float globalX, float globalY,
+        float[] x, float[] y, float[] vx, float[] vy, float[] personalX, float[] personalY, float[] scores,
+        NativeArray<float> jobX, NativeArray<float> jobY, NativeArray<float> jobVx, NativeArray<float> jobVy,
+        NativeArray<float> jobPersonalX, NativeArray<float> jobPersonalY, NativeArray<float> jobScores, bool useBurst)
+    {
+        for (int particle = 0; particle < x.Length; particle++)
+        {
+            jobX[particle] = x[particle]; jobY[particle] = y[particle];
+            jobVx[particle] = vx[particle]; jobVy[particle] = vy[particle];
+            jobPersonalX[particle] = personalX[particle]; jobPersonalY[particle] = personalY[particle];
+        }
+        JobHandle handle;
+        if (useBurst)
+            handle = new ParticleBurstJob { X = jobX, Y = jobY, VX = jobVx, VY = jobVy, PersonalX = jobPersonalX, PersonalY = jobPersonalY, Scores = jobScores, GlobalX = globalX, GlobalY = globalY, Iteration = iteration, Trial = trial, Seed = _randomSeed }.Schedule(x.Length, 32);
+        else
+            handle = new ParticleJob { X = jobX, Y = jobY, VX = jobVx, VY = jobVy, PersonalX = jobPersonalX, PersonalY = jobPersonalY, Scores = jobScores, GlobalX = globalX, GlobalY = globalY, Iteration = iteration, Trial = trial, Seed = _randomSeed }.Schedule(x.Length, 32);
+        handle.Complete();
+        for (int particle = 0; particle < x.Length; particle++)
+        {
+            x[particle] = jobX[particle]; y[particle] = jobY[particle];
+            vx[particle] = jobVx[particle]; vy[particle] = jobVy[particle];
+            scores[particle] = jobScores[particle];
+        }
+    }
+    #endregion
+
+    #region Coroutine and result publishing
+    private IEnumerator RunSearchCoroutine()
+    {
+        // Keep each frame's chunk bounded and sum only active calculation time, not yielded frames.
+        if (_algorithm == 1)
+        {
+            int budget = _particleCount * (_iterations + 1);
+            _evaluationCount = _trialCount * budget;
+            _bestScore = float.MaxValue;
+            double total = 0d;
+            float[] scores = new float[budget];
+            for (int trial = 0; trial < _trialCount; trial++)
+            {
+                for (int start = 0; start < budget; start += 128)
+                {
+                    int end = Mathf.Min(start + 128, budget);
+                    long chunkStart = Stopwatch.GetTimestamp();
+                    for (int index = start; index < end; index++)
+                    {
+                        float x = ToRange(StableValue(index * 2 + trial * 100003 + _randomSeed));
+                        float y = ToRange(StableValue(index * 2 + 1 + trial * 100003 + _randomSeed));
+                        // Sphere objective: score = x² + y²; minimum is zero at (0, 0).
+                        scores[index] = x * x + y * y;
+                    }
+                    _coroutineComputeTicks += Stopwatch.GetTimestamp() - chunkStart;
+                    yield return null;
+                }
+                long reduceStart = Stopwatch.GetTimestamp();
+                float best = float.MaxValue;
+                for (int index = 0; index < budget; index++)
+                    if (scores[index] < best) best = scores[index];
+                total += best;
+                if (best < _bestScore) _bestScore = best;
+                _coroutineComputeTicks += Stopwatch.GetTimestamp() - reduceStart;
+            }
+            _averageBestScore = (float)(total / _trialCount);
+        }
+        else
+        {
+            // Coroutine PSO updates particles in chunks, then applies one ordered best-score reduction.
+            int count = Mathf.Max(2, _particleCount);
+            _evaluationCount = _trialCount * count * (_iterations + 1);
+            _bestScore = float.MaxValue;
+            double total = 0d;
+            float[] x = new float[count]; float[] y = new float[count];
+            float[] vx = new float[count]; float[] vy = new float[count];
+            float[] personalX = new float[count]; float[] personalY = new float[count];
+            float[] personalScore = new float[count]; float[] scores = new float[count];
+            for (int trial = 0; trial < _trialCount; trial++)
+            {
+                float globalScore = float.MaxValue; float globalX = 0f; float globalY = 0f;
+                long setupStart = Stopwatch.GetTimestamp();
+                for (int p = 0; p < count; p++)
+                {
+                    x[p] = ToRange(StableValue(p * 4 + trial * 100003 + _randomSeed));
+                    y[p] = ToRange(StableValue(p * 4 + 1 + trial * 100003 + _randomSeed));
+                    vx[p] = StableValue(p * 4 + 2 + trial * 100003 + _randomSeed) - 0.5f;
+                    vy[p] = StableValue(p * 4 + 3 + trial * 100003 + _randomSeed) - 0.5f;
+                    personalX[p] = x[p]; personalY[p] = y[p];
+                    personalScore[p] = x[p] * x[p] + y[p] * y[p];
+                    if (personalScore[p] < globalScore) { globalScore = personalScore[p]; globalX = x[p]; globalY = y[p]; }
+                }
+                _coroutineComputeTicks += Stopwatch.GetTimestamp() - setupStart;
+                for (int iteration = 0; iteration < _iterations; iteration++)
+                {
+                    for (int start = 0; start < count; start += 16)
+                    {
+                        int end = Mathf.Min(start + 16, count);
+                        long chunkStart = Stopwatch.GetTimestamp();
+                        for (int p = start; p < end; p++)
+                            UpdateParticle(p, iteration, trial, globalX, globalY, x, y, vx, vy, personalX, personalY, scores);
+                        _coroutineComputeTicks += Stopwatch.GetTimestamp() - chunkStart;
+                        yield return null;
+                    }
+                    long reduceStart = Stopwatch.GetTimestamp();
+                    for (int p = 0; p < count; p++)
+                    {
+                        if (scores[p] < personalScore[p]) { personalScore[p] = scores[p]; personalX[p] = x[p]; personalY[p] = y[p]; }
+                        if (scores[p] < globalScore) { globalScore = scores[p]; globalX = x[p]; globalY = y[p]; }
+                    }
+                    _coroutineComputeTicks += Stopwatch.GetTimestamp() - reduceStart;
+                }
+                total += globalScore;
+                if (globalScore < _bestScore) _bestScore = globalScore;
+            }
+            _averageBestScore = (float)(total / _trialCount);
+        }
+        _bestX = 0f; _bestY = 0f;
+    }
+
+    private void FinishRun(long computeStart, long wallStart, bool isCoroutine = false)
+    {
+        _computeMilliseconds = isCoroutine
+            ? (float)(_coroutineComputeTicks * 1000d / Stopwatch.Frequency)
+            : (float)((Stopwatch.GetTimestamp() - computeStart) * 1000d / Stopwatch.Frequency);
+        _wallMilliseconds = (float)((Stopwatch.GetTimestamp() - wallStart) * 1000d / Stopwatch.Frequency);
+        // Set the completion marker last so the dashboard never reads half-published async results.
+        _checksum = _bestScore.ToString("0.000000");
+        Debug.Log("Optimization workload complete: algorithm=" + (_algorithm == 0 ? "PSO" : "Random Search") +
+            ", evaluations=" + _evaluationCount + ", trials=" + _trialCount +
+            ", checksum=" + _checksum + ", computeMs=" + _computeMilliseconds + ", wallMs=" + _wallMilliseconds, this);
+    }
+
+    // A deterministic integer hash gives all processing methods the same repeatable pseudo-random values.
+    private static float StableValue(int value)
+    {
+        unchecked
+        {
+            uint number = (uint)value;
+            number ^= number >> 16; number *= 0x7feb352d;
+            number ^= number >> 15; number *= 0x846ca68b;
+            number ^= number >> 16;
+            return (number & 0x00ffffff) / 16777216f;
+        }
+    }
+
+    private static float ToRange(float value) { return value * 10f - 5f; }
+    #endregion
+}

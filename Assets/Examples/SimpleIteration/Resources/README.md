@@ -1,0 +1,1 @@
+# No external resources are required for Simple Iteration.
