@@ -83,6 +83,11 @@ public static class BatchProcessingSceneGeneration
             newScenes.Add(new EditorBuildSettingsScene(path, true));
         }
 
+        // PSO and Random Search are workloads; make one scene per workload and method.
+        string[] optimizationScenes = CreateOptimizationWorkloadScenes();
+        for (int i = 0; i < optimizationScenes.Length; i++)
+            newScenes.Add(new EditorBuildSettingsScene(optimizationScenes[i], true));
+
         CreateBatchBenchmarkScene();
         newScenes.Add(new EditorBuildSettingsScene(BenchmarkScenePath, true));
         CreateOptimizationBenchmarkScene();
@@ -126,7 +131,7 @@ public static class BatchProcessingSceneGeneration
 
     private static void CreateOptimizationBenchmarkScene()
     {
-        // This launcher compares PSO with random search on the same objective function.
+        // The launcher compares processing times within the selected algorithm workload.
         NewSceneMode sceneMode = Application.isBatchMode ? NewSceneMode.Single : NewSceneMode.Additive;
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, sceneMode);
         scene.name = "Batch Optimization Benchmark";
@@ -145,5 +150,42 @@ public static class BatchProcessingSceneGeneration
             throw new System.Exception("Could not save optimization comparison scene: " + OptimizationScenePath);
         if (sceneMode == NewSceneMode.Additive)
             EditorSceneManager.CloseScene(scene, true);
+    }
+
+    private static string[] CreateOptimizationWorkloadScenes()
+    {
+        string[] algorithms = { "PSO", "Random" };
+        string[] methods = { "SingleThreaded", "CSharpAsync", "CSharpParallel", "UnityJobs", "UnityCoroutine", "UnityJobsBurst" };
+        string[] paths = new string[algorithms.Length * methods.Length];
+        int pathIndex = 0;
+
+        for (int algorithm = 0; algorithm < algorithms.Length; algorithm++)
+        {
+            for (int method = 0; method < methods.Length; method++)
+            {
+                string sceneName = "Batch_Optimization" + algorithms[algorithm] + "_" + methods[method];
+                string path = SceneFolder + "/" + sceneName + ".unity";
+                NewSceneMode sceneMode = Application.isBatchMode ? NewSceneMode.Single : NewSceneMode.Additive;
+                Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, sceneMode);
+                scene.name = sceneName;
+                GameObject runnerObject = new GameObject("Batch Example");
+                BatchOptimizationProcessingExample example = runnerObject.AddComponent<BatchOptimizationProcessingExample>();
+                SerializedObject settings = new SerializedObject(example);
+                settings.FindProperty("_algorithm").intValue = algorithm;
+                settings.FindProperty("_processingMethod").intValue = method;
+                settings.FindProperty("_particleCount").intValue = 64;
+                settings.FindProperty("_iterations").intValue = 99;
+                settings.FindProperty("_trialCount").intValue = 5;
+                settings.FindProperty("_randomSeed").intValue = 2468;
+                settings.ApplyModifiedPropertiesWithoutUndo();
+
+                if (!EditorSceneManager.SaveScene(scene, path))
+                    throw new System.Exception("Could not save optimization workload scene: " + path);
+                if (sceneMode == NewSceneMode.Additive)
+                    EditorSceneManager.CloseScene(scene, true);
+                paths[pathIndex++] = path;
+            }
+        }
+        return paths;
     }
 }

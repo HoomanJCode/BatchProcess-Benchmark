@@ -50,14 +50,22 @@ Here, `N` is the number of values and `I` is the number of iterations per value.
 
 Choose **Tools → Batch Processing → Create Example Scenes** to regenerate the batch scenes and their Build Settings entries. Each runtime script contains its own copy of the short calculation so you can read one strategy at a time without following shared calculation helpers.
 
-### Compare an optimization algorithm
+### Compare optimization workloads across processing methods
 
-The same folder also contains a simple optimization problem and two search approaches:
+PSO and Random Search are workloads, like gravity and the simple batch calculation. The comparison runs each workload through all six processing methods. It compares runtimes within one selected algorithm tab; it does not rank PSO against Random Search by solution quality.
 
-| Method | Scene | What it does |
-| --- | --- | --- |
-| Particle Swarm Optimization (PSO) | **Batch_ParticleSwarm.unity** | Moves candidate answers toward each candidate's best answer and the swarm's best answer. |
-| Random Search | **Batch_RandomSearch.unity** | Tries randomly selected answers as a simple baseline. |
+The launcher creates twelve scenes in `Assets/Examples/BatchProcessing/Scenes`: six named `Batch_OptimizationPSO_...` and six named `Batch_OptimizationRandom_...`. Each algorithm uses these same methods:
+
+| Processing method | Scene suffix |
+| --- | --- |
+| Single threaded | `SingleThreaded` |
+| C# async | `CSharpAsync` |
+| C# parallel | `CSharpParallel` |
+| Unity Jobs | `UnityJobs` |
+| Unity coroutine | `UnityCoroutine` |
+| Unity Jobs with Burst | `UnityJobsBurst` |
+
+Both workloads minimize the same two-dimensional Sphere function:
 
 Both minimize the 2D Sphere function:
 
@@ -66,11 +74,11 @@ score = x² + y²
 best x = 0, best y = 0, best score = 0
 ~~~
 
-The function is deliberately simple: the search quality is easy to understand because the correct answer is known. Both methods test points in the range −5 to 5 and use 6,400 objective evaluations per trial over five fixed-seed trials (32,000 evaluations total). PSO uses 64 particles, scores their starting positions, then moves them for 99 iterations. That gives it the same evaluation budget as Random Search.
+The objective is deliberately simple so the search itself is easy to follow. Both use deterministic values and five trials. Random Search checks 6,400 points per trial. PSO uses 64 particles, scores the starting positions, then moves them for 99 iterations (6,400 evaluations per trial).
 
-Let **P** be the particle count, **T** the number of PSO iterations, **B** the number of random samples, and **D** the number of dimensions. PSO uses O(P × D × T) work and O(P × D) memory. Random Search uses O(B × D) work and O(1) extra memory. Here D is 2 and both methods evaluate the objective 6,400 times per trial.
+Let **P** be the particle count, **T** the iteration count, **B** the random sample count, and **D** the number of dimensions. PSO uses O(P × D × T) work and O(P × D) memory. Random Search uses O(B × D) work and O(B) memory for per-candidate scores in this benchmark. Here D is 2.
 
-Choose **Tools → Batch Processing → Create Example Scenes** to generate the two example scenes and the **Batch_OptimizationBenchmark** launcher along with the other batch scenes. Open **Batch_OptimizationBenchmark.unity** and press **Play**. The existing local analysis page compares calculation time, total wall time, mean best score, best score, and the best (x, y) found. Lower scores are better; zero is the known optimum.
+Choose **Tools → Batch Processing → Create Example Scenes** to generate the two algorithm teaching scenes, twelve workload/method scenes, and the **Batch_OptimizationBenchmark** launcher. Open **Batch_OptimizationBenchmark.unity** and press **Play**. Unity runs the twelve workload/method combinations in sequence. In the local dashboard, choose **Particle Swarm (PSO)** or **Random Search**; each tab shows only that algorithm's six processing methods, compute average/P95, and wall average/P95. Longer bars mean shorter runtimes.
 
 #### Run the optimization comparison headless
 
@@ -81,9 +89,9 @@ The headless helper regenerates the batch scenes, builds a small Windows player 
   -UnityEditorPath "C:\Program Files\Unity\Hub\Editor\6000.5.1f1\Editor\Unity.exe"
 ```
 
-The report includes both algorithms, equal evaluation counts, best and mean best scores, best coordinates, compute time, and total wall time. The dashboard starts with mean best score so solution quality is the first comparison; choose **Compute avg** to compare speed. Its bars are longer for lower (better) scores or times. A faster result is not necessarily a better solution: Random Search does less work per evaluation, while PSO can use each evaluation to move toward promising areas. The helper builds in the project, so close the Unity Editor before running it.
+The report contains twelve runtime records with an algorithm name, processing method, evaluation count, compute time, and wall time. The dashboard presents one algorithm at a time, with its six execution approaches. Coroutine compute time sums active chunks across frames; its wall time includes all the yielded frames. The helper builds in the project, so close the Unity Editor before running it.
 
-For an algorithm comparison, equal objective-evaluation budgets make solution quality comparable. The time includes each algorithm's search work and its random-number generation; array setup for PSO happens before timing. It is a small demonstration problem, not evidence that either method is best for every optimization task.
+The objective scores are retained in the benchmark component for verifying repeatability, but they are not used as a comparison between optimization algorithms. Use compute time to compare calculation cost and wall time to include scheduling or coroutine frame yields. This small workload is a demonstration, not a general statement about optimizer quality.
 
 ## Open the gravity example
 
@@ -98,7 +106,7 @@ The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/
 | Unity coroutine | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityCoroutine.unity) | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityCoroutine.unity) |
 | Unity Jobs with Burst | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityJobsBurst.unity) | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityJobsBurst.unity) |
 
-The 12 individual gravity scenes, two gravity comparison launchers, their 12 equal-size generated benchmark copies, eight batch example scenes, and two batch comparison launchers are in **Build Settings** after running both scene-generation menu items. Use **Tools → Gravity Simulation → Regenerate Example Scenes** and **Tools → Gravity Simulation → Create Comparison Scenes** for gravity, plus **Tools → Batch Processing → Create Example Scenes** for batch processing.
+The 12 individual gravity scenes, two gravity comparison launchers, their 12 equal-size generated benchmark copies, eight batch teaching scenes, twelve optimizer/method scenes, and two batch comparison launchers are in **Build Settings** after running both scene-generation menu items. Use **Tools → Gravity Simulation → Regenerate Example Scenes** and **Tools → Gravity Simulation → Create Comparison Scenes** for gravity, plus **Tools → Batch Processing → Create Example Scenes** for batch processing.
 
 ### Live 2D and 3D comparison dashboard
 

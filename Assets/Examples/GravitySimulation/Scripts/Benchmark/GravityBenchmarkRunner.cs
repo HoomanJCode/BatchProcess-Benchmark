@@ -63,11 +63,21 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         new ComparisonMode("Unity Jobs + Burst", "UnityJobsBurst", "BatchProcessing.UnityJobsBurst")
     };
 
-    // These algorithms solve the same simple two-dimensional minimization problem.
+    // Each algorithm is a workload. We run it once with every processing method.
     private static readonly ComparisonMode[] OptimizationModes =
     {
-        new ComparisonMode("Particle swarm (PSO)", "ParticleSwarm", "BatchProcessing.Optimization.PSO"),
-        new ComparisonMode("Random search", "RandomSearch", "BatchProcessing.Optimization.RandomSearch")
+        new ComparisonMode("Single threaded", "OptimizationPSO_SingleThreaded", "BatchProcessing.Optimization.PSO.Single", "BatchOptimizationProcessingExample", "Particle swarm (PSO)"),
+        new ComparisonMode("C# async", "OptimizationPSO_CSharpAsync", "BatchProcessing.Optimization.PSO.Async", "BatchOptimizationProcessingExample", "Particle swarm (PSO)"),
+        new ComparisonMode("C# parallel", "OptimizationPSO_CSharpParallel", "BatchProcessing.Optimization.PSO.Parallel", "BatchOptimizationProcessingExample", "Particle swarm (PSO)"),
+        new ComparisonMode("Unity Jobs", "OptimizationPSO_UnityJobs", "BatchProcessing.Optimization.PSO.Jobs", "BatchOptimizationProcessingExample", "Particle swarm (PSO)"),
+        new ComparisonMode("Unity coroutine", "OptimizationPSO_UnityCoroutine", "BatchProcessing.Optimization.PSO.Coroutine", "BatchOptimizationProcessingExample", "Particle swarm (PSO)"),
+        new ComparisonMode("Unity Jobs + Burst", "OptimizationPSO_UnityJobsBurst", "BatchProcessing.Optimization.PSO.Burst", "BatchOptimizationProcessingExample", "Particle swarm (PSO)"),
+        new ComparisonMode("Single threaded", "OptimizationRandom_SingleThreaded", "BatchProcessing.Optimization.Random.Single", "BatchOptimizationProcessingExample", "Random search"),
+        new ComparisonMode("C# async", "OptimizationRandom_CSharpAsync", "BatchProcessing.Optimization.Random.Async", "BatchOptimizationProcessingExample", "Random search"),
+        new ComparisonMode("C# parallel", "OptimizationRandom_CSharpParallel", "BatchProcessing.Optimization.Random.Parallel", "BatchOptimizationProcessingExample", "Random search"),
+        new ComparisonMode("Unity Jobs", "OptimizationRandom_UnityJobs", "BatchProcessing.Optimization.Random.Jobs", "BatchOptimizationProcessingExample", "Random search"),
+        new ComparisonMode("Unity coroutine", "OptimizationRandom_UnityCoroutine", "BatchProcessing.Optimization.Random.Coroutine", "BatchOptimizationProcessingExample", "Random search"),
+        new ComparisonMode("Unity Jobs + Burst", "OptimizationRandom_UnityJobsBurst", "BatchProcessing.Optimization.Random.Burst", "BatchOptimizationProcessingExample", "Random search")
     };
 
     // Capacity covers several minutes of samples at common frame rates, avoiding List growth during measurement.
@@ -181,9 +191,10 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
             float bestScore = float.MaxValue;
             float bestX = 0f;
             float bestY = 0f;
-            _state.activeExample = mode.displayName;
+            _state.activeExample = string.IsNullOrEmpty(mode.algorithm)
+                ? mode.displayName : mode.algorithm + " · " + mode.displayName;
             _state.markerName = mode.markerName;
-            _state.phase = _isOptimizationComparison ? "Preparing search algorithms" : "Preparing repeated batch runs";
+            _state.phase = _isOptimizationComparison ? "Preparing " + mode.algorithm + " · " + mode.displayName : "Preparing repeated batch runs";
             _state.completed = modeIndex;
             _state.progress = (float)modeIndex / modes.Length;
             _state.chartProfileMs = new float[0];
@@ -236,7 +247,8 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
                         for (int behaviourIndex = 0; behaviourIndex < behaviours.Length; behaviourIndex++)
                         {
                             if (behaviours[behaviourIndex] != null &&
-                                behaviours[behaviourIndex].GetType().Name == "Batch" + mode.sceneName + "Example")
+                                behaviours[behaviourIndex].GetType().Name == (string.IsNullOrEmpty(mode.componentName)
+                                    ? "Batch" + mode.sceneName + "Example" : mode.componentName))
                             {
                                 example = behaviours[behaviourIndex];
                                 break;
@@ -274,7 +286,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
                 }
 
                 if (_headlessMode)
-                    Debug.Log("Headless comparison read " + mode.displayName + ": evaluations=" + evaluationCount +
+                    Debug.Log("Headless comparison read " + mode.algorithm + " · " + mode.displayName + ": evaluations=" + evaluationCount +
                         ", bestScore=" + runBestScore + ", meanBestScore=" + runAverageBestScore);
 
                 computeSamples.Add(computeMs);
@@ -310,6 +322,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
 
             BenchmarkResult result = new BenchmarkResult
             {
+                algorithm = mode.algorithm,
                 strategy = mode.displayName,
                 markerName = mode.markerName,
                 balls = itemCount,
@@ -334,7 +347,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         }
 
         _state.status = "complete";
-        _state.phase = _isOptimizationComparison ? "Both search algorithms measured" : "All batch strategies measured";
+        _state.phase = _isOptimizationComparison ? "Both algorithms measured across all six processing methods" : "All batch strategies measured";
         _state.progress = 1f;
         _state.activeExample = "Complete";
         _state.results = _results.ToArray();
@@ -615,12 +628,13 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
     private string BuildCsvReport()
     {
         StringBuilder csv = new StringBuilder();
-        csv.AppendLine("workload,dimension,strategy,marker,balls,work_items,iterations,evaluation_count,best_score,mean_best_score,best_x,best_y,samples,warmup_seconds,measurement_seconds,average_profile_ms,median_profile_ms,p95_profile_ms,average_frame_ms,p95_frame_ms");
+        csv.AppendLine("workload,dimension,algorithm,strategy,marker,balls,work_items,iterations,evaluation_count,best_score,mean_best_score,best_x,best_y,samples,warmup_seconds,measurement_seconds,average_profile_ms,median_profile_ms,p95_profile_ms,average_frame_ms,p95_frame_ms");
         for (int i = 0; i < _results.Count; i++)
         {
             BenchmarkResult result = _results[i];
             csv.Append(_state.workload).Append(',')
                 .Append(_state.dimension).Append(',')
+                .Append(CsvCell(result.algorithm)).Append(',')
                 .Append(CsvCell(result.strategy)).Append(',')
                 .Append(CsvCell(result.markerName)).Append(',')
                 .Append(result.balls).Append(',').Append(result.workItems).Append(',').Append(result.iterations).Append(',')
@@ -823,6 +837,7 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
     [Serializable]
     private sealed class BenchmarkResult
     {
+        public string algorithm;
         public string strategy;
         public string markerName;
         public int balls;
@@ -846,12 +861,25 @@ public sealed class GravityBenchmarkRunner : MonoBehaviour
         public readonly string displayName;
         public readonly string sceneName;
         public readonly string markerName;
+        public readonly string componentName;
+        public readonly string algorithm;
 
         public ComparisonMode(string name, string scene, string marker)
         {
             displayName = name;
             sceneName = scene;
             markerName = marker;
+            componentName = "";
+            algorithm = "";
+        }
+
+        public ComparisonMode(string name, string scene, string marker, string component, string workloadAlgorithm)
+        {
+            displayName = name;
+            sceneName = scene;
+            markerName = marker;
+            componentName = component;
+            algorithm = workloadAlgorithm;
         }
     }
 

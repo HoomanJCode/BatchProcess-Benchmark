@@ -30,6 +30,42 @@ EditorBuildSettings:
     path: Assets/Examples/BatchProcessing/Scenes/Batch_RandomSearch.unity
     guid: c76d646e01156ea4bb5d1d5818bf0fc8
   - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationPSO_SingleThreaded.unity
+    guid: a63d739ab1720294e8bd043f3ac2d8c6
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationPSO_CSharpAsync.unity
+    guid: 47add573f1630254a9b5c6ac989838bc
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationPSO_CSharpParallel.unity
+    guid: df089205e62e76b4db7e61f9e2b748fe
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationPSO_UnityJobs.unity
+    guid: e29f995f58a28ff429f8cf6f2d15eef7
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationPSO_UnityCoroutine.unity
+    guid: dc2a30b92bd111a4eb83554eec494f02
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationPSO_UnityJobsBurst.unity
+    guid: 7b73e45257d236a468dadd97fcb16091
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationRandom_SingleThreaded.unity
+    guid: 825209e1d9420134584962b6e933f84a
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationRandom_CSharpAsync.unity
+    guid: a380df931e4717b4b8543f7caef7c3ad
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationRandom_CSharpParallel.unity
+    guid: 15213575091d6b54f84ba6bf638f27aa
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationRandom_UnityJobs.unity
+    guid: c535e0ad5219c8d4e851fbc52ba2dedd
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationRandom_UnityCoroutine.unity
+    guid: f7f49c8e00abaa344a0aed31de8954d6
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationRandom_UnityJobsBurst.unity
+    guid: 7b44d127cd4910644a00e1af10169f1a
+  - enabled: 1
     path: Assets/Examples/BatchProcessing/Scenes/Batch_Benchmark.unity
     guid: 6a7258f5516a9d14f946e5e524f2b236
   - enabled: 1

@@ -38,18 +38,20 @@ public static class GravityBenchmarkBuild
         BuildWindowsPlayer(scenes);
     }
 
-    /// <summary>Creates the batch scenes and builds a player for the PSO versus Random Search comparison.</summary>
+    /// <summary>Builds a player that compares six processing methods for both optimization workloads.</summary>
     public static void BuildOptimizationPlayer()
     {
         // Generate the same comparison and example scenes used by the local dashboard.
         BatchProcessingSceneGeneration.Build();
 
-        string[] scenes =
-        {
-            "Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationBenchmark.unity",
-            "Assets/Examples/BatchProcessing/Scenes/Batch_ParticleSwarm.unity",
-            "Assets/Examples/BatchProcessing/Scenes/Batch_RandomSearch.unity"
-        };
+        string[] methods = { "SingleThreaded", "CSharpAsync", "CSharpParallel", "UnityJobs", "UnityCoroutine", "UnityJobsBurst" };
+        string[] scenes = new string[13];
+        scenes[0] = "Assets/Examples/BatchProcessing/Scenes/Batch_OptimizationBenchmark.unity";
+        int sceneIndex = 1;
+        for (int algorithm = 0; algorithm < 2; algorithm++)
+            for (int method = 0; method < methods.Length; method++)
+                scenes[sceneIndex++] = "Assets/Examples/BatchProcessing/Scenes/Batch_Optimization" +
+                    (algorithm == 0 ? "PSO_" : "Random_") + methods[method] + ".unity";
         BuildWindowsPlayer(scenes, "OptimizationBenchmark.exe");
     }
 
