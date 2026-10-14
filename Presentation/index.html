@@ -54,6 +54,16 @@
     .metric span { display: block; color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
     .metric strong { display: block; margin-top: 8px; font-size: clamp(20px, 3vw, 27px); font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
     .metric em { color: var(--muted); font-style: normal; font-size: 11px; }
+    .overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .overview-card { min-height: 145px; padding: 18px; }
+    .overview-card h3 { margin: 0 0 8px; font-size: 14px; }
+    .overview-card p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .overview-card strong { display: block; margin: 14px 0 4px; color: var(--green); font-size: 13px; }
+    .overview-card .overview-status { color: var(--cyan); }
+    .overview-card details { margin-top: 12px; color: var(--muted); font-size: 10px; }
+    .overview-card summary { cursor: pointer; color: #c5d0d8; }
+    .overview-strategies { display: grid; gap: 6px; margin-top: 9px; }
+    .overview-strategy { display: flex; justify-content: space-between; gap: 8px; }
     .section-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin: 30px 2px 13px; }
     .section-head h2 { font-size: 17px; letter-spacing: -.025em; margin: 0; }
     .section-head p { color: var(--muted); font-size: 11px; margin: 5px 0 0; }
@@ -90,7 +100,7 @@
     .step strong { display: block; margin: 1px 0 4px; font-size: 11px; }
     .step span { color: var(--muted); font-size: 10px; line-height: 1.55; }
     footer { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); margin-top: 28px; padding-top: 17px; color: var(--muted); font-size: 10px; }
-    @media (max-width: 860px) { .hero, .chart-grid { grid-template-columns: 1fr; } .how { grid-template-columns: 1fr; } }
+    @media (max-width: 860px) { .hero, .chart-grid { grid-template-columns: 1fr; } .overview-grid, .how { grid-template-columns: 1fr; } }
     @media (max-width: 520px) { header { align-items: flex-start; flex-direction: column; } .run-top { flex-direction: column; } .section-head { align-items: flex-start; flex-direction: column; } .bar-row { grid-template-columns: 90px 1fr 54px; } footer { flex-direction: column; } }
   </style>
 </head>
@@ -119,6 +129,13 @@
         <div class="metric"><span id="frame-label">Frame time</span><strong id="frame-ms">—</strong><em id="frame-hint">elapsed milliseconds</em></div>
         <div class="metric"><span id="p95-label">Recent P95 marker</span><strong id="p95-ms">—</strong><em id="p95-hint">rolling samples</em></div>
       </article>
+    </section>
+
+    <div class="section-head"><div><h2>All comparison examples</h2><p>Run each Unity comparison scene; this page keeps its latest completed result in this browser.</p></div><span class="pill">3 EXAMPLE TYPES</span></div>
+    <section class="overview-grid" aria-label="Overview of every comparison example">
+      <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare the six gravity strategies in dedicated 2D and 3D Unity scenes.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene and press Play.</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Simple batch processing</h3><p>Run the same beginner-friendly calculation through six execution approaches.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open Batch_Benchmark in Unity and press Play.</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Heuristic optimization</h3><p>Compare Particle Swarm Optimization and Random Search on the same objective.</p><strong id="optimization-overview-title">No completed run yet</strong><p id="optimization-overview-detail">Open Batch_OptimizationBenchmark in Unity and press Play.</p><details><summary>Show strategy results</summary><div id="optimization-overview-results" class="overview-strategies">No results saved.</div></details></article>
     </section>
 
     <div class="section-head"><div><h2 id="live-title">Live profile</h2><p id="live-description">Profiler samples update while the current Unity scene is running.</p></div><span class="pill" id="balls-pill">Balls: waiting</span></div>
@@ -161,6 +178,148 @@
     let selectedMetric = 'averageProfileMs';
     let lastWorkload = null;
     let lastState = null;
+    const overviewStorageKey = 'simulation-lab-latest-comparisons-v1';
+    let savedComparisons = loadSavedComparisons();
+    let lastSavedCompletion = '';
+
+    function loadSavedComparisons() {
+      try {
+        return JSON.parse(localStorage.getItem(overviewStorageKey) || '{}');
+      } catch (error) {
+        return {};
+      }
+    }
+
+    function saveCompletedComparison(state) {
+      if (state.status !== 'complete' || !state.results || !state.results.length) return;
+      const completionId = state.workload + '-' + state.dimension + '-' + state.updatedUtc;
+      if (completionId === lastSavedCompletion) return;
+      lastSavedCompletion = completionId;
+      const key = state.workload === 'gravity' ? 'gravity-' + (state.dimension || '3D') : state.workload;
+      savedComparisons[key] = {
+        workload: state.workload,
+        dimension: state.dimension || '',
+        results: state.results,
+        completedUtc: state.updatedUtc || new Date().toISOString()
+      };
+      try {
+        localStorage.setItem(overviewStorageKey, JSON.stringify(savedComparisons));
+      } catch (error) {
+        // The live comparison still works if browser storage is unavailable.
+      }
+    }
+
+    function renderOverview(currentState) {
+      const currentIsComplete = currentState && currentState.status === 'complete';
+      if (currentIsComplete) saveCompletedComparison(currentState);
+      const saved2D = savedComparisons['gravity-2D'];
+      const saved3D = savedComparisons['gravity-3D'];
+      const latestSavedGravity = !saved2D ? saved3D : (!saved3D ? saved2D :
+        (Date.parse(saved2D.completedUtc) > Date.parse(saved3D.completedUtc) ? saved2D : saved3D));
+      const latestGravity = currentState && currentState.workload === 'gravity' && currentIsComplete
+        ? { results: currentState.results, dimension: currentState.dimension, completedUtc: currentState.updatedUtc }
+        : latestSavedGravity;
+      const liveGravity = currentState && currentState.workload === 'gravity' && !currentIsComplete;
+      const batch = currentState && currentState.workload === 'batch' && currentIsComplete
+        ? currentState
+        : savedComparisons.batch;
+      const liveBatch = currentState && currentState.workload === 'batch' && !currentIsComplete;
+      const optimization = currentState && currentState.workload === 'optimization' && currentIsComplete
+        ? currentState
+        : savedComparisons.optimization;
+      const liveOptimization = currentState && currentState.workload === 'optimization' && !currentIsComplete;
+
+      renderGravityOverview(latestGravity, liveGravity, saved2D, saved3D,
+        currentState && currentState.workload === 'gravity' ? currentState : null);
+      renderOverviewCard('batch', batch, liveBatch, currentState && currentState.workload === 'batch' ? currentState : null);
+      renderOverviewCard('optimization', optimization, liveOptimization, currentState && currentState.workload === 'optimization' ? currentState : null);
+    }
+
+    function renderGravityOverview(latest, isRunning, saved2D, saved3D, current) {
+      const title = document.getElementById('gravity-overview-title');
+      const detail = document.getElementById('gravity-overview-detail');
+      const results = document.getElementById('gravity-overview-results');
+      if (isRunning) {
+        title.textContent = 'Running · ' + ((lastState && lastState.completed) || 0) + ' strategies complete';
+        title.className = 'overview-status';
+      } else if (saved2D || saved3D) {
+        title.className = '';
+        title.textContent = (saved2D ? '2D saved' : '2D not run') + ' · ' + (saved3D ? '3D saved' : '3D not run');
+      } else {
+        title.className = '';
+        title.textContent = 'No completed run yet';
+      }
+      if (!saved2D && !saved3D && !isRunning) {
+        detail.textContent = 'Open the 2D or 3D Gravity_Benchmark scene and press Play.';
+        return;
+      }
+      const describeWinner = comparison => {
+        if (!comparison || !comparison.results || !comparison.results.length) return 'not run';
+        const fastest = comparison.results.reduce((best, result) => result.averageProfileMs < best.averageProfileMs ? result : best);
+        return fastest.strategy + ' ' + formatMs(fastest.averageProfileMs);
+      };
+      detail.textContent = 'Latest fastest: ' + (latest && latest.dimension ? latest.dimension + ' ' : '') + describeWinner(latest) +
+        ' · 2D: ' + describeWinner(saved2D) + ' · 3D: ' + describeWinner(saved3D);
+      const comparison2D = current && current.dimension === '2D' ? current : saved2D;
+      const comparison3D = current && current.dimension === '3D' ? current : saved3D;
+      renderGravityStrategyLists(results, comparison2D, comparison3D);
+    }
+
+    function renderOverviewCard(prefix, comparison, isRunning, current) {
+      const title = document.getElementById(prefix + '-overview-title');
+      const detail = document.getElementById(prefix + '-overview-detail');
+      const strategyList = document.getElementById(prefix + '-overview-results');
+      renderStrategyList(strategyList, current || comparison, prefix === 'optimization');
+      if (isRunning) {
+        title.textContent = 'Running · ' + ((lastState && lastState.completed) || 0) + ' strategies complete';
+        title.className = 'overview-status';
+        detail.textContent = 'Live run: ' + ((lastState && lastState.dimension) || 'Unity') + '. Completed results will be saved here.';
+        return;
+      }
+      title.className = '';
+      if (!comparison || !comparison.results || !comparison.results.length) {
+        title.textContent = 'No completed run yet';
+        detail.textContent = prefix === 'gravity'
+          ? 'Open the 2D or 3D Gravity_Benchmark scene and press Play.'
+          : (prefix === 'batch' ? 'Open Batch_Benchmark in Unity and press Play.' : 'Open Batch_OptimizationBenchmark in Unity and press Play.');
+        return;
+      }
+      const results = comparison.results;
+      const fastest = results.reduce((best, result) => result.averageProfileMs < best.averageProfileMs ? result : best);
+      const isOptimization = prefix === 'optimization';
+      const quality = isOptimization ? results.reduce((best, result) => result.averageBestScore < best.averageBestScore ? result : best) : null;
+      title.textContent = isOptimization
+        ? quality.strategy + ' · mean score ' + formatScore(quality.averageBestScore)
+        : fastest.strategy + ' · ' + formatMs(fastest.averageProfileMs);
+      detail.textContent = (comparison.dimension ? comparison.dimension + ' · ' : '') + results.length + ' strategies · ' +
+        (isOptimization ? 'fastest: ' + fastest.strategy + ' (' + formatMs(fastest.averageProfileMs) + ')' : 'latest completed comparison');
+    }
+
+    function renderStrategyList(container, comparison, isOptimization) {
+      if (!comparison || !comparison.results || !comparison.results.length) {
+        container.textContent = 'No results saved.';
+        return;
+      }
+      container.innerHTML = comparison.results.map(result => {
+        const metric = isOptimization
+          ? 'score ' + formatScore(result.averageBestScore) + ' · ' + formatMs(result.averageProfileMs)
+          : formatMs(result.averageProfileMs) + ' · frame P95 ' + formatMs(result.p95FrameMs);
+        return '<div class="overview-strategy"><span>' + escapeText(result.strategy) + '</span><span>' + metric + '</span></div>';
+      }).join('');
+    }
+
+    function renderGravityStrategyLists(container, comparison2D, comparison3D) {
+      const comparisons = [['2D', comparison2D], ['3D', comparison3D]];
+      const savedLists = comparisons.filter(item => item[1] && item[1].results && item[1].results.length);
+      if (!savedLists.length) {
+        container.textContent = 'No results saved.';
+        return;
+      }
+      container.innerHTML = savedLists.map(item => '<div><strong>' + item[0] + '</strong>' +
+        item[1].results.map(result => '<div class="overview-strategy"><span>' + escapeText(result.strategy) +
+          '</span><span>' + formatMs(result.averageProfileMs) + ' · frame P95 ' + formatMs(result.p95FrameMs) + '</span></div>').join('') +
+        '</div>').join('');
+    }
 
     function formatMs(value) {
       return Number.isFinite(value) && value > 0 ? value.toFixed(value < 1 ? 3 : 2) + ' ms' : '0.00 ms';
@@ -180,6 +339,7 @@
           button.setAttribute('aria-pressed', String(button.dataset.metric === selectedMetric)));
       }
       lastState = state;
+      renderOverview(state);
       const isBatch = state.workload === 'batch';
       const isOptimization = state.workload === 'optimization';
       const isWorkComparison = isBatch || isOptimization;
@@ -363,6 +523,7 @@
       } catch (error) {
         connection.className = 'connection offline';
         connection.innerHTML = '<i class="light"></i><span>Unity offline · waiting for local profiler</span>';
+        renderOverview(null);
       }
     }
 

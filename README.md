@@ -95,11 +95,12 @@ The 12 individual gravity scenes, two gravity comparison launchers, their 12 equ
 
 ### Live 2D and 3D comparison dashboard
 
-The comparison launcher scenes run each implemented strategy one at a time and stream its profiler readings to a browser page on the same PC. Unity still renders and simulates the balls; the browser is a live monitor for progress, charts, and the results table.
+The comparison launcher scenes run each implemented strategy one at a time and stream its profiler readings to a browser page on the same PC. Unity still renders and simulates the balls; the browser is a live monitor for progress, charts, and the results table. The dashboard overview includes all three project examples: gravity simulation, simple batch processing, and heuristic optimization.
 
 1. In Unity, open [`Scenes/2D/Gravity_Benchmark.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_Benchmark.unity) or [`Scenes/3D/Gravity_Benchmark.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_Benchmark.unity), then press **Play**.
 2. The runner starts a loopback-only web server and opens the dashboard in your default browser. If the browser does not open automatically, visit [http://127.0.0.1:8765](http://127.0.0.1:8765).
 3. The runner loads each example scene in order. The dashboard updates while each scene is warming up and being measured. Stop Play mode when the comparison finishes.
+4. To present every example, run its comparison launcher: `Gravity_Benchmark` for 2D or 3D gravity, `Batch_Benchmark` for simple batch processing, and `Batch_OptimizationBenchmark` for heuristic optimization. The dashboard keeps each completed comparison's latest results in the current browser's local storage, so you can stop Play mode, open another launcher, and build a combined overview as you go. Gravity results are remembered separately for 2D and 3D. This browser-side history stays on this PC and is cleared if you clear the site's local storage.
 
 Unity serves the page and its live JSON endpoint from `127.0.0.1:8765`; the server binds only to the local PC. No result or simulation data is sent to a public service. The page source is under [`Presentation/index.html`](Presentation/index.html).
 
