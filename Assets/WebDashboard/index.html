@@ -87,8 +87,8 @@
     .legend i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--green); }
     .legend .cyan { background: var(--cyan); }
     .legend .amber { background: var(--amber); }
-    .metric-switch { display: flex; padding: 3px; gap: 3px; border: 1px solid var(--line); border-radius: 9px; background: #f2f5f8; }
-    .metric-switch button { padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 10px; cursor: pointer; }
+    .metric-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 0 0 152px; width: 152px; box-sizing: border-box; padding: 3px; gap: 3px; border: 1px solid var(--line); border-radius: 9px; background: #f2f5f8; }
+    .metric-switch button { width: 100%; min-height: 34px; padding: 6px 3px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 10px; white-space: nowrap; cursor: pointer; }
     .metric-switch button[aria-pressed="true"] { background: #e3f0dd; color: var(--green); }
     .bars { display: grid; gap: 14px; margin-top: 23px; }
     .bar-row { display: grid; grid-template-columns: minmax(82px, 115px) 1fr 63px; gap: 10px; align-items: center; font-size: 10px; }
