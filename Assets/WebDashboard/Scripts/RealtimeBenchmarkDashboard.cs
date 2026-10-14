@@ -223,6 +223,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _allExamplesFinished = true;
         if (_headlessMode)
             FinishHeadlessRun(0);
+        else
+            yield return StopEditorPlayModeAfterCompletion();
     }
     #endregion
 
@@ -249,6 +251,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             int iterations = 0;
             int evaluationCount = 0;
             int trialCount = 0;
+            int particleCount = 0;
             float bestScore = float.MaxValue;
             float bestX = 0f;
             float bestY = 0f;
@@ -332,7 +335,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                         if (_isOptimizationComparison)
                         {
                             hasFinished = TryReadOptimizationValues(example, out computeMs, out wallMs,
-                                out evaluationCount, out trialCount, out runBestScore, out runAverageBestScore,
+                                out evaluationCount, out trialCount, out particleCount, out iterations,
+                                out runBestScore, out runAverageBestScore,
                                 out runBestX, out runBestY, out checksum);
                         }
                         else
@@ -399,6 +403,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 workItems = itemCount,
                 iterations = iterations,
                 evaluationCount = evaluationCount,
+                particleCount = particleCount,
                 bestScore = _isOptimizationComparison ? bestScore : 0f,
                 averageBestScore = _isOptimizationComparison ? Average(optimizationScoreSamples) : 0f,
                 bestX = bestX,
@@ -425,6 +430,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         if (_headlessMode)
             Debug.Log("Headless comparison finished with " + _results.Count + " results.");
         FinishHeadlessRun(0);
+        if (!_isAllExamplesComparison)
+            yield return StopEditorPlayModeAfterCompletion();
     }
 
     private bool TryReadBatchValues(MonoBehaviour example, out float computeMs, out float wallMs,
@@ -445,7 +452,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     }
 
     private bool TryReadOptimizationValues(MonoBehaviour example, out float computeMs, out float wallMs,
-        out int evaluationCount, out int trialCount, out float bestScore, out float averageBestScore,
+        out int evaluationCount, out int trialCount, out int particleCount, out int iterations,
+        out float bestScore, out float averageBestScore,
         out float bestX, out float bestY, out string checksum)
     {
         BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -454,6 +462,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         FieldInfo wallField = exampleType.GetField("_wallMilliseconds", flags);
         FieldInfo countField = exampleType.GetField("_evaluationCount", flags);
         FieldInfo trialField = exampleType.GetField("_trialCount", flags);
+        FieldInfo particleField = exampleType.GetField("_particleCount", flags);
+        FieldInfo iterationField = exampleType.GetField("_iterations", flags);
         FieldInfo scoreField = exampleType.GetField("_bestScore", flags);
         FieldInfo averageField = exampleType.GetField("_averageBestScore", flags);
         FieldInfo xField = exampleType.GetField("_bestX", flags);
@@ -463,12 +473,15 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         wallMs = wallField == null ? 0f : (float)wallField.GetValue(example);
         evaluationCount = countField == null ? 0 : (int)countField.GetValue(example);
         trialCount = trialField == null ? 0 : (int)trialField.GetValue(example);
+        particleCount = particleField == null ? 0 : (int)particleField.GetValue(example);
+        iterations = iterationField == null ? 0 : (int)iterationField.GetValue(example);
         bestScore = scoreField == null ? 0f : (float)scoreField.GetValue(example);
         averageBestScore = averageField == null ? 0f : (float)averageField.GetValue(example);
         bestX = xField == null ? 0f : (float)xField.GetValue(example);
         bestY = yField == null ? 0f : (float)yField.GetValue(example);
         checksum = checksumField == null ? "—" : (string)checksumField.GetValue(example);
-        return computeField != null && wallField != null && countField != null && trialField != null && scoreField != null &&
+        return computeField != null && wallField != null && countField != null && trialField != null &&
+            particleField != null && iterationField != null && scoreField != null &&
             averageField != null && xField != null && yField != null && checksumField != null && checksum != "—";
     }
 
@@ -667,6 +680,20 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _state.results = _results.ToArray();
         PublishState();
         FinishHeadlessRun(0);
+        if (!_isAllExamplesComparison)
+            yield return StopEditorPlayModeAfterCompletion();
+    }
+
+    // Leave time for the browser to store the final complete snapshot before Edit mode resumes.
+    private IEnumerator StopEditorPlayModeAfterCompletion()
+    {
+        if (!Application.isEditor || _headlessMode)
+            yield break;
+
+        yield return new WaitForSecondsRealtime(2f);
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
     }
 
     // A standalone player in batch mode writes a report instead of publishing dashboard updates.
@@ -922,6 +949,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public int workItems;
         public int iterations;
         public int evaluationCount;
+        public int particleCount;
         public float bestScore;
         public float averageBestScore;
         public float bestX;

@@ -3,32 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light">
   <title>Simulation Lab — live comparison</title>
   <style>
     :root {
-      color-scheme: dark;
-      --page: #0a0e13;
-      --panel: #111820;
-      --panel-soft: #151e27;
-      --line: #25313d;
-      --text: #f1f5f8;
-      --muted: #8c9aa8;
-      --green: #bcf36a;
-      --cyan: #72d6e8;
-      --amber: #f3bf68;
-      --red: #ff8079;
+      color-scheme: light;
+      --page: #f3f6fa;
+      --panel: #ffffff;
+      --panel-soft: #f7f9fc;
+      --line: #d9e1ea;
+      --text: #17212b;
+      --muted: #5f6f80;
+      --green: #397b21;
+      --cyan: #087c9b;
+      --amber: #a96a00;
+      --red: #b42318;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--page);
       color: var(--text);
     }
     * { box-sizing: border-box; }
-    body { margin: 0; min-width: 320px; background: radial-gradient(ellipse at 10% -10%, #172622 0, transparent 36%), var(--page); }
+    body { margin: 0; min-width: 320px; background: radial-gradient(ellipse at 10% -10%, #e7f2e2 0, transparent 36%), var(--page); }
     button { color: inherit; font: inherit; }
     .shell { max-width: 1440px; margin: auto; padding: 28px clamp(16px, 4vw, 58px) 56px; }
     header { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); padding-bottom: 22px; }
     .brand { display: flex; align-items: center; gap: 13px; }
-    .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #516c41; border-radius: 13px; color: var(--green); background: #17231b; font-size: 20px; }
+    .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #99bf8d; border-radius: 13px; color: var(--green); background: #eaf4e6; font-size: 20px; }
     .eyebrow { margin: 0 0 5px; color: var(--green); font-size: 10px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
     h1, h2, p { margin-top: 0; }
     h1 { margin-bottom: 0; font-size: clamp(20px, 3vw, 26px); letter-spacing: -.04em; }
@@ -37,20 +37,21 @@
     .connected .light { background: var(--green); }
     .offline .light { background: var(--red); }
     .hero { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(270px, .8fr); gap: 18px; margin: 26px 0 18px; }
-    .panel { border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(150deg, #141c24, #10161d 72%); box-shadow: 0 18px 50px #0002; }
+    .panel { border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(150deg, #ffffff, #f8fafc 72%); box-shadow: 0 12px 30px #2030400d; }
     .run-card { min-height: 210px; padding: clamp(20px, 3vw, 34px); position: relative; overflow: hidden; }
     .run-card::after { content: ""; position: absolute; width: 260px; height: 260px; border: 1px solid #bcf36a15; border-radius: 50%; right: -88px; top: -130px; box-shadow: 0 0 0 34px #bcf36a08, 0 0 0 68px #bcf36a05; pointer-events: none; }
     .run-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
     .run-top h2 { font-size: clamp(26px, 4vw, 42px); margin: 4px 0 8px; letter-spacing: -.055em; }
     .meta { color: var(--muted); font-size: 13px; }
-    .pill { white-space: nowrap; border: 1px solid var(--line); border-radius: 99px; padding: 7px 10px; color: var(--cyan); background: #112027; font-size: 11px; }
+    .pill { white-space: nowrap; border: 1px solid var(--line); border-radius: 99px; padding: 7px 10px; color: var(--cyan); background: #eef7f9; font-size: 11px; }
     .progress-line { display: flex; justify-content: space-between; gap: 10px; margin: 25px 0 9px; color: #c1ccd5; font-size: 11px; }
     progress { width: 100%; height: 7px; overflow: hidden; border: 0; border-radius: 20px; background: #27313a; }
-    progress::-webkit-progress-bar { background: #27313a; border-radius: 20px; }
-    progress::-webkit-progress-value { background: linear-gradient(90deg, #78c96c, var(--green)); border-radius: 20px; transition: width .25s ease; }
+    progress { background: #e4eaf0; }
+    progress::-webkit-progress-bar { background: #e4eaf0; border-radius: 20px; }
+    progress::-webkit-progress-value { background: linear-gradient(90deg, #8ac879, var(--green)); border-radius: 20px; transition: width .25s ease; }
     progress::-moz-progress-bar { background: var(--green); border-radius: 20px; }
     .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 17px; }
-    .metric { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #0d1319; }
+    .metric { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #f7f9fc; }
     .metric span { display: block; color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
     .metric strong { display: block; margin-top: 8px; font-size: clamp(20px, 3vw, 27px); font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
     .metric em { color: var(--muted); font-style: normal; font-size: 11px; }
@@ -60,19 +61,24 @@
     .overview-card p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
     .overview-card strong { display: block; margin: 14px 0 4px; color: var(--green); font-size: 13px; }
     .overview-card .overview-status { color: var(--cyan); }
+    .overview-card .overview-settings { margin-top: 8px; color: #33465a; font-weight: 650; }
     .overview-card details { margin-top: 12px; color: var(--muted); font-size: 10px; }
-    .overview-card summary { cursor: pointer; color: #c5d0d8; }
+    .overview-card summary { cursor: pointer; color: #33465a; }
     .overview-strategies { display: grid; gap: 6px; margin-top: 9px; }
     .overview-strategy { display: flex; justify-content: space-between; gap: 8px; }
     .comparison-tabs, .dimension-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 2px 12px; }
-    .comparison-tabs button, .dimension-tabs button { padding: 9px 13px; border: 1px solid var(--line); border-radius: 9px; background: #10171e; color: var(--muted); cursor: pointer; font-size: 11px; }
-    .comparison-tabs button[aria-selected="true"], .dimension-tabs button[aria-selected="true"] { border-color: #718e4d; background: #202b1c; color: var(--green); }
+    .comparison-tabs button, .dimension-tabs button { padding: 9px 13px; border: 1px solid var(--line); border-radius: 9px; background: #ffffff; color: var(--muted); cursor: pointer; font-size: 11px; }
+    .comparison-tabs button[aria-selected="true"], .dimension-tabs button[aria-selected="true"] { border-color: #84a976; background: #edf6e9; color: var(--green); }
     .dimension-tabs[hidden] { display: none; }
     .section-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin: 30px 2px 13px; }
     .section-head h2 { font-size: 17px; letter-spacing: -.025em; margin: 0; }
     .section-head p { color: var(--muted); font-size: 11px; margin: 5px 0 0; }
     .chart-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
     .chart-panel { padding: 19px; min-height: 280px; }
+    .insights-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+    .insight { padding: 14px; border: 1px solid var(--line); border-radius: 11px; background: #f7f9fc; }
+    .insight span { display: block; color: var(--muted); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
+    .insight strong { display: block; margin-top: 7px; font-size: 17px; font-variant-numeric: tabular-nums; }
     .chart-title { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
     .chart-title h3 { font-size: 13px; margin: 0; }
     .chart-title p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
@@ -81,14 +87,14 @@
     .legend i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--green); }
     .legend .cyan { background: var(--cyan); }
     .legend .amber { background: var(--amber); }
-    .metric-switch { display: flex; padding: 3px; gap: 3px; border: 1px solid var(--line); border-radius: 9px; background: #0b1117; }
+    .metric-switch { display: flex; padding: 3px; gap: 3px; border: 1px solid var(--line); border-radius: 9px; background: #f2f5f8; }
     .metric-switch button { padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 10px; cursor: pointer; }
-    .metric-switch button[aria-pressed="true"] { background: #283421; color: var(--green); }
+    .metric-switch button[aria-pressed="true"] { background: #e3f0dd; color: var(--green); }
     .bars { display: grid; gap: 14px; margin-top: 23px; }
     .bar-row { display: grid; grid-template-columns: minmax(82px, 115px) 1fr 63px; gap: 10px; align-items: center; font-size: 10px; }
-    .bar-label { color: #c5d0d8; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .bar-track { background: #222d36; height: 11px; overflow: hidden; border-radius: 4px; }
-    .bar-fill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #66a957, var(--green)); transition: width .4s ease; }
+    .bar-label { color: #33465a; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .bar-track { background: #e4eaf0; height: 11px; overflow: hidden; border-radius: 4px; }
+    .bar-fill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #8ac879, #397b21); transition: width .4s ease; }
     .bar-value { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
     .empty { display: grid; place-items: center; min-height: 150px; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.7; }
     .table-wrap { overflow-x: auto; }
@@ -99,13 +105,15 @@
     td:first-child { color: var(--text); font-weight: 650; }
     .note { margin-top: 15px; color: var(--muted); font-size: 10px; line-height: 1.7; }
     .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 26px; }
-    .step { display: flex; gap: 12px; padding: 15px; border: 1px solid var(--line); border-radius: 12px; background: #0e141a; }
-    .step b { display: grid; place-items: center; flex: 0 0 23px; height: 23px; border-radius: 7px; background: #293521; color: var(--green); font-size: 10px; }
+    .step { display: flex; gap: 12px; padding: 15px; border: 1px solid var(--line); border-radius: 12px; background: #ffffff; }
+    .step b { display: grid; place-items: center; flex: 0 0 23px; height: 23px; border-radius: 7px; background: #e3f0dd; color: var(--green); font-size: 10px; }
     .step strong { display: block; margin: 1px 0 4px; font-size: 11px; }
     .step span { color: var(--muted); font-size: 10px; line-height: 1.55; }
+    .project-link { color: var(--cyan); text-decoration: none; }
+    .project-link:hover { text-decoration: underline; }
     footer { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); margin-top: 28px; padding-top: 17px; color: var(--muted); font-size: 10px; }
     @media (max-width: 860px) { .hero, .chart-grid { grid-template-columns: 1fr; } .overview-grid, .how { grid-template-columns: 1fr; } }
-    @media (max-width: 520px) { header { align-items: flex-start; flex-direction: column; } .run-top { flex-direction: column; } .section-head { align-items: flex-start; flex-direction: column; } .bar-row { grid-template-columns: 90px 1fr 54px; } footer { flex-direction: column; } }
+    @media (max-width: 520px) { header { align-items: flex-start; flex-direction: column; } .run-top { flex-direction: column; } .section-head { align-items: flex-start; flex-direction: column; } .bar-row { grid-template-columns: 90px 1fr 54px; } .insights-grid { grid-template-columns: 1fr; } footer { flex-direction: column; } }
   </style>
 </head>
 <body>
@@ -137,10 +145,10 @@
 
     <div class="section-head"><div><h2>All comparison examples</h2><p>Run All Examples Benchmark to fill every tab; this page keeps the latest completed results in this browser.</p></div><span class="pill">5 EXAMPLES</span></div>
     <section class="overview-grid" aria-label="Overview of every comparison example">
-      <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare the six gravity strategies in dedicated 2D and 3D Unity scenes.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene and press Play.</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through six processing approaches.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>PSO simulation</h3><p>Compare PSO processing methods using the same optimization workload.</p><strong id="pso-overview-title">No completed run yet</strong><p id="pso-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><details><summary>Show method runtimes</summary><div id="pso-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>Random Search</h3><p>Compare Random Search processing methods using the same optimization workload.</p><strong id="random-overview-title">No completed run yet</strong><p id="random-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><details><summary>Show method runtimes</summary><div id="random-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare the six gravity strategies in dedicated 2D and 3D Unity scenes.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene and press Play.</p><p class="overview-settings" id="gravity-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through six processing approaches.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><p class="overview-settings" id="batch-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>PSO simulation</h3><p>Compare PSO processing methods using the same optimization workload.</p><strong id="pso-overview-title">No completed run yet</strong><p id="pso-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="pso-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="pso-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Random Search</h3><p>Compare Random Search processing methods using the same optimization workload.</p><strong id="random-overview-title">No completed run yet</strong><p id="random-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="random-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="random-overview-results" class="overview-strategies">No results saved.</div></details></article>
     </section>
 
     <div class="section-head"><div><h2 id="live-title">Live profile</h2><p id="live-description">Profiler samples update while the current Unity scene is running.</p></div><span class="pill" id="balls-pill">Balls: waiting</span></div>
@@ -158,8 +166,15 @@
     <section class="chart-grid">
       <article class="panel chart-panel">
         <div class="chart-title"><div><h3 id="timeline-title">Frame and CPU timeline</h3><p id="timeline-subtitle">Recent samples · milliseconds</p></div><span class="pill" id="marker-pill">No marker yet</span></div>
-        <canvas id="timeline" aria-label="Live frame, main thread, and gravity marker timings"></canvas>
+        <div id="timeline-view"><canvas id="timeline" aria-label="Live frame, main thread, and gravity marker timings"></canvas>
         <div class="legend"><span><i></i><span id="legend-profile">Gravity marker</span></span><span><i class="cyan"></i><span id="legend-main">Main thread</span></span><span><i class="amber"></i><span id="legend-frame">Frame time</span></span></div>
+        </div>
+        <div id="completed-insights" hidden><div class="insights-grid">
+          <div class="insight"><span>Fastest method</span><strong id="insight-fastest">—</strong></div>
+          <div class="insight"><span>Speedup vs single threaded</span><strong id="insight-speedup">—</strong></div>
+          <div class="insight"><span>Median method time</span><strong id="insight-median">—</strong></div>
+          <div class="insight"><span>Slowest method</span><strong id="insight-slowest">—</strong></div>
+        </div><p class="note">These insights compare processing time within the selected workload. They do not compare optimization algorithms with each other.</p></div>
       </article>
       <article class="panel chart-panel">
         <div class="chart-title"><div><h3>Compare completed runs</h3><p id="comparison-caption">Complete a pass to fill the chart.</p></div>
@@ -182,7 +197,7 @@
       <div class="step"><b>2</b><div><strong>Run the full comparison</strong><span>Open All_Examples_Benchmark in Unity and press Play. It fills the dashboard overview and saves each result set in this browser.</span></div></div>
       <div class="step"><b>3</b><div><strong>Select a comparison tab</strong><span>After each run, its results are saved in this browser. Select Gravity, Simple Iteration, PSO Simulation, or Random Search. Gravity also has separate 2D and 3D views.</span></div></div>
     </section>
-    <footer><span>Simulation Lab · localhost only · no cloud connection</span><span id="updated">Waiting for first sample</span></footer>
+    <footer><span>Simulation Lab · localhost only · no cloud connection · <a class="project-link" href="https://github.com/HoomanJCode/Gravity-Simulation" target="_blank" rel="noopener noreferrer">Project on GitHub</a></span><span id="updated">Waiting for first sample</span></footer>
   </main>
   <script>
     // Unity serves its latest snapshot on loopback; this page never sends data off the PC.
@@ -196,6 +211,7 @@
     let lastState = null;
     let selectedComparisonWorkload = 'gravity';
     let selectedGravityDimension = '2D';
+    let lastGravityDimension = null;
     let lastComparisonKey = null;
     let comparisonSelectionWasManual = false;
     const overviewStorageKey = 'simulation-lab-latest-comparisons-v2';
@@ -226,6 +242,8 @@
         workload: state.workload,
         dimension: state.dimension || '',
         results: state.results,
+        measurementSeconds: state.measurementSeconds || 0,
+        batchRunsPerStrategy: state.batchRunsPerStrategy || 0,
         completedUtc: state.updatedUtc || new Date().toISOString()
       };
       try {
@@ -327,6 +345,34 @@
         updateComparisonHeadings({ workload: isOptimization ? 'optimization' : selectedComparisonWorkload, dimension: selectedGravityDimension });
         drawResults([], { workload: isOptimization ? 'optimization' : selectedComparisonWorkload, dimension: selectedGravityDimension });
       }
+      renderSelectedInsights(state, selectedResults);
+    }
+
+    function renderSelectedInsights(state, results) {
+      const isComplete = state && state.status === 'complete' && results.length > 0;
+      document.getElementById('timeline-view').hidden = isComplete;
+      document.getElementById('completed-insights').hidden = !isComplete;
+      document.getElementById('marker-pill').hidden = isComplete;
+      if (!isComplete) return;
+
+      const sorted = results.slice().sort((a, b) => a.averageProfileMs - b.averageProfileMs);
+      const fastest = sorted[0];
+      const slowest = sorted[sorted.length - 1];
+      const baseline = results.find(result => result.strategy === 'Single threaded');
+      const middle = Math.floor(sorted.length / 2);
+      const median = sorted.length % 2 === 0
+        ? (sorted[middle - 1].averageProfileMs + sorted[middle].averageProfileMs) / 2
+        : sorted[middle].averageProfileMs;
+      const speedup = baseline && fastest.averageProfileMs > 0
+        ? baseline.averageProfileMs / fastest.averageProfileMs
+        : 0;
+
+      document.getElementById('timeline-title').textContent = 'Completed workload insights';
+      document.getElementById('timeline-subtitle').textContent = 'Processing methods for the selected example';
+      document.getElementById('insight-fastest').textContent = fastest.strategy + ' · ' + formatMs(fastest.averageProfileMs);
+      document.getElementById('insight-speedup').textContent = speedup > 0 ? speedup.toFixed(2) + '×' : 'Baseline unavailable';
+      document.getElementById('insight-median').textContent = formatMs(median);
+      document.getElementById('insight-slowest').textContent = slowest.strategy + ' · ' + formatMs(slowest.averageProfileMs);
     }
 
     function updateComparisonHeadings(state) {
@@ -362,6 +408,12 @@
         title.className = '';
         title.textContent = 'No completed run yet';
       }
+      const comparison2D = current && current.dimension === '2D' ? current : saved2D;
+      const comparison3D = current && current.dimension === '3D' ? current : saved3D;
+      const balls2D = comparison2D && comparison2D.results && comparison2D.results[0] ? comparison2D.results[0].balls : (current && current.dimension === '2D' ? current.ballCount : 0);
+      const balls3D = comparison3D && comparison3D.results && comparison3D.results[0] ? comparison3D.results[0].balls : (current && current.dimension === '3D' ? current.ballCount : 0);
+      const gravityDuration = (current && current.measurementSeconds) || (comparison2D && comparison2D.measurementSeconds) || (comparison3D && comparison3D.measurementSeconds);
+      document.getElementById('gravity-overview-settings').textContent = 'Balls: 2D ' + (balls2D || '—') + ' · 3D ' + (balls3D || '—') + (gravityDuration ? ' · ' + gravityDuration + 's per method' : '');
       if (!saved2D && !saved3D && !isRunning) {
         detail.textContent = 'Open the 2D or 3D Gravity_Benchmark scene and press Play.';
         return;
@@ -373,8 +425,6 @@
       };
       detail.textContent = 'Latest fastest: ' + (latest && latest.dimension ? latest.dimension + ' ' : '') + describeWinner(latest) +
         ' · 2D: ' + describeWinner(saved2D) + ' · 3D: ' + describeWinner(saved3D);
-      const comparison2D = current && current.dimension === '2D' ? current : saved2D;
-      const comparison3D = current && current.dimension === '3D' ? current : saved3D;
       renderGravityStrategyLists(results, comparison2D, comparison3D);
     }
 
@@ -383,6 +433,13 @@
       const detail = document.getElementById(prefix + '-overview-detail');
       const strategyList = document.getElementById(prefix + '-overview-results');
       renderStrategyList(strategyList, current || comparison, false);
+      const settings = document.getElementById(prefix + '-overview-settings');
+      const settingsResult = current && current.results && current.results[0]
+        ? current.results[0]
+        : (comparison && comparison.results && comparison.results[0] ? comparison.results[0] : null);
+      settings.textContent = settingsResult
+        ? 'Settings: ' + Number(settingsResult.workItems || 0).toLocaleString() + ' items · ' + Number(settingsResult.iterations || 0).toLocaleString() + ' iterations · ' + Number(settingsResult.sampleCount || 0).toLocaleString() + ' runs'
+        : 'Settings: waiting for results';
       if (isRunning) {
         title.textContent = 'Running · ' + ((lastState && lastState.completed) || 0) + ' strategies complete';
         title.className = 'overview-status';
@@ -421,6 +478,11 @@
         ? comparison.results.filter(result => result.algorithm === algorithm)
         : [];
       renderStrategyList(strategyList, { results: results }, true);
+      const settings = document.getElementById(prefix + '-overview-settings');
+      const settingsResult = results.length ? results[0] : null;
+      settings.textContent = settingsResult
+        ? 'Settings: ' + Number(settingsResult.particleCount || 64).toLocaleString() + ' particles · ' + Number(settingsResult.iterations || 99).toLocaleString() + ' iterations · ' + Number(settingsResult.evaluationCount || 0).toLocaleString() + ' evaluations · ' + Number(settingsResult.sampleCount || 0).toLocaleString() + ' trials'
+        : 'Settings: waiting for results';
       if (isRunning) {
         title.textContent = 'Running · ' + results.length + ' methods complete';
         title.className = 'overview-status';
@@ -456,13 +518,16 @@
     }
 
     function updatePage(state) {
+      if (state.workload === 'gravity' && (state.dimension === '2D' || state.dimension === '3D')) {
+        if (lastGravityDimension !== state.dimension && !comparisonSelectionWasManual)
+          selectedGravityDimension = state.dimension;
+        lastGravityDimension = state.dimension;
+      }
       if (lastWorkload !== state.workload) {
         selectedMetric = 'averageProfileMs';
         lastWorkload = state.workload;
         if (!comparisonSelectionWasManual) {
           selectedComparisonWorkload = state.workload === 'optimization' ? 'pso' : state.workload;
-          if (state.workload === 'gravity' && (state.dimension === '2D' || state.dimension === '3D'))
-            selectedGravityDimension = state.dimension;
         }
         document.querySelectorAll('[data-metric]').forEach(button =>
           button.setAttribute('aria-pressed', String(button.dataset.metric === selectedMetric)));
@@ -545,17 +610,17 @@
       const plotHeight = height - margin.top - margin.bottom;
       const isWorkComparison = lastState && (lastState.workload === 'batch' || lastState.workload === 'optimization');
       const series = isWorkComparison ? [
-        { values: state.chartProfileMs || [], color: '#bcf36a' },
-        { values: state.chartFrameMs || [], color: '#f3bf68' }
+        { values: state.chartProfileMs || [], color: '#397b21' },
+        { values: state.chartFrameMs || [], color: '#a96a00' }
       ] : [
-        { values: state.chartProfileMs || [], color: '#bcf36a' },
-        { values: state.chartMainThreadMs || [], color: '#72d6e8' },
-        { values: state.chartFrameMs || [], color: '#f3bf68' }
+        { values: state.chartProfileMs || [], color: '#397b21' },
+        { values: state.chartMainThreadMs || [], color: '#087c9b' },
+        { values: state.chartFrameMs || [], color: '#a96a00' }
       ];
       const maxValue = Math.max(5, ...series.flatMap(line => line.values), 1);
       ctx.font = '10px system-ui';
-      ctx.fillStyle = '#81909d';
-      ctx.strokeStyle = '#26313b';
+      ctx.fillStyle = '#657587';
+      ctx.strokeStyle = '#d9e1ea';
       ctx.lineWidth = 1;
       for (let row = 0; row <= 3; row++) {
         const y = margin.top + plotHeight * row / 3;
@@ -572,7 +637,7 @@
         });
         ctx.strokeStyle = line.color; ctx.lineWidth = 2; ctx.stroke();
       });
-      ctx.fillStyle = '#81909d';
+      ctx.fillStyle = '#657587';
       ctx.fillText('older', margin.left, height - 3);
       ctx.fillText('now', width - 27, height - 3);
     }
@@ -597,21 +662,19 @@
         '<td>' + formatMs(result.averageFrameMs) + '</td>' +
         '<td>' + formatMs(result.p95FrameMs) + '</td><td>' + result.sampleCount + '</td></tr>').join('');
       const values = results.map(result => Number(result[selectedMetric]) || 0);
-      const minimum = Math.min(...values);
       const maximum = Math.max(...values);
-      const valueRange = maximum - minimum;
       bars.innerHTML = results.map(result => {
         const value = result[selectedMetric] || 0;
-        // Every charted measure is a cost or error, so a lower value gets a longer bar.
-        const width = valueRange === 0 ? 100 : 10 + (maximum - value) / valueRange * 90;
+        // Bar length now maps directly to measured time: shorter bars are faster.
+        const width = maximum > 0 ? value / maximum * 100 : 0;
         const valueText = formatMs(value);
         return '<div class="bar-row"><span class="bar-label" title="' + escapeText(result.strategy) + '">' + escapeText(result.strategy) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + width + '%"></div></div><span class="bar-value">' + valueText + '</span></div>';
       }).join('');
-      document.getElementById('comparison-caption').textContent = isOptimization
-        ? getSelectedAlgorithm() + ' · average processing runtime; longer bars mean faster.'
-        : (isBatch
-          ? (selectedMetric === 'averageProfileMs' ? 'Average calculation time across repeated runs; longer bars mean faster.' : '95th percentile wall time; longer bars mean faster.')
-          : (selectedMetric === 'averageProfileMs' ? 'Average calculation time per complete gravity loop; coroutine chunk times are summed across frames. Longer bars mean faster.' : '95th percentile frame time; longer bars mean faster.'));
+      document.getElementById('comparison-caption').textContent = selectedMetric === 'averageProfileMs'
+        ? (isOptimization ? getSelectedAlgorithm() + ' · average processing runtime; shorter bars are faster.' : (isBatch
+          ? 'Average calculation time across repeated runs; shorter bars are faster.'
+          : 'Average calculation time per gravity loop; coroutine chunk times are summed across frames. Shorter bars are faster.'))
+        : (isBatch || isOptimization ? '95th percentile wall time; shorter bars are faster.' : '95th percentile frame time; shorter bars are faster.');
 
       const verdict = document.getElementById('comparison-verdict');
       verdict.hidden = true;
