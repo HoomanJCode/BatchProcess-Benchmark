@@ -14,7 +14,7 @@ This Unity project contains parallel-processing examples. The batch scene compar
 3. In the `Batch Processing App` Inspector, choose the processing mode and workload size. The scene runs the selected mode on Play when **Run On Start** is enabled. You can also run it from the component's **Run Batch** context menu.
 4. Compare modes using the reported checksum and the matching `BatchProcessing.*` marker in **Window → Analysis → Profiler**. Each run starts with the same deterministic values. Burst can produce small floating-point checksum differences while running the same calculation.
 
-The batch scene has no runtime UI. Its mode, item count, iteration count, and run-on-start option are Inspector fields; the last checksum and timings are shown on the component. Async work is marked `BatchProcessing.CSharpAsync.Worker`; coroutine chunks use the selected mode marker across frames.
+The batch scene has no runtime UI. Its mode, item count, iteration count, and run-on-start option are Inspector fields; the last checksum and timings are shown on the component. Its arrays, native job buffer, worker task, parallel threads, and coroutine are created once at startup and reused for later runs. Async work is marked `BatchProcessing.CSharpAsync.Worker`; coroutine chunks use the selected mode marker across frames.
 
 The sample calculation repeats a small multiply/add operation for each number. It is intentionally simple so it is easy to explain: the calculation stays the same while the scheduling changes.
 
@@ -23,13 +23,13 @@ This scene does not create spheres or simulate gravity. It isolates batch schedu
 | Mode | Simple explanation | Complexity |
 | --- | --- | --- |
 | Single threaded | One loop processes every number on Unity's main thread. | O(N × I) work |
-| C# async | A `Task` processes the numbers on a worker thread; Unity reads the result after it finishes. | O(N × I) work |
-| C# parallel | `Parallel.For` splits numbers across .NET thread-pool workers. | O(N × I) total work |
+| C# async | A long-lived `Task` processes the numbers on one worker thread; Unity reads the result after it finishes. | O(N × I) work |
+| C# parallel | Persistent C# worker threads split the numbers into ranges. | O(N × I) total work |
 | Unity Jobs | `IJobParallelFor` processes native data in parallel without Burst compilation. | O(N × I) total work |
 | Unity coroutine | A loop processes a small chunk, yields, then continues on a later frame. | O(N × I) total work |
 | Unity Jobs with Burst | The same job is marked with `[BurstCompile]` and compiled by Burst when available. | O(N × I) total work |
 
-Here, `N` is the number of values and `I` is the number of iterations per value. Every mode performs the same calculation, so its total work stays O(N × I). Parallel modes can reduce elapsed time when enough work is available, but scheduling costs matter. The input array uses O(N) space; Unity Jobs also creates a temporary native copy that uses O(N) extra space.
+Here, `N` is the number of values and `I` is the number of iterations per value. Every mode performs the same calculation, so its total work stays O(N × I). Parallel modes can reduce elapsed time when enough work is available, but scheduling costs matter. The input array uses O(N) space; Unity Jobs uses one reusable native copy that adds O(N) space.
 
 Choose **Tools → Batch Processing → Create Example Scene** to regenerate the batch scene and its Build Settings entry.
 
@@ -59,6 +59,8 @@ The comparison launcher scenes run each implemented strategy one at a time and s
 Unity serves the page and its live JSON endpoint from `127.0.0.1:8765`; the server binds only to the local PC. No result or simulation data is sent to a public service. The page source is under [`Presentation/index.html`](Presentation/index.html).
 
 The comparison runner makes generated copies of the example scenes with **128 balls in every run**, so the editable teaching scenes are left unchanged. It uses a two-second warm-up and an eight-second measured pass per strategy by default. Change these fields on the `Gravity Benchmark Runner` object in a comparison scene to adjust the run. Use the same settings when repeating a comparison.
+
+The gravity examples allocate their arrays and worker resources once during scene setup. The measured physics steps reuse those buffers: they do not clone arrays or create a new task, parallel loop delegate, or coroutine iterator every step. The async and parallel examples keep workers alive for the scene, and the coroutine keeps one iterator alive. Scene setup, Unity physics, Editor code, and the live dashboard can still allocate; use a Development Build and Unity's GC Alloc profiler data when checking allocations from the target application.
 
 The live chart shows the current strategy marker, main-thread CPU time, and frame time. The completed-run chart compares average marker time per measured frame or P95 frame time. The profiler recorder sums marker samples within each frame. C# async uses its worker-thread calculation marker, while Unity coroutine marks each yielded chunk, so coroutine work is spread across multiple frames and its marker value is not the full calculation time. Use marker timings to compare measured work per frame and frame timing for overall responsiveness. The Editor and physics engine add shared overhead. For a formal performance claim, use a Development Build on the same machine and compare repeated runs.
 

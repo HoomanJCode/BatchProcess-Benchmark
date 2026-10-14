@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Unity.Burst;
 using Unity.Collections;
@@ -13,7 +14,7 @@ public enum BatchMode
 {
     SingleThreaded, // One main-thread loop handles every value.
     CSharpAsync, // One Task handles the array on a worker thread.
-    CSharpParallel, // Parallel.For shares values across worker threads.
+    CSharpParallel, // Persistent C# worker threads split values into ranges.
     UnityJobs, // Unity Jobs handles native data without Burst.
     UnityCoroutine, // A coroutine handles a chunk each frame.
     UnityJobsBurst // Unity Jobs with Burst compilation enabled.
@@ -111,13 +112,39 @@ public sealed class BatchProcessingApp : MonoBehaviour
     [SerializeField] private float _computeMilliseconds;
     [SerializeField] private float _wallMilliseconds;
 
-    private float[] _values; // The input data, overwritten with the processed results.
-    private Task<double> _worker; // The running async task; Update collects its result.
-    private Coroutine _coroutine; // The running chunked calculation, if coroutine mode is selected.
+    private float[] _values; // Reused input data, overwritten with the processed results.
+    private NativeArray<float> _nativeValues; // Reused native memory for both job modes.
+    private AutoResetEvent _asyncWorkAvailable;
+    private ManualResetEvent _asyncWorkComplete;
+    private Task _asyncWorkerTask;
+    private volatile bool _stopAsyncWorker;
+    private bool _asyncWorkPending;
+    private float _asyncComputeMilliseconds;
+    private AutoResetEvent[] _parallelWorkerSignals;
+    private Thread[] _parallelWorkers;
+    private CountdownEvent _parallelWorkersDone;
+    private volatile bool _stopParallelWorkers;
+    private bool _runInProgress;
+    private bool _coroutineRequested;
+    private int _stepIterations;
     private ProfilerMarker _marker; // Profiler label for the selected mode.
 
     private void Start()
     {
+        // Make reusable storage and workers before any measured batch begins.
+        _itemCount = Mathf.Max(1, _itemCount);
+        _iterations = Mathf.Max(1, _iterations);
+        _values = new float[_itemCount];
+        ResetInput(_values);
+        _nativeValues = new NativeArray<float>(_itemCount, Allocator.Persistent);
+
+        _asyncWorkAvailable = new AutoResetEvent(false);
+        _asyncWorkComplete = new ManualResetEvent(true);
+        _asyncWorkerTask = Task.Factory.StartNew(
+            AsyncWorkerLoop, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        StartParallelWorkers();
+        StartCoroutine(ProcessInChunks());
+
         // Start runs when the scene opens; the Inspector can start a demo automatically.
         _marker = new ProfilerMarker("BatchProcessing." + _mode);
         if (_runOnStart)
@@ -126,28 +153,28 @@ public sealed class BatchProcessingApp : MonoBehaviour
 
     private void Update()
     {
-        // A Task must never touch Unity objects; the main thread collects it here.
-        if (_worker != null && _worker.IsCompleted)
+        // A worker never touches Unity objects; the main thread collects its finished timing here.
+        if (_asyncWorkPending && _asyncWorkComplete.WaitOne(0))
         {
-            if (_worker.IsFaulted)
-            {
-                UnityEngine.Debug.LogException(_worker.Exception.GetBaseException(), this);
-            }
-            else
-            {
-                _computeMilliseconds = (float)_worker.Result;
-                FinishBatch();
-            }
-            _worker = null;
+            _asyncWorkPending = false;
+            _computeMilliseconds = _asyncComputeMilliseconds;
+            FinishBatch();
         }
     }
 
     [ContextMenu("Run Batch")]
     private void StartBatch()
     {
-        // Start every comparison with new deterministic data and reset the displayed results.
-        StopCurrentBatch();
-        _values = CreateInput(_itemCount);
+        // Do not replace arrays or start overlapping work; every mode reuses the same input buffer.
+        if (_runInProgress)
+            return;
+        if (_values == null || _itemCount != _values.Length)
+        {
+            UnityEngine.Debug.LogWarning("Choose the item count before entering Play mode so reusable buffers stay the right size.", this);
+            return;
+        }
+        ResetInput(_values);
+        _stepIterations = Mathf.Max(1, _iterations);
         _resultChecksum = "—";
         _wallMilliseconds = 0f;
         _computeMilliseconds = 0f;
@@ -159,106 +186,171 @@ public sealed class BatchProcessingApp : MonoBehaviour
         {
             case BatchMode.SingleThreaded:
                 // Process the entire array on Unity's main thread.
-                RunOnMainThread(() => BatchProcessingMath.ProcessRange(_values, _iterations, 0, _values.Length));
+                _runInProgress = true;
+                RunSingleThreaded();
+                FinishSynchronous(startedAt);
                 break;
             case BatchMode.CSharpAsync:
             {
-                // Copy the references and settings the worker needs before it starts.
-                float[] workerValues = _values;
-                int iterations = _iterations;
-                int itemCount = _itemCount;
-                _worker = Task.Run(() =>
-                {
-                    var timer = Stopwatch.StartNew();
-                    using (AsyncWorkerMarker.Auto())
-                    {
-                        for (int i = 0; i < itemCount; i++)
-                            workerValues[i] = BatchProcessingMath.ProcessValue(workerValues[i], iterations);
-                    }
-                    return timer.Elapsed.TotalMilliseconds;
-                });
+                // Wake the existing Task worker instead of allocating a new Task and closure.
+                _runInProgress = true;
+                _asyncWorkPending = true;
+                _asyncWorkComplete.Reset();
+                _asyncWorkAvailable.Set();
                 break;
             }
             case BatchMode.CSharpParallel:
-                // Parallel.For distributes different array indices among thread-pool workers.
-                RunOnMainThread(() => Parallel.For(0, _values.Length, i =>
-                    _values[i] = BatchProcessingMath.ProcessValue(_values[i], _iterations)));
+                // Wake the existing worker threads; each processes a fixed range of array indices.
+                _runInProgress = true;
+                RunParallelWorkers();
+                FinishSynchronous(startedAt);
                 break;
             case BatchMode.UnityJobs:
                 // Jobs use native memory, then copy the finished values back to the managed array.
+                _runInProgress = true;
                 RunJob(false);
                 FinishSynchronous(startedAt);
                 break;
             case BatchMode.UnityJobsBurst:
                 // This job runs the same work with Burst compilation enabled.
+                _runInProgress = true;
                 RunJob(true);
                 FinishSynchronous(startedAt);
                 break;
             case BatchMode.UnityCoroutine:
-                // The coroutine processes a fixed-size chunk and yields between chunks.
-                _startedAt = startedAt;
-                _coroutine = StartCoroutine(ProcessInChunks());
+                // The waiting coroutine processes chunks without creating another iterator.
+                _runInProgress = true;
+                _coroutineRequested = true;
                 break;
         }
-
-        if (_mode != BatchMode.CSharpAsync && _mode != BatchMode.UnityCoroutine &&
-            _mode != BatchMode.UnityJobs && _mode != BatchMode.UnityJobsBurst)
-            FinishSynchronous(startedAt);
     }
 
     private double _startedAt; // Stopwatch timestamp used to calculate total wall time.
 
-    private void RunOnMainThread(Action work)
+    private void RunSingleThreaded()
     {
         // The profiler marker and stopwatch measure only the selected calculation.
-        var timer = Stopwatch.StartNew();
+        long startedAt = Stopwatch.GetTimestamp();
         using (_marker.Auto())
-            work();
-        _computeMilliseconds = (float)timer.Elapsed.TotalMilliseconds;
+            BatchProcessingMath.ProcessRange(_values, _stepIterations, 0, _values.Length);
+        _computeMilliseconds = (float)ElapsedMilliseconds(startedAt);
     }
 
     private void RunJob(bool useBurst)
     {
-        // NativeArray is the memory type Unity Jobs can safely share with worker threads.
-        var timer = Stopwatch.StartNew();
-        using (var nativeValues = new NativeArray<float>(_values, Allocator.TempJob))
+        // Reuse native memory so allocation time does not get mixed into either job measurement.
+        long startedAt = Stopwatch.GetTimestamp();
+        _nativeValues.CopyFrom(_values);
+        JobHandle handle;
+        if (useBurst)
         {
-            JobHandle handle;
-            if (useBurst)
-            {
-                var job = new SimpleBatchBurstJob { Values = nativeValues, Iterations = _iterations };
-                handle = job.Schedule(nativeValues.Length, 64);
-            }
-            else
-            {
-                var job = new SimpleBatchJob { Values = nativeValues, Iterations = _iterations };
-                handle = job.Schedule(nativeValues.Length, 64);
-            }
-
-            using (_marker.Auto())
-                handle.Complete();
-            nativeValues.CopyTo(_values);
+            var job = new SimpleBatchBurstJob { Values = _nativeValues, Iterations = _stepIterations };
+            handle = job.Schedule(_nativeValues.Length, 64);
         }
-        _computeMilliseconds = (float)timer.Elapsed.TotalMilliseconds;
+        else
+        {
+            var job = new SimpleBatchJob { Values = _nativeValues, Iterations = _stepIterations };
+            handle = job.Schedule(_nativeValues.Length, 64);
+        }
+
+        using (_marker.Auto())
+            handle.Complete();
+        _nativeValues.CopyTo(_values);
+        _computeMilliseconds = (float)ElapsedMilliseconds(startedAt);
     }
 
     private IEnumerator ProcessInChunks()
     {
-        // Add each chunk's CPU time, while wall time also includes the frames spent yielding.
-        double totalCpuMilliseconds = 0d;
-        for (int start = 0; start < _values.Length; start += CoroutineChunkSize)
+        while (true)
         {
-            int count = Mathf.Min(CoroutineChunkSize, _values.Length - start);
-            var timer = Stopwatch.StartNew();
-            using (_marker.Auto())
-                BatchProcessingMath.ProcessRange(_values, _iterations, start, count);
-            totalCpuMilliseconds += timer.Elapsed.TotalMilliseconds;
-            yield return null;
-        }
+            if (!_coroutineRequested)
+            {
+                yield return null;
+                continue;
+            }
 
-        _computeMilliseconds = (float)totalCpuMilliseconds;
-        _coroutine = null;
-        FinishBatch();
+            _coroutineRequested = false;
+            // Compute time sums chunk work; wall time also includes the frames spent yielding.
+            double totalCpuMilliseconds = 0d;
+            for (int start = 0; start < _values.Length; start += CoroutineChunkSize)
+            {
+                int count = Mathf.Min(CoroutineChunkSize, _values.Length - start);
+                long chunkStartedAt = Stopwatch.GetTimestamp();
+                using (_marker.Auto())
+                    BatchProcessingMath.ProcessRange(_values, _stepIterations, start, count);
+                totalCpuMilliseconds += ElapsedMilliseconds(chunkStartedAt);
+                yield return null;
+            }
+
+            _computeMilliseconds = (float)totalCpuMilliseconds;
+            FinishBatch();
+        }
+    }
+
+    private void AsyncWorkerLoop()
+    {
+        while (true)
+        {
+            _asyncWorkAvailable.WaitOne();
+            if (_stopAsyncWorker)
+                return;
+
+            long startedAt = Stopwatch.GetTimestamp();
+            using (AsyncWorkerMarker.Auto())
+            {
+                for (int i = 0; i < _values.Length; i++)
+                    _values[i] = BatchProcessingMath.ProcessValue(_values[i], _stepIterations);
+            }
+            _asyncComputeMilliseconds = (float)ElapsedMilliseconds(startedAt);
+            _asyncWorkComplete.Set();
+        }
+    }
+
+    private void StartParallelWorkers()
+    {
+        int workerCount = Mathf.Clamp(SystemInfo.processorCount - 1, 1, _itemCount);
+        _parallelWorkerSignals = new AutoResetEvent[workerCount];
+        _parallelWorkers = new Thread[workerCount];
+        _parallelWorkersDone = new CountdownEvent(workerCount);
+        for (int workerIndex = 0; workerIndex < workerCount; workerIndex++)
+        {
+            _parallelWorkerSignals[workerIndex] = new AutoResetEvent(false);
+            _parallelWorkers[workerIndex] = new Thread(ParallelWorkerLoop);
+            _parallelWorkers[workerIndex].IsBackground = true;
+            _parallelWorkers[workerIndex].Name = "Batch worker " + workerIndex;
+            _parallelWorkers[workerIndex].Start(workerIndex);
+        }
+    }
+
+    private void RunParallelWorkers()
+    {
+        long startedAt = Stopwatch.GetTimestamp();
+        using (_marker.Auto())
+        {
+            _parallelWorkersDone.Reset(_parallelWorkers.Length);
+            for (int workerIndex = 0; workerIndex < _parallelWorkers.Length; workerIndex++)
+                _parallelWorkerSignals[workerIndex].Set();
+            _parallelWorkersDone.Wait();
+        }
+        _computeMilliseconds = (float)ElapsedMilliseconds(startedAt);
+    }
+
+    // Every worker reuses its thread and assigned range for later batch runs.
+    private void ParallelWorkerLoop(object workerIndexValue)
+    {
+        int workerIndex = (int)workerIndexValue;
+        int firstItem = workerIndex * _itemCount / _parallelWorkers.Length;
+        int afterLastItem = (workerIndex + 1) * _itemCount / _parallelWorkers.Length;
+        while (true)
+        {
+            _parallelWorkerSignals[workerIndex].WaitOne();
+            if (_stopParallelWorkers)
+                return;
+
+            for (int i = firstItem; i < afterLastItem; i++)
+                _values[i] = BatchProcessingMath.ProcessValue(_values[i], _stepIterations);
+            _parallelWorkersDone.Signal();
+        }
     }
 
     private void FinishSynchronous(double startedAt)
@@ -273,7 +365,8 @@ public sealed class BatchProcessingApp : MonoBehaviour
         // The checksum helps verify that different strategies processed the same input.
         _wallMilliseconds = (float)ElapsedMilliseconds(_startedAt);
         _resultChecksum = SumValues(_values).ToString("0.000000");
-        UnityEngine.Debug.Log($"BatchProcessing completed: mode={_mode}, items={_itemCount}, iterations={_iterations}, checksum={_resultChecksum}, computeMs={_computeMilliseconds:0.000}, wallMs={_wallMilliseconds:0.000}.", this);
+        UnityEngine.Debug.Log($"BatchProcessing completed: mode={_mode}, items={_itemCount}, iterations={_stepIterations}, checksum={_resultChecksum}, computeMs={_computeMilliseconds:0.000}, wallMs={_wallMilliseconds:0.000}.", this);
+        _runInProgress = false;
     }
 
     private static double ElapsedMilliseconds(double startedAt)
@@ -282,13 +375,11 @@ public sealed class BatchProcessingApp : MonoBehaviour
         return (Stopwatch.GetTimestamp() - startedAt) * 1000d / Stopwatch.Frequency;
     }
 
-    private static float[] CreateInput(int count)
+    private void ResetInput(float[] values)
     {
-        // Deterministic input makes each mode start from identical data.
-        var values = new float[count];
-        for (int i = 0; i < count; i++)
+        // Deterministic input makes each mode start from identical data without a new array.
+        for (int i = 0; i < values.Length; i++)
             values[i] = ((i * 104729) % 1000003) / 1000003f;
-        return values;
     }
 
     private static double SumValues(float[] values)
@@ -300,19 +391,33 @@ public sealed class BatchProcessingApp : MonoBehaviour
         return sum;
     }
 
-    private void StopCurrentBatch()
-    {
-        // Stop an old coroutine before replacing the input for another run.
-        if (_coroutine != null)
-            StopCoroutine(_coroutine);
-        _coroutine = null;
-        _worker = null;
-    }
-
     private void OnDestroy()
     {
-        // Do not leave a chunked run active after this scene object is removed.
-        StopCurrentBatch();
+        // Stop and join persistent workers before releasing their reusable buffers.
+        _stopAsyncWorker = true;
+        if (_asyncWorkerTask != null)
+        {
+            _asyncWorkAvailable.Set();
+            _asyncWorkerTask.Wait();
+            _asyncWorkAvailable.Dispose();
+            _asyncWorkComplete.Dispose();
+        }
+
+        if (_parallelWorkers != null)
+        {
+            _stopParallelWorkers = true;
+            for (int i = 0; i < _parallelWorkers.Length; i++)
+                _parallelWorkerSignals[i].Set();
+            for (int i = 0; i < _parallelWorkers.Length; i++)
+            {
+                _parallelWorkers[i].Join();
+                _parallelWorkerSignals[i].Dispose();
+            }
+            _parallelWorkersDone.Dispose();
+        }
+
+        if (_nativeValues.IsCreated)
+            _nativeValues.Dispose();
     }
 
 }

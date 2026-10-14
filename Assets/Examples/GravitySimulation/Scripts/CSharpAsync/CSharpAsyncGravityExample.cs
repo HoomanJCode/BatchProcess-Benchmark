@@ -1,10 +1,12 @@
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Serialization;
 
 /// <summary>
-/// Beginner example: C# async: a Task calculates gravity from copied arrays on a worker thread; Unity objects stay on the main thread.
+/// Beginner example: C# async: one persistent C# worker task calculates gravity from reusable arrays; Unity objects stay on the main thread.
 /// The setup and gravity formula are kept in this file so this strategy can be read on its own.
 /// </summary>
 public sealed class CSharpAsyncGravityExample : MonoBehaviour
@@ -19,12 +21,21 @@ public sealed class CSharpAsyncGravityExample : MonoBehaviour
     private Rigidbody[] _bodies3D;
     private Rigidbody2D[] _bodies2D;
     private Vector3[] _positions; // Current positions copied from the physics bodies.
+    private Vector3[] _positionSnapshot; // Reusable input snapshot that the worker reads.
     private float[] _masses; // Mass of each body, used as the gravity source strength.
     private Vector3[] _accelerations; // Results from the most recent gravity calculation.
+    private Vector3[] _nextAccelerations; // Reusable output that the worker fills.
     private readonly ProfilerMarker _gravityMarker = new ProfilerMarker("GravitySimulation.CSharpAsync");
     private static readonly ProfilerMarker WorkerMarker =
         new ProfilerMarker("GravitySimulation.CSharpAsync.Worker");
-    private Task<Vector3[]> _pendingStep;
+    private AutoResetEvent _workAvailable;
+    private ManualResetEvent _workComplete;
+    private Task _workerTask;
+    private volatile bool _stopWorker;
+    private bool _hasPendingStep;
+    private float _stepGravity;
+    private float _stepSofteningSquared;
+    private bool _stepIs2D;
 
     // Awake runs once when the scene starts: create the arrays, ball visuals, and physics bodies.
     private void Awake()
@@ -34,8 +45,10 @@ public sealed class CSharpAsyncGravityExample : MonoBehaviour
         _bodies3D = new Rigidbody[_ballCount];
         _bodies2D = new Rigidbody2D[_ballCount];
         _positions = new Vector3[_ballCount];
+        _positionSnapshot = new Vector3[_ballCount];
         _masses = new float[_ballCount];
         _accelerations = new Vector3[_ballCount];
+        _nextAccelerations = new Vector3[_ballCount];
         // Resources lets every 2D ball reuse one circle sprite asset.
         Sprite ballSprite = Resources.Load<Sprite>("GravityBall");
         // A fixed seed makes every scene start with the same bodies.
@@ -115,6 +128,12 @@ public sealed class CSharpAsyncGravityExample : MonoBehaviour
                 _bodies3D[i] = body;
             }
         }
+
+        // Create one long-lived worker. The arrays and synchronization objects are reused every step.
+        _workAvailable = new AutoResetEvent(false);
+        _workComplete = new ManualResetEvent(true);
+        _workerTask = Task.Factory.StartNew(
+            CalculateOnWorker, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
     }
     // Unity calls FixedUpdate once per physics step.
     private void FixedUpdate()
@@ -133,12 +152,13 @@ public sealed class CSharpAsyncGravityExample : MonoBehaviour
             }
         }
 
-        // The worker only reads copied arrays. It never touches Unity objects.
-        if (_pendingStep != null && _pendingStep.IsCompleted)
+        // A completed worker result is published by swapping buffers; no result array is created.
+        if (_hasPendingStep && _workComplete.WaitOne(0))
         {
-            // Use the worker's newest finished result; until then, keep the last result.
-            _accelerations = _pendingStep.GetAwaiter().GetResult();
-            _pendingStep = null;
+            Vector3[] previousResults = _accelerations;
+            _accelerations = _nextAccelerations;
+            _nextAccelerations = previousResults;
+            _hasPendingStep = false;
         }
 
         // Unity physics objects are only touched on the main thread.
@@ -155,54 +175,71 @@ public sealed class CSharpAsyncGravityExample : MonoBehaviour
             }
         }
 
-        if (_pendingStep == null)
+        if (!_hasPendingStep)
         {
-            // Clone inputs so FixedUpdate can update its arrays while the worker reads this snapshot.
-            Vector3[] positionSnapshot = (Vector3[])_positions.Clone();
-            float[] massSnapshot = (float[])_masses.Clone();
-            int ballCount = _ballCount;
-            float gravity = _gravity * _gravityScale;
-            float softeningSquared = _softening * _softening;
-            bool is2D = _is2D;
-            // Task.Run schedules ordinary C# work on a .NET thread-pool worker.
-            _pendingStep = Task.Run(() =>
-            {
-                using (WorkerMarker.Auto())
-                {
-                    Vector3[] results = new Vector3[ballCount];
-                    for (int i = 0; i < ballCount; i++)
-                    {
-                        // GRAVITY FORMULA (one source body j acting on target body i):
-                        // force_ij = G * mass_i * mass_j * offset / |offset|^3
-                        // deltaAcceleration_i = G * mass_j * offset / (dot(offset, offset) + epsilon^2)^(3/2)
-                        // offset = position_j - position_i; G = gravity * gravityScale; epsilon = softening.
-                        // The target mass cancels when force is divided by mass_i. In 2D, offset.z is zero.
-                        // Complexity per physics step: O(N^2) gravity work and O(N) storage, where N is ball count.
-                        Vector3 acceleration = Vector3.zero;
-                        for (int other = 0; other < ballCount; other++)
-                        {
-                            if (other == i)
-                                continue;
-                            Vector3 offset = positionSnapshot[other] - positionSnapshot[i];
-                            if (is2D)
-                                offset.z = 0f;
-                            float inverseDistance = 1f /
-                                Mathf.Sqrt(offset.sqrMagnitude + softeningSquared);
-                            acceleration += offset * (gravity * massSnapshot[other] *
-                                inverseDistance * inverseDistance * inverseDistance);
-                        }
-                        results[i] = acceleration;
-                    }
-                    return results;
-                }
-            });
+            // Reuse this input buffer until the worker signals that its calculation is finished.
+            Array.Copy(_positions, _positionSnapshot, _ballCount);
+            _stepGravity = _gravity * _gravityScale;
+            _stepSofteningSquared = _softening * _softening;
+            _stepIs2D = _is2D;
+            _hasPendingStep = true;
+            _workComplete.Reset();
+            _workAvailable.Set();
         }
         return;
     }
+
+    // This task waits for requests instead of allocating a new Task for every physics step.
+    private void CalculateOnWorker()
+    {
+        while (true)
+        {
+            _workAvailable.WaitOne();
+            if (_stopWorker)
+                return;
+
+            using (WorkerMarker.Auto())
+            {
+                for (int i = 0; i < _ballCount; i++)
+                {
+                    // GRAVITY FORMULA (one source body j acting on target body i):
+                    // force_ij = G * mass_i * mass_j * offset / |offset|^3
+                    // deltaAcceleration_i = G * mass_j * offset / (dot(offset, offset) + epsilon^2)^(3/2)
+                    // offset = position_j - position_i; G = gravity * gravityScale; epsilon = softening.
+                    // The target mass cancels when force is divided by mass_i. In 2D, offset.z is zero.
+                    // Complexity per physics step: O(N^2) gravity work and O(N) storage, where N is ball count.
+                    Vector3 acceleration = Vector3.zero;
+                    for (int other = 0; other < _ballCount; other++)
+                    {
+                        if (other == i)
+                            continue;
+                        Vector3 offset = _positionSnapshot[other] - _positionSnapshot[i];
+                        if (_stepIs2D)
+                            offset.z = 0f;
+                        float inverseDistance = 1f /
+                            Mathf.Sqrt(offset.sqrMagnitude + _stepSofteningSquared);
+                        acceleration += offset * (_stepGravity * _masses[other] *
+                            inverseDistance * inverseDistance * inverseDistance);
+                    }
+                    _nextAccelerations[i] = acceleration;
+                }
+            }
+
+            _workComplete.Set();
+        }
+    }
+
     private void OnDestroy()
     {
-        // Finish the calculation before its copied input arrays go out of scope.
-        if (_pendingStep != null)
-            _pendingStep.GetAwaiter().GetResult();
+        // Wake and join the worker so it cannot outlive the scene or its reusable buffers.
+        if (_workerTask != null)
+        {
+            _stopWorker = true;
+            _workAvailable.Set();
+            _workerTask.Wait();
+            _workAvailable.Dispose();
+            _workComplete.Dispose();
+            _workerTask = null;
+        }
     }
 }
