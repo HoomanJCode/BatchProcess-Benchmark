@@ -48,8 +48,23 @@ EditorBuildSettings:
     path: Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityJobsBurst.unity
     guid: b2c8dc9000b8ddc4b926712bf3533fbd
   - enabled: 1
-    path: Assets/Examples/BatchProcessing/Scenes/BatchProcessing.unity
-    guid: 5526c4e2b60558547b091d4c9c61caaf
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_SingleThreaded.unity
+    guid: 0e21a9c8dcf64f15841c712811119629
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_CSharpAsync.unity
+    guid: 1a3abcd9eff149be98111fbe6b13b282
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_CSharpParallel.unity
+    guid: 8a80711289a84fb2a7f443bc890f0eb6
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_UnityJobs.unity
+    guid: fe987ee6c08848699f86247607983bd6
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_UnityCoroutine.unity
+    guid: 3a41a7a8bb844111bd8a232cd9c5637d
+  - enabled: 1
+    path: Assets/Examples/BatchProcessing/Scenes/Batch_UnityJobsBurst.unity
+    guid: 2d0a7d1dd7a44f8483a2f9c21793f61c
   - enabled: 1
     path: Assets/Examples/GravitySimulation/Scenes/2D/Benchmark/Gravity_SingleThreaded.unity
     guid: 2d92386f9382dba448ca0ac7a94bb666

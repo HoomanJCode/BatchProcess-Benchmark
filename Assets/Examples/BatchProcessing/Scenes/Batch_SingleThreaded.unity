@@ -237,14 +237,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 1596788882}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f8a3025b7f3e4a718327c5d856679394, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BatchProcessingApp
-  _mode: 0
+  m_Script: {fileID: 11500000, guid: 11111111111141118111111111111111, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::BatchSingleThreadedExample
   _itemCount: 100000
   _iterations: 100
-  _runOnStart: 1
-  _resultChecksum: "\u2014"
+  _checksum: "\u2014"
   _computeMilliseconds: 0
   _wallMilliseconds: 0
 --- !u!4 &1596788884

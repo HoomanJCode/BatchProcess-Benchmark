@@ -1,37 +1,41 @@
 # Unity Batch Processing and Gravity Demos
 
-This Unity project contains parallel-processing examples. The batch scene compares processing strategies over a list of numbers. The gravity scenes show bodies attracting each other in either a 2D plane or 3D space.
+This Unity project contains parallel-processing examples. The batch scenes compare processing strategies over a list of numbers. The gravity scenes show bodies attracting each other in either a 2D plane or 3D space.
 
 ## Requirements
 
 - Unity **6000.5.1f1** (see `ProjectSettings/ProjectVersion.txt`)
 - Packages listed in `Packages/manifest.json`. Unity Package Manager installs them when the project opens.
 
-## Run the batch example
+## Run the batch examples
 
-1. Open the project in Unity Hub.
-2. Open [`Assets/Examples/BatchProcessing/Scenes/BatchProcessing.unity`](Assets/Examples/BatchProcessing/Scenes/BatchProcessing.unity).
-3. In the `Batch Processing App` Inspector, choose the processing mode and workload size. The scene runs the selected mode on Play when **Run On Start** is enabled. You can also run it from the component's **Run Batch** context menu.
-4. Compare modes using the reported checksum and the matching `BatchProcessing.*` marker in **Window → Analysis → Profiler**. Each run starts with the same deterministic values. Burst can produce small floating-point checksum differences while running the same calculation.
+Each processing strategy has its own scene and its own self-contained script. Open one of these scenes and press **Play**:
 
-The batch scene has no runtime UI. Its mode, item count, iteration count, and run-on-start option are Inspector fields; the last checksum and timings are shown on the component. Its arrays, native job buffer, worker task, parallel threads, and coroutine are created once at startup and reused for later runs. Async work is marked `BatchProcessing.CSharpAsync.Worker`; coroutine chunks use the selected mode marker across frames.
+| Strategy | Scene |
+| --- | --- |
+| Single threaded | [`Batch_SingleThreaded.unity`](Assets/Examples/BatchProcessing/Scenes/Batch_SingleThreaded.unity) |
+| C# async | [`Batch_CSharpAsync.unity`](Assets/Examples/BatchProcessing/Scenes/Batch_CSharpAsync.unity) |
+| C# parallel | [`Batch_CSharpParallel.unity`](Assets/Examples/BatchProcessing/Scenes/Batch_CSharpParallel.unity) |
+| Unity Jobs | [`Batch_UnityJobs.unity`](Assets/Examples/BatchProcessing/Scenes/Batch_UnityJobs.unity) |
+| Unity coroutine | [`Batch_UnityCoroutine.unity`](Assets/Examples/BatchProcessing/Scenes/Batch_UnityCoroutine.unity) |
+| Unity Jobs with Burst | [`Batch_UnityJobsBurst.unity`](Assets/Examples/BatchProcessing/Scenes/Batch_UnityJobsBurst.unity) |
 
-The sample calculation repeats a small multiply/add operation for each number. It is intentionally simple so it is easy to explain: the calculation stays the same while the scheduling changes.
+Each scene's Inspector has the item count and iteration count. After it runs, the same component shows the checksum and compute/wall timings; the Console prints them too. Compare the matching `BatchProcessing.*` marker in **Window → Analysis → Profiler**. Each mode starts from the same deterministic values. Burst can produce small floating-point checksum differences.
 
-This scene does not create spheres or simulate gravity. It isolates batch scheduling: every mode receives the same deterministic `float` array and performs the same calculation. Use the checksum to compare results, allowing for small floating-point differences in Burst, then compare timing and responsiveness in the Profiler. The gravity scene is the visual physics demonstration.
+These scenes do not create spheres or simulate gravity. They isolate batch scheduling: every strategy performs the same made-up calculation over the same values. For each value, it multiplies by `1.00001`, adds `0.00002`, and subtracts `1` whenever the result reaches `1`. For example, `0.5` becomes `0.500025`, then `0.500050`. This calculation only creates computer work; it does not describe a real-world process.
 
 | Mode | Simple explanation | Complexity |
 | --- | --- | --- |
 | Single threaded | One loop processes every number on Unity's main thread. | O(N × I) work |
-| C# async | A long-lived `Task` processes the numbers on one worker thread; Unity reads the result after it finishes. | O(N × I) work |
+| C# async | One `Task` processes the numbers on a worker thread; Unity reads the result after it finishes. | O(N × I) work |
 | C# parallel | Persistent C# worker threads split the numbers into ranges. | O(N × I) total work |
 | Unity Jobs | `IJobParallelFor` processes native data in parallel without Burst compilation. | O(N × I) total work |
 | Unity coroutine | A loop processes a small chunk, yields, then continues on a later frame. | O(N × I) total work |
 | Unity Jobs with Burst | The same job is marked with `[BurstCompile]` and compiled by Burst when available. | O(N × I) total work |
 
-Here, `N` is the number of values and `I` is the number of iterations per value. Every mode performs the same calculation, so its total work stays O(N × I). Parallel modes can reduce elapsed time when enough work is available, but scheduling costs matter. The input array uses O(N) space; Unity Jobs uses one reusable native copy that adds O(N) space.
+Here, `N` is the number of values and `I` is the number of iterations per value. Every strategy does O(N × I) work and stores O(N) values. Parallel modes can finish sooner when enough work is available, but scheduling has a cost.
 
-Choose **Tools → Batch Processing → Create Example Scene** to regenerate the batch scene and its Build Settings entry.
+Choose **Tools → Batch Processing → Create Example Scenes** to regenerate the six scenes and their Build Settings entries. Each runtime script contains its own copy of the short calculation so you can read one strategy at a time without following shared calculation helpers.
 
 ## Open the gravity example
 
@@ -60,7 +64,7 @@ Unity serves the page and its live JSON endpoint from `127.0.0.1:8765`; the serv
 
 The comparison runner makes generated copies of the example scenes with **128 balls in every run**, so the editable teaching scenes are left unchanged. It uses a two-second warm-up and an eight-second measured pass per strategy by default. Change these fields on the `Gravity Benchmark Runner` object in a comparison scene to adjust the run. Use the same settings when repeating a comparison.
 
-The gravity examples allocate their arrays and worker resources once during scene setup. The measured physics steps reuse those buffers: they do not clone arrays or create a new task, parallel loop delegate, or coroutine iterator every step. The async and parallel examples keep workers alive for the scene, and the coroutine keeps one iterator alive. Scene setup, Unity physics, Editor code, and the live dashboard can still allocate; use a Development Build and Unity's GC Alloc profiler data when checking allocations from the target application.
+The gravity examples allocate their arrays and worker resources once during scene setup. The measured physics steps reuse those buffers: they do not clone arrays or create a new task, parallel loop delegate, or coroutine iterator every step. The async and parallel gravity examples keep workers alive for the scene, and the coroutine keeps one iterator alive. Batch scenes run once when opened, with input arrays created before the calculation starts; the coroutine yields between chunks. Scene setup, Unity physics, Editor code, and the live dashboard can still allocate; use a Development Build and Unity's GC Alloc profiler data when checking allocations from the target application.
 
 The live chart shows the current strategy marker, main-thread CPU time, and frame time. The completed-run chart compares average marker time per measured frame or P95 frame time. The profiler recorder sums marker samples within each frame. C# async uses its worker-thread calculation marker, while Unity coroutine marks each yielded chunk, so coroutine work is spread across multiple frames and its marker value is not the full calculation time. Use marker timings to compare measured work per frame and frame timing for overall responsiveness. The Editor and physics engine add shared overhead. For a formal performance claim, use a Development Build on the same machine and compare repeated runs.
 
@@ -113,12 +117,12 @@ Let `N` be the number of spheres. For each target sphere, the gravity calculatio
 ## Profiling
 
 1. Open **Window → Analysis → Profiler** before running the example.
-2. Use the same workload settings for each mode. For gravity, reset the scene between captures; the batch scene recreates its same starting values for each run.
+2. Use the same workload settings for each mode. For gravity, reset the scene between captures. Each batch scene starts with the same values when you press Play.
 3. Warm up each mode first. Discard the first Burst measurement in Editor Play mode because it may include JIT compilation.
 4. Compare frame time and main-thread cost. The gravity strategies expose `GravitySimulation.*` profiler markers. The async worker calculation is marked `GravitySimulation.CSharpAsync.Worker`; coroutine chunks are marked `GravitySimulation.UnityCoroutine.Chunk`. Unity's Rigidbody integration and collision solving still run on the main thread and are shared by every mode, so use the markers to compare the processing strategies and total frame time to see the overall cost.
 5. Small workloads may be slower with parallel strategies because scheduling has a cost. Results depend on hardware, Editor load, Unity version, and Burst configuration.
 
-The batch component reports **compute time** for work within that mode (including job setup and copying for Unity Jobs), and **wall time** from start to completion. For async, wall time includes the wait until the worker finishes. For coroutines, wall time includes the frames spent yielding while compute time sums only the chunk work.
+Each batch component shows **compute time** for the measured calculation and **wall time** from start to completion. Async wall time includes starting and waiting for its Task; parallel time includes waiting for all worker threads; Jobs time includes scheduling and completing the job. Coroutine compute time adds up chunk work, while wall time also includes the frames spent yielding.
 
 ## Project layout
 
@@ -126,8 +130,8 @@ The batch component reports **compute time** for work within that mode (includin
 Assets/Examples/
 ├── BatchProcessing/
 │   ├── Editor/       Scene creation command
-│   ├── Scenes/       Standalone comparison scene
-│   └── Scripts/      One script containing the calculation and processing modes
+│   ├── Scenes/       One standalone scene per strategy
+│   └── Scripts/      One self-contained script per strategy
 └── GravitySimulation/
     ├── Editor/       Gravity mode scene generator
     ├── Scenes/
@@ -139,7 +143,7 @@ Presentation/         Local browser dashboard for live profiler readings
 
 Unity requires each controller to be a `MonoBehaviour` with lifecycle callbacks such as `Awake` and `FixedUpdate`. The jobs examples also need a small job struct with an `Execute` method, and the coroutine example needs an iterator. These are Unity's entry points; the gravity calculation itself stays directly in the strategy script.
 
-The batch example's settings, processing modes, jobs, and calculation are all in [`BatchProcessingApp.cs`](Assets/Examples/BatchProcessing/Scripts/BatchProcessingApp.cs).
+The batch examples have one script per strategy under [`Assets/Examples/BatchProcessing/Scripts`](Assets/Examples/BatchProcessing/Scripts). Each file contains its own calculation instead of calling a shared helper. Unity still requires lifecycle callbacks such as `Start`, and the Jobs API requires `Execute`; these are Unity entry points, not shared calculation modules.
 
 Burst is a package dependency but is not enabled project-wide. The plain Jobs mode remains a baseline; the Burst job opts into compilation with `[BurstCompile]`.
 
