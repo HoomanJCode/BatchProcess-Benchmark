@@ -272,8 +272,11 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             _state.bestY = 0f;
             PublishState();
 
-            for (int runIndex = 0; runIndex < _batchRunsPerStrategy; runIndex++)
+            // Run one unmeasured pass first so JIT compilation, worker startup, and Burst compilation
+            // do not get charged to the first recorded sample for this processing method.
+            for (int runIndex = -1; runIndex < _batchRunsPerStrategy; runIndex++)
             {
+                bool isWarmupRun = runIndex < 0;
                 string scenePath;
                 if (_isOptimizationComparison)
                 {
@@ -291,8 +294,10 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                     yield break;
                 }
 
-                _state.phase = "Loading " + mode.displayName + " · run " + (runIndex + 1) + " of " + _batchRunsPerStrategy;
-                _state.progress = (modeIndex + (float)runIndex / _batchRunsPerStrategy) / modes.Length;
+                _state.phase = isWarmupRun
+                    ? "Warming up " + mode.displayName
+                    : "Loading " + mode.displayName + " · run " + (runIndex + 1) + " of " + _batchRunsPerStrategy;
+                _state.progress = (modeIndex + Mathf.Clamp01((runIndex + 1f) / _batchRunsPerStrategy)) / modes.Length;
                 PublishState();
                 AsyncOperation load = SceneManager.LoadSceneAsync(buildIndex, LoadSceneMode.Single);
                 if (load == null)
@@ -357,6 +362,15 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                     Debug.LogError("Headless comparison timed out: exampleFound=" + (example != null) + ", checksum=" + checksum);
                     SetBatchError(mode.displayName + " did not finish before the 120-second timeout", scenePath, 4);
                     yield break;
+                }
+
+                if (isWarmupRun)
+                {
+                    // Discard this result; it only primes the exact scene and processing path.
+                    _state.phase = "Warm-up complete for " + mode.displayName;
+                    PublishState();
+                    yield return null;
+                    continue;
                 }
 
                 if (_headlessMode)
