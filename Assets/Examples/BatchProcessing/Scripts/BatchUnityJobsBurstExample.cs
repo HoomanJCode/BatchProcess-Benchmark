@@ -8,6 +8,7 @@ using UnityEngine;
 /// <summary>Processes values with Jobs and Burst. Time: O(N * I), space: O(N).</summary>
 public sealed class BatchUnityJobsBurstExample : MonoBehaviour
 {
+    #region Settings and reusable data
     [SerializeField, Min(1)] private int _itemCount = 100000;
     [SerializeField, Min(1)] private int _iterations = 100;
     [SerializeField] private string _checksum = "—";
@@ -16,6 +17,9 @@ public sealed class BatchUnityJobsBurstExample : MonoBehaviour
 
     private readonly ProfilerMarker _marker = new ProfilerMarker("BatchProcessing.UnityJobsBurst");
 
+    #endregion
+
+    #region Example implementation
     [BurstCompile]
     private struct BatchBurstJob : IJobParallelFor
     {
@@ -62,4 +66,5 @@ public sealed class BatchUnityJobsBurstExample : MonoBehaviour
         Debug.Log("Unity Jobs Burst batch: items=" + _itemCount + ", iterations=" + _iterations +
             ", checksum=" + _checksum + ", computeMs=" + _computeMilliseconds + ", wallMs=" + _wallMilliseconds, this);
     }
+    #endregion
 }

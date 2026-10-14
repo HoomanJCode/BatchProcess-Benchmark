@@ -8,6 +8,7 @@ using UnityEngine.Serialization;
 /// </summary>
 public sealed class SingleThreadedGravityExample : MonoBehaviour
 {
+    #region Settings and reusable data
     [Header("Beginner settings")]
     [FormerlySerializedAs("_bodyCount"), SerializeField, Min(1)] private int _ballCount = 128; // Number of spheres in this example.
     [SerializeField, Min(0f)] private float _gravity = 1.15f; // Gravitational constant G.
@@ -21,6 +22,9 @@ public sealed class SingleThreadedGravityExample : MonoBehaviour
     private float[] _masses; // Mass of each body, used as the gravity source strength.
     private Vector3[] _accelerations; // Results from the most recent gravity calculation.
     private readonly ProfilerMarker _gravityMarker = new ProfilerMarker("GravitySimulation.SingleThreaded");
+    #endregion
+
+    #region Example implementation
 
     // Awake runs once when the scene starts: create the arrays, ball visuals, and physics bodies.
     private void Awake()
@@ -168,4 +172,5 @@ public sealed class SingleThreadedGravityExample : MonoBehaviour
                 _bodies3D[i].AddForce(_accelerations[i], ForceMode.Acceleration);
         }
     }
+    #endregion
 }

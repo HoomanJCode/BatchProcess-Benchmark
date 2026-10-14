@@ -6,6 +6,7 @@ using UnityEngine;
 /// <summary>Processes chunks over several frames. Time: O(N * I), space: O(N).</summary>
 public sealed class BatchUnityCoroutineExample : MonoBehaviour
 {
+    #region Settings and reusable data
     [SerializeField, Min(1)] private int _itemCount = 100000;
     [SerializeField, Min(1)] private int _iterations = 100;
     [SerializeField, Min(1)] private int _itemsPerFrame = 4096;
@@ -14,6 +15,9 @@ public sealed class BatchUnityCoroutineExample : MonoBehaviour
     [SerializeField] private float _wallMilliseconds;
 
     private readonly ProfilerMarker _marker = new ProfilerMarker("BatchProcessing.UnityCoroutine.Chunk");
+    #endregion
+
+    #region Example implementation
 
     private IEnumerator Start()
     {
@@ -58,4 +62,5 @@ public sealed class BatchUnityCoroutineExample : MonoBehaviour
         Debug.Log("Unity coroutine batch: items=" + _itemCount + ", iterations=" + _iterations +
             ", checksum=" + _checksum + ", computeMs=" + _computeMilliseconds + ", wallMs=" + _wallMilliseconds, this);
     }
+    #endregion
 }

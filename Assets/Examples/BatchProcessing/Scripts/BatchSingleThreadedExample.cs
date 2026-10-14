@@ -5,6 +5,7 @@ using UnityEngine;
 /// <summary>Processes every value in one loop on Unity's main thread. Time: O(N * I), space: O(N).</summary>
 public sealed class BatchSingleThreadedExample : MonoBehaviour
 {
+    #region Settings and reusable data
     [SerializeField, Min(1)] private int _itemCount = 100000;
     [SerializeField, Min(1)] private int _iterations = 100;
     [SerializeField] private string _checksum = "—";
@@ -12,6 +13,9 @@ public sealed class BatchSingleThreadedExample : MonoBehaviour
     [SerializeField] private float _wallMilliseconds;
 
     private readonly ProfilerMarker _marker = new ProfilerMarker("BatchProcessing.SingleThreaded");
+    #endregion
+
+    #region Example implementation
 
     private void Start()
     {
@@ -48,4 +52,5 @@ public sealed class BatchSingleThreadedExample : MonoBehaviour
         Debug.Log("Single threaded batch: items=" + _itemCount + ", iterations=" + _iterations +
             ", checksum=" + _checksum + ", computeMs=" + _computeMilliseconds + ", wallMs=" + _wallMilliseconds, this);
     }
+    #endregion
 }

@@ -7,6 +7,7 @@ using UnityEngine;
 /// </summary>
 public sealed class BatchRandomSearchExample : MonoBehaviour
 {
+    #region Settings and reusable data
     [SerializeField, Min(1)] private int _evaluationBudgetPerTrial = 6400;
     [SerializeField, Min(1)] private int _trialCount = 5;
     [SerializeField] private int _randomSeed = 2468;
@@ -18,6 +19,9 @@ public sealed class BatchRandomSearchExample : MonoBehaviour
     [SerializeField] private float _computeMilliseconds;
     [SerializeField] private float _wallMilliseconds;
     [SerializeField] private string _checksum = "—";
+    #endregion
+
+    #region Example implementation
 
     private void Start()
     {
@@ -76,4 +80,5 @@ public sealed class BatchRandomSearchExample : MonoBehaviour
             ", averageBestScore=" + _averageBestScore.ToString("0.000000") +
             ", computeMs=" + _computeMilliseconds + ", wallMs=" + _wallMilliseconds, this);
     }
+    #endregion
 }

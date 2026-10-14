@@ -11,6 +11,7 @@ using UnityEngine.Serialization;
 /// </summary>
 public sealed class UnityJobsBurstGravityExample : MonoBehaviour
 {
+    #region Settings and reusable data
     [Header("Beginner settings")]
     [FormerlySerializedAs("_bodyCount"), SerializeField, Min(1)] private int _ballCount = 128; // Number of spheres in this example.
     [SerializeField, Min(0f)] private float _gravity = 1.15f; // Gravitational constant G.
@@ -27,7 +28,9 @@ public sealed class UnityJobsBurstGravityExample : MonoBehaviour
     private NativeArray<Vector3> _nativePositions;
     private NativeArray<float> _nativeMasses;
     private NativeArray<Vector3> _nativeAccelerations;
-    // Awake runs once when the scene starts: create the arrays, ball visuals, and physics bodies.
+    #endregion
+
+    #region Example implementation
     // Awake runs once when the scene starts: create the arrays, ball visuals, and physics bodies.
     private void Awake()
     {
@@ -218,4 +221,5 @@ public sealed class UnityJobsBurstGravityExample : MonoBehaviour
             Accelerations[index] = acceleration;
         }
     }
+    #endregion
 }

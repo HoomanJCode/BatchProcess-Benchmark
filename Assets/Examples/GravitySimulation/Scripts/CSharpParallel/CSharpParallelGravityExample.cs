@@ -9,6 +9,7 @@ using UnityEngine.Serialization;
 /// </summary>
 public sealed class CSharpParallelGravityExample : MonoBehaviour
 {
+    #region Settings and reusable data
     [Header("Beginner settings")]
     [FormerlySerializedAs("_bodyCount"), SerializeField, Min(1)] private int _ballCount = 128; // Number of spheres in this example.
     [SerializeField, Min(0f)] private float _gravity = 1.15f; // Gravitational constant G.
@@ -26,6 +27,9 @@ public sealed class CSharpParallelGravityExample : MonoBehaviour
     private Thread[] _workers;
     private CountdownEvent _workersDone;
     private volatile bool _stopWorkers;
+    #endregion
+
+    #region Example implementation
 
     // Awake runs once when the scene starts: create the arrays, ball visuals, and physics bodies.
     private void Awake()
@@ -226,4 +230,5 @@ public sealed class CSharpParallelGravityExample : MonoBehaviour
         }
         _workersDone.Dispose();
     }
+    #endregion
 }

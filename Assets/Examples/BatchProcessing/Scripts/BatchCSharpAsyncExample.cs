@@ -6,6 +6,7 @@ using UnityEngine;
 /// <summary>Processes values on a C# worker task. Time: O(N * I), space: O(N).</summary>
 public sealed class BatchCSharpAsyncExample : MonoBehaviour
 {
+    #region Settings and reusable data
     [SerializeField, Min(1)] private int _itemCount = 100000;
     [SerializeField, Min(1)] private int _iterations = 100;
     [SerializeField] private string _checksum = "—";
@@ -14,6 +15,9 @@ public sealed class BatchCSharpAsyncExample : MonoBehaviour
 
     private readonly ProfilerMarker _marker = new ProfilerMarker("BatchProcessing.CSharpAsync.Worker");
     private float[] _values;
+    #endregion
+
+    #region Example implementation
     private async void Start()
     {
         _itemCount = Mathf.Max(1, _itemCount);
@@ -53,4 +57,5 @@ public sealed class BatchCSharpAsyncExample : MonoBehaviour
         Debug.Log("C# async batch: items=" + _itemCount + ", iterations=" + _iterations +
             ", checksum=" + _checksum + ", computeMs=" + _computeMilliseconds + ", wallMs=" + _wallMilliseconds, this);
     }
+    #endregion
 }

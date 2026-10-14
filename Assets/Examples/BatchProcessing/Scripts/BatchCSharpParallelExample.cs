@@ -6,6 +6,7 @@ using UnityEngine;
 /// <summary>Splits values across C# worker threads. Time: O(N * I), space: O(N).</summary>
 public sealed class BatchCSharpParallelExample : MonoBehaviour
 {
+    #region Settings and reusable data
     [SerializeField, Min(1)] private int _itemCount = 100000;
     [SerializeField, Min(1)] private int _iterations = 100;
     [SerializeField] private string _checksum = "—";
@@ -18,6 +19,9 @@ public sealed class BatchCSharpParallelExample : MonoBehaviour
     private AutoResetEvent[] _workerSignals;
     private CountdownEvent _workersDone;
     private volatile bool _stopWorkers;
+    #endregion
+
+    #region Example implementation
 
     private void Start()
     {
@@ -101,4 +105,5 @@ public sealed class BatchCSharpParallelExample : MonoBehaviour
         }
         _workersDone.Dispose();
     }
+    #endregion
 }
