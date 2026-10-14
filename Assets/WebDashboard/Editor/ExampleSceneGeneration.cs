@@ -13,6 +13,7 @@ public static class ExampleSceneGeneration
     private const string RandomSearchSceneFolder = "Assets/Examples/RandomSearchOptimization/Scenes";
     private const string BenchmarkScenePath = SimpleIterationSceneFolder + "/SimpleIteration_Benchmark.unity";
     private const string OptimizationScenePath = "Assets/WebDashboard/Scenes/Optimization_Benchmark.unity";
+    private const string AllExamplesScenePath = "Assets/WebDashboard/Scenes/All_Examples_Benchmark.unity";
 
     [MenuItem("Tools/Examples/Regenerate Beginner Scenes")]
     public static void Build()
@@ -73,6 +74,8 @@ public static class ExampleSceneGeneration
         newScenes.Add(new EditorBuildSettingsScene(BenchmarkScenePath, true));
         CreateOptimizationBenchmarkScene();
         newScenes.Add(new EditorBuildSettingsScene(OptimizationScenePath, true));
+        CreateAllExamplesBenchmarkScene();
+        newScenes.Add(new EditorBuildSettingsScene(AllExamplesScenePath, true));
 
         // Replace the old selector scene while preserving unrelated Build Settings scenes.
         List<EditorBuildSettingsScene> buildScenes = newScenes;
@@ -91,7 +94,8 @@ public static class ExampleSceneGeneration
         return path.StartsWith(SimpleIterationSceneFolder + "/") ||
             path.StartsWith(PsoSceneFolder + "/") ||
             path.StartsWith(RandomSearchSceneFolder + "/") ||
-            path == OptimizationScenePath;
+            path == OptimizationScenePath ||
+            path == AllExamplesScenePath;
     }
 
     private static void CreateBatchBenchmarkScene()
@@ -138,6 +142,48 @@ public static class ExampleSceneGeneration
         if (sceneMode == NewSceneMode.Additive)
             EditorSceneManager.CloseScene(scene, true);
     }
+
+    #region Full benchmark launcher scene
+    [MenuItem("Tools/Examples/Generate All Examples Benchmark")]
+    public static void GenerateAllExamplesBenchmarkScene()
+    {
+        CreateAllExamplesBenchmarkScene(true);
+
+        List<EditorBuildSettingsScene> buildScenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+        bool alreadyIncluded = false;
+        for (int i = 0; i < buildScenes.Count; i++)
+        {
+            if (buildScenes[i].path == AllExamplesScenePath)
+                alreadyIncluded = true;
+        }
+        if (!alreadyIncluded)
+            buildScenes.Add(new EditorBuildSettingsScene(AllExamplesScenePath, true));
+        EditorBuildSettings.scenes = buildScenes.ToArray();
+        AssetDatabase.SaveAssets();
+    }
+
+    // This launcher runs every example so one Play action fills every dashboard comparison tab.
+    private static void CreateAllExamplesBenchmarkScene(bool replaceOpenScenes = false)
+    {
+        NewSceneMode sceneMode = Application.isBatchMode || replaceOpenScenes ? NewSceneMode.Single : NewSceneMode.Additive;
+        Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, sceneMode);
+        scene.name = "All Examples Benchmark";
+
+        GameObject runnerObject = new GameObject("All Examples Benchmark Runner");
+        RealtimeBenchmarkDashboard runner = runnerObject.AddComponent<RealtimeBenchmarkDashboard>();
+        SerializedObject settings = new SerializedObject(runner);
+        settings.FindProperty("_isAllExamplesComparison").boolValue = true;
+        settings.FindProperty("_batchRunsPerStrategy").intValue = 1;
+        settings.FindProperty("_dashboardPort").intValue = 8765;
+        settings.FindProperty("_openDashboardInBrowser").boolValue = true;
+        settings.ApplyModifiedPropertiesWithoutUndo();
+
+        if (!EditorSceneManager.SaveScene(scene, AllExamplesScenePath))
+            throw new System.Exception("Could not save all-examples comparison scene: " + AllExamplesScenePath);
+        if (sceneMode == NewSceneMode.Additive)
+            EditorSceneManager.CloseScene(scene, true);
+    }
+    #endregion
 
     private static string[] CreateOptimizationWorkloadScenes()
     {

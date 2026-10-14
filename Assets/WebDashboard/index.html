@@ -135,7 +135,7 @@
       </article>
     </section>
 
-    <div class="section-head"><div><h2>All comparison examples</h2><p>Run each Unity comparison scene; this page keeps its latest completed result in this browser.</p></div><span class="pill">5 EXAMPLES</span></div>
+    <div class="section-head"><div><h2>All comparison examples</h2><p>Run All Examples Benchmark to fill every tab; this page keeps the latest completed results in this browser.</p></div><span class="pill">5 EXAMPLES</span></div>
     <section class="overview-grid" aria-label="Overview of every comparison example">
       <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare the six gravity strategies in dedicated 2D and 3D Unity scenes.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene and press Play.</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
       <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through six processing approaches.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
@@ -179,7 +179,7 @@
     <div class="section-head"><div><h2>Present it live</h2><p>The browser is a local monitor; Unity still performs every simulation.</p></div></div>
     <section class="how" aria-label="How to use the dashboard">
       <div class="step"><b>1</b><div><strong>Start the dashboard</strong><span>Use the local command in the project README, then open this page in your browser.</span></div></div>
-      <div class="step"><b>2</b><div><strong>Run each comparison</strong><span>Open the gravity, batch, and optimization launcher scenes one at a time, then press Play for each.</span></div></div>
+      <div class="step"><b>2</b><div><strong>Run the full comparison</strong><span>Open All_Examples_Benchmark in Unity and press Play. It fills the dashboard overview and saves each result set in this browser.</span></div></div>
       <div class="step"><b>3</b><div><strong>Select a comparison tab</strong><span>After each run, its results are saved in this browser. Select Gravity, Simple Iteration, PSO Simulation, or Random Search. Gravity also has separate 2D and 3D views.</span></div></div>
     </section>
     <footer><span>Simulation Lab · localhost only · no cloud connection</span><span id="updated">Waiting for first sample</span></footer>
@@ -204,7 +204,12 @@
 
     function loadSavedComparisons() {
       try {
-        return JSON.parse(localStorage.getItem(overviewStorageKey) || '{}');
+        const saved = JSON.parse(localStorage.getItem(overviewStorageKey) || '{}');
+        Object.keys(saved).forEach(key => {
+          if (saved[key] && saved[key].results && saved[key].results.length)
+            saved[key].status = 'complete';
+        });
+        return saved;
       } catch (error) {
         return {};
       }
@@ -217,6 +222,7 @@
       lastSavedCompletion = completionId;
       const key = state.workload === 'gravity' ? 'gravity-' + (state.dimension || '3D') : state.workload;
       savedComparisons[key] = {
+        status: 'complete',
         workload: state.workload,
         dimension: state.dimension || '',
         results: state.results,

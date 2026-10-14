@@ -25,6 +25,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     [SerializeField] private bool _is2D;
     [SerializeField] private bool _isBatchComparison;
     [SerializeField] private bool _isOptimizationComparison;
+    [SerializeField] private bool _isAllExamplesComparison;
     [SerializeField, Min(1)] private int _batchRunsPerStrategy = 5;
     [SerializeField] private bool _openDashboardInBrowser = true;
 
@@ -96,6 +97,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     private bool _hasStarted;
     private bool _headlessMode;
     private bool _recordingCoroutineLoop;
+    private bool _allExamplesFinished;
     private float _coroutineLoopComputeMs;
     private int _coroutineLoopChunkCount;
     private int _coroutineChunksPerLoop;
@@ -163,9 +165,66 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         if (!_hasStarted)
         {
             _hasStarted = true;
-            StartCoroutine(_isBatchComparison || _isOptimizationComparison ? RunBatchComparison() : RunComparison());
+            if (_isAllExamplesComparison)
+                StartCoroutine(RunAllExamplesComparison());
+            else
+                StartCoroutine(_isBatchComparison || _isOptimizationComparison ? RunBatchComparison() : RunComparison());
         }
     }
+
+    #region Run every example for the full dashboard
+    // The all-examples scene runs one comparison at a time so each dashboard tab gets its own saved result.
+    private IEnumerator RunAllExamplesComparison()
+    {
+        _is2D = true;
+        _isBatchComparison = false;
+        _isOptimizationComparison = false;
+        _state.workload = "gravity";
+        _state.dimension = "2D";
+        _results.Clear();
+        _state.results = new BenchmarkResult[0];
+        yield return RunComparison();
+        if (_state.status == "error") yield break;
+        yield return new WaitForSecondsRealtime(0.75f);
+
+        _is2D = false;
+        _state.workload = "gravity";
+        _state.dimension = "3D";
+        _results.Clear();
+        _state.results = new BenchmarkResult[0];
+        _state.status = "starting";
+        PublishState();
+        yield return RunComparison();
+        if (_state.status == "error") yield break;
+        yield return new WaitForSecondsRealtime(0.75f);
+
+        _isBatchComparison = true;
+        _state.workload = "batch";
+        _state.dimension = "Batch processing";
+        _results.Clear();
+        _state.results = new BenchmarkResult[0];
+        _state.status = "starting";
+        PublishState();
+        yield return RunBatchComparison();
+        if (_state.status == "error") yield break;
+        yield return new WaitForSecondsRealtime(0.75f);
+
+        _isBatchComparison = false;
+        _isOptimizationComparison = true;
+        _state.workload = "optimization";
+        _state.dimension = "Optimization";
+        _results.Clear();
+        _state.results = new BenchmarkResult[0];
+        _state.status = "starting";
+        PublishState();
+        yield return RunBatchComparison();
+        if (_state.status == "error") yield break;
+
+        _allExamplesFinished = true;
+        if (_headlessMode)
+            FinishHeadlessRun(0);
+    }
+    #endregion
 
     // Run each self-contained batch or optimization scene and collect its timings.
     // The measured calculations stay inside their beginner example scripts.
@@ -618,12 +677,20 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
 
         try
         {
-            string directory = Path.GetDirectoryName(_headlessOutputPath);
+            string reportPath = _headlessOutputPath;
+            if (_isAllExamplesComparison)
+            {
+                string dimension = _state.dimension.ToLowerInvariant().Replace(' ', '-');
+                string reportName = Path.GetFileNameWithoutExtension(_headlessOutputPath) +
+                    "-" + _state.workload + "-" + dimension + Path.GetExtension(_headlessOutputPath);
+                reportPath = Path.Combine(Path.GetDirectoryName(_headlessOutputPath), reportName);
+            }
+            string directory = Path.GetDirectoryName(reportPath);
             if (!string.IsNullOrEmpty(directory))
                 Directory.CreateDirectory(directory);
-            File.WriteAllText(_headlessOutputPath, JsonUtility.ToJson(_state, true));
-            File.WriteAllText(Path.ChangeExtension(_headlessOutputPath, ".csv"), BuildCsvReport());
-            Debug.Log("Benchmark report written to " + _headlessOutputPath);
+            File.WriteAllText(reportPath, JsonUtility.ToJson(_state, true));
+            File.WriteAllText(Path.ChangeExtension(reportPath, ".csv"), BuildCsvReport());
+            Debug.Log("Benchmark report written to " + reportPath);
         }
         catch (Exception exception)
         {
@@ -632,7 +699,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         }
 
         // Application.Quit ends a standalone player and leaves the Unity Editor alone.
-        if (!Application.isEditor)
+        if (!Application.isEditor && (!_isAllExamplesComparison || _allExamplesFinished || exitCode != 0))
             Application.Quit(exitCode);
     }
 

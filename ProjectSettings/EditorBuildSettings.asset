@@ -149,5 +149,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity
     guid: 57cc1df3c8e19ac49867bb6f470b84b0
+  - enabled: 1
+    path: Assets/WebDashboard/Scenes/All_Examples_Benchmark.unity
+    guid: 8dc33bf217364ab458111a7e6048bb45
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

@@ -12,7 +12,7 @@ This Unity project presents five workloads, each measured with the same six proc
 
 ## Local real-time dashboard
 
-Open the 2D or 3D `Gravity_Benchmark` scene, `SimpleIteration_Benchmark`, or `Optimization_Benchmark` in Unity and press **Play**. Unity serves the page locally at [http://127.0.0.1:8765/](http://127.0.0.1:8765/). The dashboard compares processing times within each workload. It does not compare PSO and Random Search by solution quality. Completed results remain in this browser's local storage on this PC.
+To fill every dashboard tab in one run, open `Assets/WebDashboard/Scenes/All_Examples_Benchmark.unity` and press **Play**. It runs Gravity 2D, Gravity 3D, Simple Iteration, PSO, and Random Search one after another. Unity serves the page locally at [http://127.0.0.1:8765/](http://127.0.0.1:8765/), and the browser saves each finished example on this PC. You can still run an individual `Gravity_Benchmark`, `SimpleIteration_Benchmark`, or `Optimization_Benchmark` scene when you only want that workload.
 
 Dashboard assets and its README are under [`Assets/WebDashboard`](Assets/WebDashboard/README.md).
 
