@@ -132,6 +132,7 @@ public sealed class SingleThreadedGravityExample : MonoBehaviour
                 // deltaAcceleration_i = G * mass_j * offset / (dot(offset, offset) + epsilon^2)^(3/2)
                 // offset = position_j - position_i; G = gravity * gravityScale; epsilon = softening.
                 // The target mass cancels when force is divided by mass_i. In 2D, offset.z is zero.
+                // Complexity per physics step: O(N^2) gravity work and O(N) storage, where N is body count.
                 Vector3 acceleration = Vector3.zero;
                 for (int other = 0; other < _bodyCount; other++)
                 {

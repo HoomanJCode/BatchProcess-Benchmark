@@ -20,14 +20,16 @@ The sample calculation repeats a small multiply/add operation for each number. I
 
 This scene does not create spheres or simulate gravity. It isolates batch scheduling: every mode receives the same deterministic `float` array and performs the same calculation. Use the checksum to compare results, allowing for small floating-point differences in Burst, then compare timing and responsiveness in the Profiler. The gravity scene is the visual physics demonstration.
 
-| Mode | Simple explanation |
-| --- | --- |
-| Single threaded | One loop processes every number on Unity's main thread. |
-| C# async | A `Task` processes the numbers on a worker thread; Unity reads the result after it finishes. |
-| C# parallel | `Parallel.For` splits numbers across .NET thread-pool workers. |
-| Unity Jobs | `IJobParallelFor` processes native data in parallel without Burst compilation. |
-| Unity coroutine | A loop processes a small chunk, yields, then continues on a later frame. |
-| Unity Jobs with Burst | The same job is marked with `[BurstCompile]` and compiled by Burst when available. |
+| Mode | Simple explanation | Complexity |
+| --- | --- | --- |
+| Single threaded | One loop processes every number on Unity's main thread. | O(N × I) work |
+| C# async | A `Task` processes the numbers on a worker thread; Unity reads the result after it finishes. | O(N × I) work |
+| C# parallel | `Parallel.For` splits numbers across .NET thread-pool workers. | O(N × I) total work |
+| Unity Jobs | `IJobParallelFor` processes native data in parallel without Burst compilation. | O(N × I) total work |
+| Unity coroutine | A loop processes a small chunk, yields, then continues on a later frame. | O(N × I) total work |
+| Unity Jobs with Burst | The same job is marked with `[BurstCompile]` and compiled by Burst when available. | O(N × I) total work |
+
+Here, `N` is the number of values and `I` is the number of iterations per value. Every mode performs the same calculation, so its total work stays O(N × I). Parallel modes can reduce elapsed time when enough work is available, but scheduling costs matter. The input array uses O(N) space; Unity Jobs also creates a temporary native copy that uses O(N) extra space.
 
 Choose **Tools → Batch Processing → Create Example Scene** to regenerate the batch scene and its Build Settings entry.
 
@@ -61,7 +63,20 @@ a_i += G * mass_j * r_ij / (|r_ij|² + softening²)^(3/2)
 
 This is Newton's inverse-square gravity written as a vector acceleration. Dividing the force by the target mass cancels `mass_i`, leaving the source mass `mass_j`. The `_softening` setting keeps the calculation finite when two centers get very close. In the 2D scenes the z component of `r_ij` is set to zero; the 3D scenes use all three components. Each gravity script includes this formula in comments next to its calculation loop.
 
-The initial positions and velocities are deterministic. This is a visual workload example, not a high-precision orbital solver. Async and coroutine scenes keep applying the last completed gravity calculation while the next calculation is in flight or split into chunks. At `N` bodies, each calculation performs roughly `N × (N - 1)` pair evaluations, so the workload grows quadratically.
+The initial positions and velocities are deterministic. This is a visual workload example, not a high-precision orbital solver. Async and coroutine scenes keep applying the last completed gravity calculation while the next calculation is in flight or split into chunks.
+
+### Algorithm complexity
+
+Let `N` be the number of spheres. For each target sphere, the gravity calculation checks every other sphere, for about `N × (N - 1)` pairs. That is **O(N^2) work per physics step** for every strategy. The arrays holding body state and calculated acceleration use **O(N) space**.
+
+| Strategy | Total gravity work | How execution is scheduled |
+| --- | --- | --- |
+| Single threaded | O(N^2) | All pair checks run on the main thread. |
+| C# async | O(N^2) | The same single-worker calculation runs on a .NET thread-pool thread. |
+| C# parallel | O(N^2) | Target bodies are split across workers; ideal compute time can approach O(N^2 / P), where `P` is the number of workers, plus scheduling overhead. |
+| Unity Jobs | O(N^2) | Target bodies are split into jobs; total work remains O(N^2), with job and data-copy overhead. |
+| Unity coroutine | O(N^2) | The same pair checks are chunked across frames; this changes responsiveness, not total work. |
+| Unity Jobs with Burst | O(N^2) | The same jobs are Burst-compiled; compilation can lower the constant cost, not the algorithmic complexity. |
 
 ## Profiling
 

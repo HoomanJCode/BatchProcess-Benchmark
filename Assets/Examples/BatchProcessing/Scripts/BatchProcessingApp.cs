@@ -25,6 +25,7 @@ public static class BatchProcessingMath
     /// <summary>
     /// Repeats the same small multiply-and-add calculation to create measurable work.
     /// Keeping this calculation fixed lets the demo compare scheduling methods fairly.
+    /// Complexity: O(iterations) for one value; processing N values takes O(N * iterations) time.
     /// </summary>
     public static float ProcessValue(float value, int iterations)
     {
