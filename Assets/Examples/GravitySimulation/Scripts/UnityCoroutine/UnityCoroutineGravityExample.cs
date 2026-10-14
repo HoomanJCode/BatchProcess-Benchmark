@@ -9,35 +9,43 @@ public sealed class UnityCoroutineGravityExample : GravitySimulationExample
     private static readonly ProfilerMarker ChunkMarker =
         new ProfilerMarker("GravitySimulation.UnityCoroutine.Chunk");
     private Coroutine _stepCoroutine;
+    private Vector3[] _lastAccelerations;
 
     protected override SimulationMode Mode { get { return SimulationMode.UnityCoroutine; } }
 
-    protected override void SimulateStep(float deltaTime, float gravity, float softening,
-        SimulationDimension dimension)
+    protected override void SimulateStep(float gravity, float softening, SimulationDimension dimension)
     {
+        if (_lastAccelerations == null)
+            _lastAccelerations = new Vector3[States.Length];
+
+        // Apply the last complete result on each physics tick while this result is built in chunks.
+        SubmitGravityAccelerations(_lastAccelerations);
         if (_stepCoroutine == null)
-            _stepCoroutine = StartCoroutine(AdvanceOverFrames(deltaTime, gravity, softening, dimension));
+        {
+            BodyState[] snapshot = (BodyState[])States.Clone();
+            _stepCoroutine = StartCoroutine(CalculateOverFrames(snapshot, gravity, softening, dimension));
+        }
     }
 
-    private IEnumerator AdvanceOverFrames(float deltaTime, float gravity, float softening,
+    private IEnumerator CalculateOverFrames(BodyState[] snapshot, float gravity, float softening,
         SimulationDimension dimension)
     {
         yield return null;
         bool is2D = dimension == SimulationDimension.TwoD;
-        var accelerations = new Vector3[States.Length];
-        for (int start = 0; start < States.Length; start += BodiesPerFrame)
+        var accelerations = new Vector3[snapshot.Length];
+        for (int start = 0; start < snapshot.Length; start += BodiesPerFrame)
         {
-            int end = Mathf.Min(start + BodiesPerFrame, States.Length);
+            int end = Mathf.Min(start + BodiesPerFrame, snapshot.Length);
             using (ChunkMarker.Auto())
             {
                 for (int i = start; i < end; i++)
-                    accelerations[i] = GravityMath.Acceleration(States, i, gravity, softening, is2D);
+                    accelerations[i] = GravityMath.Acceleration(snapshot, i, gravity, softening, is2D);
             }
-            if (end < States.Length)
+            if (end < snapshot.Length)
                 yield return null;
         }
 
-        States = GravityMath.Integrate(States, accelerations, deltaTime, is2D);
+        _lastAccelerations = accelerations;
         _stepCoroutine = null;
     }
 

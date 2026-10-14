@@ -13,11 +13,31 @@ public sealed class GravityBodyView : MonoBehaviour
     private MaterialPropertyBlock _propertyBlock;
     private Renderer _renderer;
     private SpriteRenderer _spriteRenderer;
+    private Rigidbody _rigidbody;
+    private Rigidbody2D _rigidbody2D;
 
     public void Initialize(BodyState initialState, Color color, SimulationDimension dimension, Sprite sprite)
     {
+        // Set the initial pose before adding a Rigidbody so physics starts from the correct position.
+        transform.position = initialState.Position;
+
         if (dimension == SimulationDimension.TwoD)
         {
+            // The 2D physics world needs both a 2D collider and a dynamic 2D body.
+            CircleCollider2D circle = GetComponent<CircleCollider2D>();
+            if (circle == null) circle = gameObject.AddComponent<CircleCollider2D>();
+            circle.isTrigger = false;
+
+            _rigidbody2D = GetComponent<Rigidbody2D>();
+            if (_rigidbody2D == null) _rigidbody2D = gameObject.AddComponent<Rigidbody2D>();
+            _rigidbody2D.bodyType = RigidbodyType2D.Dynamic;
+            _rigidbody2D.mass = initialState.Mass;
+            _rigidbody2D.gravityScale = 0f;
+            _rigidbody2D.linearVelocity = initialState.Velocity;
+            _rigidbody2D.constraints = RigidbodyConstraints2D.FreezeRotation;
+            _rigidbody2D.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            _rigidbody2D.interpolation = RigidbodyInterpolation2D.Interpolate;
+
             _spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
             _spriteRenderer.sprite = sprite != null ? sprite : GetDefaultSprite();
             _spriteRenderer.color = color;
@@ -25,6 +45,19 @@ public sealed class GravityBodyView : MonoBehaviour
         }
         else
         {
+            // Keep the sphere collider from the primitive and let PhysX resolve contacts.
+            SphereCollider sphere = GetComponent<SphereCollider>();
+            if (sphere == null) sphere = gameObject.AddComponent<SphereCollider>();
+            sphere.isTrigger = false;
+
+            _rigidbody = GetComponent<Rigidbody>();
+            if (_rigidbody == null) _rigidbody = gameObject.AddComponent<Rigidbody>();
+            _rigidbody.mass = initialState.Mass;
+            _rigidbody.useGravity = false;
+            _rigidbody.linearVelocity = initialState.Velocity;
+            _rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            _rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
+
             _renderer = GetComponent<Renderer>();
             if (_sharedMaterial == null)
             {
@@ -49,8 +82,30 @@ public sealed class GravityBodyView : MonoBehaviour
                 _renderer.SetPropertyBlock(_propertyBlock);
             }
         }
+    }
 
-        transform.position = initialState.Position;
+    /// <summary>Reads physics-owned motion state for the next gravity calculation.</summary>
+    public BodyState ReadState(float mass, SimulationDimension dimension)
+    {
+        if (dimension == SimulationDimension.TwoD)
+        {
+            Vector2 position = _rigidbody2D.position;
+            Vector2 velocity = _rigidbody2D.linearVelocity;
+            return new BodyState(new Vector3(position.x, position.y, 0f),
+                new Vector3(velocity.x, velocity.y, 0f), mass);
+        }
+
+        return new BodyState(_rigidbody.position, _rigidbody.linearVelocity, mass);
+    }
+
+    /// <summary>Applies gravity as acceleration so body mass does not change the orbit calculation.</summary>
+    public void ApplyGravityAcceleration(Vector3 acceleration, SimulationDimension dimension)
+    {
+        if (dimension == SimulationDimension.TwoD)
+            // Legacy 2D physics has no acceleration force mode, so convert acceleration to force.
+            _rigidbody2D.AddForce(acceleration * _rigidbody2D.mass, ForceMode2D.Force);
+        else
+            _rigidbody.AddForce(acceleration, ForceMode.Acceleration);
     }
 
     private static Sprite GetDefaultSprite()
@@ -88,11 +143,4 @@ public sealed class GravityBodyView : MonoBehaviour
         return _defaultSprite;
     }
 
-    public void ApplyState(BodyState state, SimulationDimension dimension)
-    {
-        Vector3 position = state.Position;
-        if (dimension == SimulationDimension.TwoD)
-            position.z = 0f;
-        transform.position = position;
-    }
 }

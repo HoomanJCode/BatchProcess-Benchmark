@@ -18,8 +18,7 @@ public sealed class UnityJobsBurstGravityExample : GravitySimulationExample
         _nativeAccelerations = new NativeArray<Vector3>(States.Length, Allocator.Persistent);
     }
 
-    protected override void SimulateStep(float deltaTime, float gravity, float softening,
-        SimulationDimension dimension)
+    protected override void SimulateStep(float gravity, float softening, SimulationDimension dimension)
     {
         for (int i = 0; i < States.Length; i++)
             _nativeStates[i] = States[i];
@@ -33,8 +32,10 @@ public sealed class UnityJobsBurstGravityExample : GravitySimulationExample
             Is2D = dimension == SimulationDimension.TwoD
         };
         job.Schedule(States.Length, 32).Complete();
-        States = GravityMath.Integrate(States, _nativeAccelerations, deltaTime,
-            dimension == SimulationDimension.TwoD);
+        var accelerations = new Vector3[States.Length];
+        for (int i = 0; i < accelerations.Length; i++)
+            accelerations[i] = _nativeAccelerations[i];
+        SubmitGravityAccelerations(accelerations);
     }
 
     protected override void OnDestroy()

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Unity.Profiling;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>Shared Inspector settings and visual setup for one gravity strategy example.</summary>
 public abstract class GravitySimulationExample : MonoBehaviour
@@ -9,20 +10,22 @@ public abstract class GravitySimulationExample : MonoBehaviour
     [SerializeField, Min(1)] private int _bodyCount = 128;
     [SerializeField, Min(0f)] private float _gravity = 1.15f;
     [SerializeField, Min(0.001f)] private float _softening = 0.2f;
-    [SerializeField, Min(0f)] private float _timeScale = 1f;
+    [FormerlySerializedAs("_timeScale"), SerializeField, Min(0f),
+     Tooltip("Scales the custom gravitational acceleration applied to the bodies.")]
+    private float _gravityScale = 1f;
     [SerializeField] private SimulationDimension _dimension = SimulationDimension.ThreeD;
     [SerializeField] private Sprite _bodySprite;
 
     private static Material _gridMaterial;
     private readonly List<GravityBodyView> _views = new List<GravityBodyView>();
     private ProfilerMarker _stepMarker;
+    private Vector3[] _pendingAccelerations;
 
     protected BodyState[] States { get; set; }
     protected SimulationDimension Dimension { get { return _dimension; } }
     protected abstract SimulationMode Mode { get; }
 
-    protected abstract void SimulateStep(float deltaTime, float gravity, float softening,
-        SimulationDimension dimension);
+    protected abstract void SimulateStep(float gravity, float softening, SimulationDimension dimension);
 
     protected virtual void Awake()
     {
@@ -33,11 +36,12 @@ public abstract class GravitySimulationExample : MonoBehaviour
         CreateGrid();
     }
 
-    protected virtual void Update()
+    protected virtual void FixedUpdate()
     {
+        SynchronizeBodyStates();
         using (_stepMarker.Auto())
-            SimulateStep(Time.deltaTime * _timeScale, _gravity, _softening, _dimension);
-        ApplyBodyStates();
+            SimulateStep(_gravity * _gravityScale, _softening, _dimension);
+        ApplyPendingAccelerations();
     }
 
     protected virtual void OnDestroy() { }
@@ -51,11 +55,6 @@ public abstract class GravitySimulationExample : MonoBehaviour
                 : GameObject.CreatePrimitive(PrimitiveType.Sphere);
             bodyObject.name = "Gravity Body " + i.ToString("D3");
 
-            // Match the collider type to the rendered shape in this scene dimension.
-            // The custom gravity solver moves bodies; these colliders do not add collision response.
-            if (_dimension == SimulationDimension.TwoD)
-                bodyObject.AddComponent<CircleCollider2D>();
-
             float scale = Mathf.Clamp(0.28f * Mathf.Pow(128f / States.Length, 0.22f), 0.11f, 0.32f);
             bodyObject.transform.localScale = Vector3.one * scale;
             var view = bodyObject.AddComponent<GravityBodyView>();
@@ -65,11 +64,28 @@ public abstract class GravitySimulationExample : MonoBehaviour
         }
     }
 
-    private void ApplyBodyStates()
+    private void SynchronizeBodyStates()
     {
         int count = Mathf.Min(States.Length, _views.Count);
         for (int i = 0; i < count; i++)
-            _views[i].ApplyState(States[i], _dimension);
+            States[i] = _views[i].ReadState(States[i].Mass, _dimension);
+    }
+
+    /// <summary>Queues computed accelerations for the next Unity physics step.</summary>
+    protected void SubmitGravityAccelerations(Vector3[] accelerations)
+    {
+        _pendingAccelerations = accelerations;
+    }
+
+    private void ApplyPendingAccelerations()
+    {
+        if (_pendingAccelerations == null)
+            return;
+
+        int count = Mathf.Min(_pendingAccelerations.Length, _views.Count);
+        for (int i = 0; i < count; i++)
+            _views[i].ApplyGravityAcceleration(_pendingAccelerations[i], _dimension);
+        _pendingAccelerations = null;
     }
 
     private void ConfigureCamera()

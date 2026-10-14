@@ -83,6 +83,17 @@ public static class GravityMath
         return acceleration;
     }
 
+    /// <summary>Calculates each body's acceleration without integrating its position or velocity.</summary>
+    public static Vector3[] CalculateAccelerations(BodyState[] states, float gravity, float softening,
+        SimulationDimension dimension)
+    {
+        bool is2D = dimension == SimulationDimension.TwoD;
+        var accelerations = new Vector3[states.Length];
+        for (int i = 0; i < states.Length; i++)
+            accelerations[i] = Acceleration(states, i, gravity, softening, is2D);
+        return accelerations;
+    }
+
     /// <summary>Burst-compatible overload of the same inverse-square gravity formula.</summary>
     public static Vector3 Acceleration(NativeArray<BodyState> states, int index, float gravity,
         float softeningSquared, bool is2D)
@@ -107,53 +118,6 @@ public static class GravityMath
             z += dz * scale;
         }
         return new Vector3(x, y, z);
-    }
-
-    public static BodyState[] Advance(BodyState[] source, float deltaTime, float gravity, float softening,
-        SimulationDimension dimension)
-    {
-        bool is2D = dimension == SimulationDimension.TwoD;
-        var accelerations = new Vector3[source.Length];
-        for (int i = 0; i < source.Length; i++)
-            accelerations[i] = Acceleration(source, i, gravity, softening, is2D);
-        return Integrate(source, accelerations, deltaTime, is2D);
-    }
-
-    public static BodyState[] Integrate(BodyState[] source, Vector3[] accelerations, float deltaTime, bool is2D)
-    {
-        var result = new BodyState[source.Length];
-        for (int i = 0; i < source.Length; i++)
-        {
-            BodyState body = source[i];
-            body.Velocity += accelerations[i] * deltaTime;
-            body.Position += body.Velocity * deltaTime;
-            if (is2D)
-            {
-                body.Velocity.z = 0f;
-                body.Position.z = 0f;
-            }
-            result[i] = body;
-        }
-        return result;
-    }
-
-    public static BodyState[] Integrate(BodyState[] source, NativeArray<Vector3> accelerations,
-        float deltaTime, bool is2D)
-    {
-        var result = new BodyState[source.Length];
-        for (int i = 0; i < source.Length; i++)
-        {
-            BodyState body = source[i];
-            body.Velocity += accelerations[i] * deltaTime;
-            body.Position += body.Velocity * deltaTime;
-            if (is2D)
-            {
-                body.Velocity.z = 0f;
-                body.Position.z = 0f;
-            }
-            result[i] = body;
-        }
-        return result;
     }
 
     private static float NextFloat(ref uint state)

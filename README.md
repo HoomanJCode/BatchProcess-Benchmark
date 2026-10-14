@@ -33,7 +33,7 @@ Choose **Tools → Batch Processing → Create Example Scene** to regenerate the
 
 ## Open the gravity example
 
-The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/GravitySimulation). Each scene is a standalone example with one controller and no runtime UI. The starter scene opens in 2D with sprite bodies; each strategy scene opens in 3D with sphere bodies. Use the controller Inspector to set body count, gravity, softening, simulation speed, and dimension.
+The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/GravitySimulation). Each scene is a standalone example with one controller and no runtime UI. The starter scene opens in 2D with sprite bodies; each strategy scene opens in 3D with sphere bodies. Use the controller Inspector to set body count, gravity, softening, gravity scale, and dimension.
 
 | Scene | Starts with |
 | --- | --- |
@@ -49,14 +49,16 @@ All seven gravity scenes and the batch scene are in **Build Settings**. Regenera
 
 Each gravity strategy has one implementation script in its own assembly under `Assets/Examples/GravitySimulation/Scripts`. Those assemblies reference `GravitySimulation.Core` for the shared gravity formula and common scene setup.
 
-In 2D mode, bodies use `SpriteRenderer` with the controller's optional body sprite (a circle sprite is generated when none is assigned), a `CircleCollider2D`, and a camera aimed straight at the simulation plane. In 3D mode, bodies use spheres with `SphereCollider`. The demo uses deterministic initial positions and velocities, softened inverse-square attraction, and a simple semi-implicit Euler integration. It is a visual workload example, not a high-precision orbital solver. The custom gravity solver does not use the colliders for collision response. At `N` bodies, each step performs roughly `N × (N - 1)` pair evaluations, so the workload grows quadratically.
+In 2D mode, bodies use `SpriteRenderer`, a dynamic `Rigidbody2D`, and a non-trigger `CircleCollider2D`; a circle sprite is generated when no body sprite is assigned. In 3D mode, sphere bodies use a dynamic `Rigidbody` and a non-trigger `SphereCollider`. Unity's 2D or 3D physics engine integrates movement and resolves sphere contacts. Built-in world gravity is disabled because the selected strategy calculates custom softened inverse-square gravity and applies it through `Rigidbody.AddForce`; 2D converts acceleration to an equivalent mass-scaled force because `ForceMode2D` has no acceleration option.
+
+The initial positions and velocities are deterministic. This is a visual workload example, not a high-precision orbital solver. Async and coroutine scenes keep applying the last completed gravity calculation while the next calculation is in flight or split into chunks. At `N` bodies, each calculation performs roughly `N × (N - 1)` pair evaluations, so the workload grows quadratically.
 
 ## Profiling
 
 1. Open **Window → Analysis → Profiler** before running the example.
 2. Use the same workload settings for each mode. For gravity, reset the scene between captures; the batch scene recreates its same starting values for each run.
 3. Warm up each mode first. Discard the first Burst measurement in Editor Play mode because it may include JIT compilation.
-4. Compare frame time and main-thread cost. The gravity strategies expose `GravitySimulation.*` profiler markers; C# async and coroutines can keep the main thread responsive by moving or spreading work, even when total elapsed time is not lower.
+4. Compare frame time and main-thread cost. The gravity strategies expose `GravitySimulation.*` profiler markers around gravity calculation. Unity's Rigidbody integration and collision solving still run on the main thread and are shared by every mode, so use the markers to compare the processing strategies and total frame time to see the overall cost.
 5. Small workloads may be slower with parallel strategies because scheduling has a cost. Results depend on hardware, Editor load, Unity version, and Burst configuration.
 
 The batch component reports **compute time** for work within that mode (including job setup and copying for Unity Jobs), and **wall time** from start to completion. For async, wall time includes the wait until the worker finishes. For coroutines, wall time includes the frames spent yielding while compute time sums only the chunk work.
