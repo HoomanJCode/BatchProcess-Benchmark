@@ -130,9 +130,10 @@
       </article>
       <article class="panel chart-panel">
         <div class="chart-title"><div><h3>Compare completed runs</h3><p id="comparison-caption">Complete a pass to fill the chart.</p></div>
-          <div class="metric-switch" role="group" aria-label="Comparison metric"><button type="button" data-metric="averageProfileMs" aria-pressed="true">Marker avg/frame</button><button type="button" data-metric="p95FrameMs" aria-pressed="false">Frame P95</button><button type="button" data-metric="bestScore" aria-pressed="false" hidden>Best score</button></div>
+          <div class="metric-switch" role="group" aria-label="Comparison metric"><button type="button" data-metric="averageProfileMs" aria-pressed="true">Marker avg/frame</button><button type="button" data-metric="averageBestScore" aria-pressed="false" hidden>Mean score</button><button type="button" data-metric="bestScore" aria-pressed="false" hidden>Best score</button><button type="button" data-metric="p95FrameMs" aria-pressed="false">Frame P95</button></div>
         </div>
         <div id="bars" class="bars"><div class="empty">Run the comparison scene.<br>Each strategy appears here when its pass finishes.</div></div>
+        <p class="note" id="comparison-verdict" hidden></p>
       </article>
     </section>
 
@@ -158,6 +159,7 @@
     const timeline = document.getElementById('timeline');
     const ctx = timeline.getContext('2d');
     let selectedMetric = 'averageProfileMs';
+    let lastWorkload = null;
     let lastState = null;
 
     function formatMs(value) {
@@ -165,12 +167,15 @@
     }
 
     function formatScore(value) {
-      return Number.isFinite(value) ? value.toFixed(6) : '—';
+      if (!Number.isFinite(value)) return '—';
+      if (value !== 0 && Math.abs(value) < 0.000001) return value.toExponential(2);
+      return value.toFixed(6);
     }
 
     function updatePage(state) {
-      if (lastState && lastState.workload !== state.workload) {
-        selectedMetric = 'averageProfileMs';
+      if (lastWorkload !== state.workload) {
+        selectedMetric = state.workload === 'optimization' ? 'averageBestScore' : 'averageProfileMs';
+        lastWorkload = state.workload;
         document.querySelectorAll('[data-metric]').forEach(button =>
           button.setAttribute('aria-pressed', String(button.dataset.metric === selectedMetric)));
       }
@@ -218,6 +223,7 @@
       document.querySelector('[data-metric="averageProfileMs"]').textContent = isWorkComparison ? 'Compute avg' : 'Marker avg/frame';
       document.querySelector('[data-metric="p95FrameMs"]').textContent = isBatch || isOptimization ? 'Wall P95' : 'Frame P95';
       document.querySelector('[data-metric="p95FrameMs"]').hidden = isOptimization;
+      document.querySelector('[data-metric="averageBestScore"]').hidden = !isOptimization;
       document.querySelector('[data-metric="bestScore"]').hidden = !isOptimization;
       document.getElementById('count-heading').textContent = isOptimization ? 'Evaluations' : (isBatch ? 'Items' : 'Balls');
       document.getElementById('iterations-heading').hidden = !isBatch;
@@ -229,7 +235,7 @@
       document.getElementById('frame-p95-heading').textContent = isOptimization ? 'Wall avg' : (isBatch ? 'Wall P95' : 'Frame P95');
       document.getElementById('samples-heading').textContent = isOptimization ? 'Trials' : (isBatch ? 'Runs' : 'Samples');
       document.getElementById('results-note').textContent = isOptimization
-        ? 'Objective: minimize f(x, y) = x² + y² inside the range −5 to 5. The known solution is (0, 0), score 0. PSO uses 64 particles for 100 evaluations each; Random Search tries 6,400 points. Both repeat the same evaluation budget over five deterministic trials. Compare best score as well as time; lower score means a better answer.'
+        ? 'Objective: minimize f(x, y) = x² + y² inside the range −5 to 5. The known solution is (0, 0), score 0. PSO uses 64 particles for 100 evaluations each; Random Search tries 6,400 points. Both repeat the same evaluation budget over five deterministic trials. Use Mean best score to compare solution quality and Compute avg to compare speed. Random Search can be faster because each evaluation does less work; faster does not mean a better solution. Lower scores and times are better.'
         : (isBatch
           ? 'Batch timings come from each example’s calculation and total wall time. Coroutine wall time includes the frames spent yielding.'
           : 'Marker timings are summed within each frame and then averaged across measured frames. Unity coroutine marks one yielded calculation chunk, so its work is spread across frames; its marker value is not the full calculation time. C# async records its worker-thread calculation. Main-thread and frame times include Unity and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.');
@@ -291,6 +297,7 @@
         body.innerHTML = '<tr><td colspan="10" class="empty">No completed runs yet.</td></tr>';
         bars.innerHTML = '<div class="empty">Run the comparison scene.<br>Each strategy appears here when its pass finishes.</div>';
         document.getElementById('comparison-caption').textContent = 'Complete a pass to fill the chart.';
+        document.getElementById('comparison-verdict').hidden = true;
         return;
       }
       const isBatch = lastState && lastState.workload === 'batch';
@@ -302,18 +309,46 @@
         (isOptimization ? '<td>' + result.bestX.toFixed(4) + '</td><td>' + result.bestY.toFixed(4) + '</td>' : '<td hidden></td><td hidden></td>') +
         '<td>' + formatMs(isOptimization ? result.averageProfileMs : result.averageFrameMs) + '</td>' +
         '<td>' + formatMs(isOptimization ? result.averageFrameMs : result.p95FrameMs) + '</td><td>' + result.sampleCount + '</td></tr>').join('');
-      const maximum = Math.max(...results.map(result => result[selectedMetric] || 0), 0.0001);
+      const values = results.map(result => Number(result[selectedMetric]) || 0);
+      const minimum = Math.min(...values);
+      const maximum = Math.max(...values);
+      const valueRange = maximum - minimum;
+      const evaluationBudgetsMatch = isOptimization && results.every(result =>
+        result.evaluationCount === results[0].evaluationCount);
       bars.innerHTML = results.map(result => {
         const value = result[selectedMetric] || 0;
-        const width = Math.max(1, value / maximum * 100);
-        const valueText = selectedMetric === 'bestScore' ? formatScore(value) : (value < 1 ? value.toFixed(3) : value.toFixed(2)) + ' ms';
+        // Every charted measure is a cost or error, so a lower value gets a longer bar.
+        const width = valueRange === 0 ? 100 : 10 + (maximum - value) / valueRange * 90;
+        const isScore = selectedMetric === 'bestScore' || selectedMetric === 'averageBestScore';
+        const valueText = isScore ? formatScore(value) : formatMs(value);
         return '<div class="bar-row"><span class="bar-label" title="' + escapeText(result.strategy) + '">' + escapeText(result.strategy) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + width + '%"></div></div><span class="bar-value">' + valueText + '</span></div>';
       }).join('');
       document.getElementById('comparison-caption').textContent = isOptimization
-        ? (selectedMetric === 'bestScore' ? 'Best score found by each algorithm across all trials; lower is better.' : 'Compare cost to find the solution using the same number of evaluations.')
+        ? (selectedMetric === 'averageProfileMs'
+          ? (evaluationBudgetsMatch ? 'Equal evaluation budgets; longer bars mean faster.' : 'Evaluation counts differ; longer bars mean faster.')
+          : (selectedMetric === 'averageBestScore'
+            ? 'Mean of each trial’s best score; longer bars mean a better solution.'
+            : 'Best score across all trials; longer bars mean a better solution.'))
         : (isBatch
-          ? (selectedMetric === 'averageProfileMs' ? 'Average calculation time across repeated runs.' : '95th percentile total wall time across repeated runs.')
-          : (selectedMetric === 'averageProfileMs' ? 'Average strategy marker time per measured frame.' : '95th percentile of full frame elapsed time.'));
+          ? (selectedMetric === 'averageProfileMs' ? 'Average calculation time across repeated runs; longer bars mean faster.' : '95th percentile wall time; longer bars mean faster.')
+          : (selectedMetric === 'averageProfileMs' ? 'Average strategy marker time per measured frame; longer bars mean faster.' : '95th percentile frame time; longer bars mean faster.'));
+
+      const verdict = document.getElementById('comparison-verdict');
+      const comparisonIsComplete = isOptimization && results.length >= (lastState.total || 2);
+      if (comparisonIsComplete) {
+        const bestQuality = results.reduce((best, result) =>
+          result.averageBestScore < best.averageBestScore ? result : best);
+        const fastest = results.reduce((best, result) =>
+          result.averageProfileMs < best.averageProfileMs ? result : best);
+        verdict.textContent = bestQuality.strategy + ' had the lower mean score (' + formatScore(bestQuality.averageBestScore) + '); '
+          + fastest.strategy + ' had the faster calculation (' + formatMs(fastest.averageProfileMs) + '). '
+          + (evaluationBudgetsMatch
+            ? 'Each used ' + results[0].evaluationCount.toLocaleString() + ' evaluations.'
+            : 'The strategies used different evaluation budgets; check the table before comparing score quality.');
+        verdict.hidden = false;
+      } else {
+        verdict.hidden = true;
+      }
     }
 
     function escapeText(value) {

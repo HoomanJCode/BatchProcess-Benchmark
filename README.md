@@ -74,7 +74,7 @@ The headless helper regenerates the batch scenes, builds a small Windows player 
   -UnityEditorPath "C:\Program Files\Unity\Hub\Editor\6000.5.1f1\Editor\Unity.exe"
 ```
 
-The report includes both algorithms, equal evaluation counts, best and mean best scores, best coordinates, compute time, and total wall time. The helper builds in the project, so close the Unity Editor before running it.
+The report includes both algorithms, equal evaluation counts, best and mean best scores, best coordinates, compute time, and total wall time. The dashboard starts with mean best score so solution quality is the first comparison; choose **Compute avg** to compare speed. Its bars are longer for lower (better) scores or times. A faster result is not necessarily a better solution: Random Search does less work per evaluation, while PSO can use each evaluation to move toward promising areas. The helper builds in the project, so close the Unity Editor before running it.
 
 For an algorithm comparison, equal objective-evaluation budgets make solution quality comparable. The time includes each algorithm's search work and its random-number generation; array setup for PSO happens before timing. It is a small demonstration problem, not evidence that either method is best for every optimization task.
 
