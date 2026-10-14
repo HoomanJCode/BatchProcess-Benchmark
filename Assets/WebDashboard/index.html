@@ -188,7 +188,7 @@
     <div class="section-head"><div><h2 id="results-title">Selected comparison results</h2><p id="results-description">Each pass uses the configured warm-up and measurement duration.</p></div></div>
     <section class="panel chart-panel table-wrap">
       <table><thead><tr><th>Strategy</th><th id="count-heading">Balls</th><th id="iterations-heading" hidden>Iterations</th><th id="batch-size-heading" hidden>Batch size</th><th id="average-heading">Compute avg</th><th id="p95-heading">Compute P95</th><th id="solution-x-heading" hidden>Best X</th><th id="solution-y-heading" hidden>Best Y</th><th id="frame-average-heading">Frame avg</th><th id="frame-p95-heading">Frame P95</th><th id="samples-heading">Samples</th></tr></thead><tbody id="results"><tr><td colspan="11" class="empty">No completed runs yet.</td></tr></tbody></table>
-      <p class="note" id="results-note">Compute average and P95 use active calculation samples; frames with no strategy work are skipped. Unity coroutine adds the measured time from every chunk in one complete gravity loop, even when that loop spans several frames. Frame times separately show overall responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.</p>
+      <p class="note" id="results-note">Gravity calculation samples show average time per physics step. If Unity runs multiple physics steps in one rendered frame, their summed marker time is divided by the marker call count. Coroutine chunk times are summed into one complete gravity step across frames. Frame times separately show overall responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.</p>
     </section>
 
     <div class="section-head"><div><h2>Present it live</h2><p>The browser is a local monitor; Unity still performs every simulation.</p></div></div>
@@ -392,7 +392,7 @@
           ? 'This dedicated example uses the same deterministic inputs and trial count across its six processing methods. Compare compute and wall time within this example. Lower times are better.'
         : (isBatch
           ? 'All methods process the same input count and calculation in batches of the same size. The batched C# Tasks method starts one task per batch. Compute time includes method scheduling; coroutine wall time includes yielded frames. Lower times are better.'
-          : 'Compute average and P95 use active calculation samples; frames with no strategy work are skipped. Unity coroutine adds the measured time from every chunk in one complete gravity loop, even when that loop spans several frames. Frame timing separately shows overall responsiveness and includes Unity physics and Editor overhead. Lower times are better.');
+          : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Coroutine chunk times are summed into one full step across frames. Frame timing separately shows responsiveness and includes Unity physics and Editor overhead. Lower times are better.');
     }
 
     function renderGravityOverview(latest, isRunning, saved2D, saved3D, current) {
@@ -598,7 +598,7 @@
         ? 'This dedicated example runs the same deterministic inputs through single-threaded, C# async, C# parallel, Unity Jobs, Unity coroutine, and Jobs + Burst. This table compares processing times for ' + getSelectedAlgorithm() + ' only; it does not compare optimization quality.'
         : (isBatch
           ? 'All methods use the same batch size. The batched C# Tasks method creates one task per batch. Coroutine wall time includes the frames spent yielding.'
-          : 'Compute average and P95 use active calculation samples; frames with no strategy work are skipped. Unity coroutine adds the measured time from every chunk in one complete gravity loop, even when that loop spans several frames. Frame times separately show overall responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.');
+          : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Coroutine chunk times are summed into one full step across frames. Frame times separately show responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.');
       document.getElementById('marker-pill').textContent = state.markerName || 'No marker yet';
       document.getElementById('updated').textContent = state.updatedUtc ? 'Updated ' + new Date(state.updatedUtc).toLocaleTimeString() : 'Waiting for first sample';
       drawTimeline(state);
@@ -672,19 +672,25 @@
         '<td>' + formatMs(result.p95FrameMs) + '</td><td>' + result.sampleCount + '</td></tr>').join('');
       const values = results.map(result => Number(result[selectedMetric]) || 0);
       const maximum = Math.max(...values);
+      const positiveValues = values.filter(value => value > 0);
+      const minimum = positiveValues.length ? Math.min(...positiveValues) : 0;
+      const logarithmicRange = minimum > 0 && maximum > minimum ? Math.log(maximum / minimum) : 0;
       bars.innerHTML = results.map(result => {
         const value = result[selectedMetric] || 0;
         const strategyName = displayStrategyName(result.strategy);
-        // Bar length now maps directly to measured time: shorter bars are faster.
-        const width = maximum > 0 ? value / maximum * 100 : 0;
+        // Log scaling keeps faster methods visible when one result is a large outlier.
+        const width = value <= 0 ? 0 : (logarithmicRange > 0
+          ? 12 + 88 * Math.log(value / minimum) / logarithmicRange
+          : 70);
         const valueText = formatMs(value);
         return '<div class="bar-row"><span class="bar-label" title="' + escapeText(strategyName) + '">' + escapeText(strategyName) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + width + '%"></div></div><span class="bar-value">' + valueText + '</span></div>';
       }).join('');
       document.getElementById('comparison-caption').textContent = selectedMetric === 'averageProfileMs'
         ? (isOptimization ? getSelectedAlgorithm() + ' · average processing runtime; shorter bars are faster.' : (isBatch
           ? 'Average calculation time across repeated runs; shorter bars are faster.'
-          : 'Average calculation time per gravity loop; coroutine chunk times are summed across frames. Shorter bars are faster.'))
+          : 'Average calculation time per gravity physics step; coroutine chunks are summed across frames. Shorter bars are faster.'))
         : (isBatch || isOptimization ? '95th percentile wall time; shorter bars are faster.' : '95th percentile frame time; shorter bars are faster.');
+      document.getElementById('comparison-caption').textContent += ' Log scale; values show actual milliseconds.';
 
       const verdict = document.getElementById('comparison-verdict');
       verdict.hidden = true;

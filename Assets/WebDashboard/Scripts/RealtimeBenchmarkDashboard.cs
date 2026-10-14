@@ -542,7 +542,21 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             if (_profileRecorder.Valid)
             {
                 // LateUpdate reads the marker after this frame's coroutine chunks have run.
-                float profileMs = _profileRecorder.CurrentValue / 1000000f;
+                float profileMs = 0f;
+                long markerCallsThisFrame = 0;
+                int collectedFrameCount = _profileRecorder.Count;
+                if (collectedFrameCount > 0)
+                {
+                    int latestSampleIndex = collectedFrameCount - 1;
+                    ProfilerRecorderSample latestSample = _profileRecorder.GetSample(latestSampleIndex);
+                    markerCallsThisFrame = latestSample.Count;
+                    if (markerCallsThisFrame > 0)
+                    {
+                        // FixedUpdate can run several times in one rendered frame. The recorder sums
+                        // those calls, so divide by their count for a fair per-step comparison.
+                        profileMs = (float)(latestSample.Value / (double)markerCallsThisFrame / 1000000d);
+                    }
+                }
 
                 if (_recordingCoroutineLoop)
                 {
@@ -570,9 +584,12 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 else
                 {
                     _state.profileMs = profileMs;
-                    // Ignore frames where the strategy had no calculation to run.
+                    // Repeat the frame average so catch-up physics frames keep proper weight.
                     if (profileMs > 0f)
-                        _profileSamplesMs.Add(profileMs);
+                    {
+                        for (int sampleIndex = 0; sampleIndex < markerCallsThisFrame; sampleIndex++)
+                            _profileSamplesMs.Add(profileMs);
+                    }
                 }
             }
 
