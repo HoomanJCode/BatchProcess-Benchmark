@@ -8,6 +8,6 @@ The dashboard displays Unity profiler measurements in a browser on this PC. It b
 - Optimization comparison launcher: `Scenes/Optimization_Benchmark.unity`
 - Gravity and Simple Iteration launchers live in their example folders.
 
-Run each comparison launcher in Unity. The page updates live while the scene runs, then saves the completed result in browser local storage so you can compare the five examples: Gravity 2D, Gravity 3D, Simple Iteration, PSO, and Random Search. Each workload uses the same six methods: single-threaded, C# async, C# parallel, Unity Jobs, Unity coroutine, and Unity Jobs with Burst.
+Run each comparison launcher in Unity. The page updates live while the scene runs, then saves the completed result in browser local storage so you can compare the five examples: Gravity 2D, Gravity 3D, Simple Iteration, PSO, and Random Search. Each workload uses the same six methods: single-threaded, C# async, C# parallel, Unity Jobs, Unity coroutine, and Unity Jobs with Burst. PSO and Random Search each have their own overview card and comparison tab.
 
-Start Unity's Play mode in the corresponding benchmark scene. The scene starts the local page automatically. If needed, open `http://127.0.0.1:8765/` manually. Use the workload tabs and the 2D/3D or PSO/Random Search subtabs to compare runtimes within each workload.
+Start Unity's Play mode in the corresponding benchmark scene. The scene starts the local page automatically. If needed, open `http://127.0.0.1:8765/` manually. Use the Gravity, Simple Iteration, PSO Simulation, or Random Search tabs to compare runtimes. Gravity has separate 2D and 3D subtabs. The optimization launcher runs both PSO and Random Search; their results appear in their respective dashboard tabs.

@@ -139,7 +139,8 @@
     <section class="overview-grid" aria-label="Overview of every comparison example">
       <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare the six gravity strategies in dedicated 2D and 3D Unity scenes.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene and press Play.</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
       <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through six processing approaches.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>PSO simulation and Random Search optimization</h3><p>Each workload runs through six processing methods. Select its tab below to compare runtimes.</p><strong id="optimization-overview-title">No completed run yet</strong><p id="optimization-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><details><summary>Show method runtimes</summary><div id="optimization-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>PSO simulation</h3><p>Compare PSO processing methods using the same optimization workload.</p><strong id="pso-overview-title">No completed run yet</strong><p id="pso-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><details><summary>Show method runtimes</summary><div id="pso-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Random Search</h3><p>Compare Random Search processing methods using the same optimization workload.</p><strong id="random-overview-title">No completed run yet</strong><p id="random-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><details><summary>Show method runtimes</summary><div id="random-overview-results" class="overview-strategies">No results saved.</div></details></article>
     </section>
 
     <div class="section-head"><div><h2 id="live-title">Live profile</h2><p id="live-description">Profiler samples update while the current Unity scene is running.</p></div><span class="pill" id="balls-pill">Balls: waiting</span></div>
@@ -147,15 +148,12 @@
     <div class="comparison-tabs" role="tablist" aria-label="Comparison workload">
       <button type="button" role="tab" data-comparison-workload="gravity" aria-selected="true">Gravity simulation</button>
       <button type="button" role="tab" data-comparison-workload="batch" aria-selected="false">Simple iteration</button>
-      <button type="button" role="tab" data-comparison-workload="optimization" aria-selected="false">PSO and Random Search</button>
+      <button type="button" role="tab" data-comparison-workload="pso" aria-selected="false">PSO simulation</button>
+      <button type="button" role="tab" data-comparison-workload="randomSearch" aria-selected="false">Random Search</button>
     </div>
     <div id="gravity-dimension-tabs" class="dimension-tabs" role="tablist" aria-label="Gravity dimension">
       <button type="button" role="tab" data-gravity-dimension="2D" aria-selected="true">2D</button>
       <button type="button" role="tab" data-gravity-dimension="3D" aria-selected="false">3D</button>
-    </div>
-    <div id="optimization-algorithm-tabs" class="dimension-tabs" role="tablist" aria-label="Optimization workload" hidden>
-      <button type="button" role="tab" data-optimization-algorithm="Particle swarm (PSO)" aria-selected="true">Particle Swarm (PSO)</button>
-      <button type="button" role="tab" data-optimization-algorithm="Random search" aria-selected="false">Random Search</button>
     </div>
     <section class="chart-grid">
       <article class="panel chart-panel">
@@ -182,7 +180,7 @@
     <section class="how" aria-label="How to use the dashboard">
       <div class="step"><b>1</b><div><strong>Start the dashboard</strong><span>Use the local command in the project README, then open this page in your browser.</span></div></div>
       <div class="step"><b>2</b><div><strong>Run each comparison</strong><span>Open the gravity, batch, and optimization launcher scenes one at a time, then press Play for each.</span></div></div>
-      <div class="step"><b>3</b><div><strong>Select a comparison tab</strong><span>After each run, its results are saved in this browser. Select Gravity, Simple Iteration, or PSO and Random Search; choose a dimension or algorithm to compare processing methods within that workload.</span></div></div>
+      <div class="step"><b>3</b><div><strong>Select a comparison tab</strong><span>After each run, its results are saved in this browser. Select Gravity, Simple Iteration, PSO Simulation, or Random Search. Gravity also has separate 2D and 3D views.</span></div></div>
     </section>
     <footer><span>Simulation Lab · localhost only · no cloud connection</span><span id="updated">Waiting for first sample</span></footer>
   </main>
@@ -198,7 +196,6 @@
     let lastState = null;
     let selectedComparisonWorkload = 'gravity';
     let selectedGravityDimension = '2D';
-    let selectedOptimizationAlgorithm = 'Particle swarm (PSO)';
     let lastComparisonKey = null;
     let comparisonSelectionWasManual = false;
     const overviewStorageKey = 'simulation-lab-latest-comparisons-v2';
@@ -232,6 +229,21 @@
       }
     }
 
+    function isOptimizationSelection() {
+      return selectedComparisonWorkload === 'pso' || selectedComparisonWorkload === 'randomSearch';
+    }
+
+    function getSelectedAlgorithm() {
+      return selectedComparisonWorkload === 'randomSearch' ? 'Random search' : 'Particle swarm (PSO)';
+    }
+
+    function getResultsForSelection(state) {
+      if (!state || !state.results) return [];
+      return isOptimizationSelection()
+        ? state.results.filter(result => result.algorithm === getSelectedAlgorithm())
+        : state.results;
+    }
+
     function renderOverview(currentState) {
       const currentIsComplete = currentState && currentState.status === 'complete';
       if (currentIsComplete) saveCompletedComparison(currentState);
@@ -247,7 +259,7 @@
         ? currentState
         : savedComparisons.batch;
       const liveBatch = currentState && currentState.workload === 'batch' && !currentIsComplete;
-      const optimization = currentState && currentState.workload === 'optimization' && currentIsComplete
+      const optimization = currentState && currentState.workload === 'optimization'
         ? currentState
         : savedComparisons.optimization;
       const liveOptimization = currentState && currentState.workload === 'optimization' && !currentIsComplete;
@@ -255,13 +267,16 @@
       renderGravityOverview(latestGravity, liveGravity, saved2D, saved3D,
         currentState && currentState.workload === 'gravity' ? currentState : null);
       renderOverviewCard('batch', batch, liveBatch, currentState && currentState.workload === 'batch' ? currentState : null);
-      renderOverviewCard('optimization', optimization, liveOptimization, currentState && currentState.workload === 'optimization' ? currentState : null);
+      renderOptimizationOverviewCard('pso', 'Particle swarm (PSO)', optimization, liveOptimization);
+      renderOptimizationOverviewCard('random', 'Random search', optimization, liveOptimization);
     }
 
     function getSelectedComparison() {
-      if (lastState && lastState.workload === selectedComparisonWorkload &&
-          (selectedComparisonWorkload !== 'gravity' || lastState.dimension === selectedGravityDimension)) return lastState;
+      if (lastState && ((lastState.workload === selectedComparisonWorkload &&
+          (selectedComparisonWorkload !== 'gravity' || lastState.dimension === selectedGravityDimension)) ||
+          (isOptimizationSelection() && lastState.workload === 'optimization'))) return lastState;
       if (selectedComparisonWorkload === 'gravity') return savedComparisons['gravity-' + selectedGravityDimension] || null;
+      if (isOptimizationSelection()) return savedComparisons.optimization || null;
       return savedComparisons[selectedComparisonWorkload] || null;
     }
 
@@ -272,13 +287,8 @@
       });
       const gravityTabs = document.getElementById('gravity-dimension-tabs');
       gravityTabs.hidden = selectedComparisonWorkload !== 'gravity';
-      const optimizationTabs = document.getElementById('optimization-algorithm-tabs');
-      optimizationTabs.hidden = selectedComparisonWorkload !== 'optimization';
       document.querySelectorAll('[data-gravity-dimension]').forEach(button => {
         button.setAttribute('aria-selected', String(button.dataset.gravityDimension === selectedGravityDimension));
-      });
-      document.querySelectorAll('[data-optimization-algorithm]').forEach(button => {
-        button.setAttribute('aria-selected', String(button.dataset.optimizationAlgorithm === selectedOptimizationAlgorithm));
       });
 
       const state = getSelectedComparison();
@@ -288,18 +298,18 @@
         lastComparisonKey = comparisonKey;
       }
       const isBatch = selectedComparisonWorkload === 'batch';
-      const isOptimization = selectedComparisonWorkload === 'optimization';
+      const isOptimization = isOptimizationSelection();
       const isWorkComparison = isBatch || isOptimization;
+      const selectedAlgorithm = getSelectedAlgorithm();
       document.querySelectorAll('[data-metric]').forEach(button => {
         button.setAttribute('aria-pressed', String(button.dataset.metric === selectedMetric));
       });
       document.querySelector('[data-metric="averageProfileMs"]').textContent = 'Compute avg';
       document.querySelector('[data-metric="p95FrameMs"]').textContent = isWorkComparison ? 'Wall P95' : 'Frame P95';
       document.querySelector('[data-metric="p95FrameMs"]').hidden = false;
-      document.getElementById('results-title').textContent = isOptimization ? selectedOptimizationAlgorithm + ' processing methods' :
+      document.getElementById('results-title').textContent = isOptimization ? selectedAlgorithm + ' processing methods' :
         (isBatch ? 'Simple iteration methods' : selectedGravityDimension + ' gravity processing methods');
-      const selectedResults = state && state.results ? state.results.filter(result =>
-        !isOptimization || result.algorithm === selectedOptimizationAlgorithm) : [];
+      const selectedResults = getResultsForSelection(state);
       document.getElementById('results-description').textContent = state && state.status === 'complete'
         ? 'Completed comparison · ' + selectedResults.length + ' processing methods · results saved in this browser.'
         : 'Run the matching Unity comparison scene to fill this view.';
@@ -308,14 +318,14 @@
         updateComparisonHeadings(state);
         drawResults(selectedResults, state);
       } else {
-        updateComparisonHeadings({ workload: selectedComparisonWorkload, dimension: selectedGravityDimension });
-        drawResults([], { workload: selectedComparisonWorkload, dimension: selectedGravityDimension });
+        updateComparisonHeadings({ workload: isOptimization ? 'optimization' : selectedComparisonWorkload, dimension: selectedGravityDimension });
+        drawResults([], { workload: isOptimization ? 'optimization' : selectedComparisonWorkload, dimension: selectedGravityDimension });
       }
     }
 
     function updateComparisonHeadings(state) {
       const isBatch = state.workload === 'batch';
-      const isOptimization = state.workload === 'optimization';
+      const isOptimization = isOptimizationSelection() || state.workload === 'optimization';
       document.getElementById('count-heading').textContent = isOptimization ? 'Evaluations' : (isBatch ? 'Items' : 'Balls');
       document.getElementById('iterations-heading').hidden = !isBatch;
       document.getElementById('solution-x-heading').hidden = true;
@@ -326,7 +336,7 @@
       document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : 'Frame P95';
       document.getElementById('samples-heading').textContent = isOptimization ? 'Trials' : (isBatch ? 'Runs' : 'Samples');
       document.getElementById('results-note').textContent = isOptimization
-        ? 'The selected algorithm is a workload. Its six scenes use the same deterministic inputs and trial count while changing only the processing method. Compare compute and wall time within this algorithm tab; PSO and Random Search are not compared against each other here. Lower times are better.'
+        ? 'This dedicated example uses the same deterministic inputs and trial count across its six processing methods. Compare compute and wall time within this example. Lower times are better.'
         : (isBatch
           ? 'All methods process the same input count and calculation. Compute time measures the calculation; wall time also includes scheduling, waiting, or frames spent yielding. Lower times are better.'
           : 'Compute average and P95 use active calculation samples; frames with no strategy work are skipped. Unity coroutine adds the measured time from every chunk in one complete gravity loop, even when that loop spans several frames. Frame timing separately shows overall responsiveness and includes Unity physics and Editor overhead. Lower times are better.');
@@ -366,7 +376,7 @@
       const title = document.getElementById(prefix + '-overview-title');
       const detail = document.getElementById(prefix + '-overview-detail');
       const strategyList = document.getElementById(prefix + '-overview-results');
-      renderStrategyList(strategyList, current || comparison, prefix === 'optimization');
+      renderStrategyList(strategyList, current || comparison, false);
       if (isRunning) {
         title.textContent = 'Running · ' + ((lastState && lastState.completed) || 0) + ' strategies complete';
         title.className = 'overview-status';
@@ -376,17 +386,13 @@
       title.className = '';
       if (!comparison || !comparison.results || !comparison.results.length) {
         title.textContent = 'No completed run yet';
-        detail.textContent = prefix === 'gravity'
-          ? 'Open the 2D or 3D Gravity_Benchmark scene and press Play.'
-          : (prefix === 'batch' ? 'Open SimpleIteration_Benchmark in Unity and press Play.' : 'Open Optimization_Benchmark in Unity and press Play.');
+        detail.textContent = 'Open SimpleIteration_Benchmark in Unity and press Play.';
         return;
       }
       const results = comparison.results;
-      const isOptimization = prefix === 'optimization';
-      const fastest = isOptimization ? null : results.reduce((best, result) => result.averageProfileMs < best.averageProfileMs ? result : best);
-      title.textContent = isOptimization ? results.length + ' method runs complete' : fastest.strategy + ' · ' + formatMs(fastest.averageProfileMs);
-      detail.textContent = (comparison.dimension ? comparison.dimension + ' · ' : '') + results.length + ' processing-method results · ' +
-        (isOptimization ? 'six methods for each algorithm workload' : 'latest completed comparison');
+      const fastest = results.reduce((best, result) => result.averageProfileMs < best.averageProfileMs ? result : best);
+      title.textContent = fastest.strategy + ' · ' + formatMs(fastest.averageProfileMs);
+      detail.textContent = results.length + ' processing-method results · latest completed comparison';
     }
 
     function renderStrategyList(container, comparison, isOptimization) {
@@ -399,6 +405,31 @@
         const metric = formatMs(result.averageProfileMs) + ' · wall P95 ' + formatMs(result.p95FrameMs);
         return '<div class="overview-strategy"><span>' + label + '</span><span>' + metric + '</span></div>';
       }).join('');
+    }
+
+    function renderOptimizationOverviewCard(prefix, algorithm, comparison, isRunning) {
+      const title = document.getElementById(prefix + '-overview-title');
+      const detail = document.getElementById(prefix + '-overview-detail');
+      const strategyList = document.getElementById(prefix + '-overview-results');
+      const results = comparison && comparison.results
+        ? comparison.results.filter(result => result.algorithm === algorithm)
+        : [];
+      renderStrategyList(strategyList, { results: results }, true);
+      if (isRunning) {
+        title.textContent = 'Running · ' + results.length + ' methods complete';
+        title.className = 'overview-status';
+        detail.textContent = 'Live run · ' + algorithm + '. Completed results will be saved here.';
+        return;
+      }
+      title.className = '';
+      if (!results.length) {
+        title.textContent = 'No completed run yet';
+        detail.textContent = 'Open Optimization_Benchmark in Unity and press Play.';
+        return;
+      }
+      const fastest = results.reduce((best, result) => best.averageProfileMs < result.averageProfileMs ? best : result);
+      title.textContent = fastest.strategy + ' · ' + formatMs(fastest.averageProfileMs);
+      detail.textContent = results.length + ' processing-method results · latest completed comparison';
     }
 
     function renderGravityStrategyLists(container, comparison2D, comparison3D) {
@@ -423,7 +454,7 @@
         selectedMetric = 'averageProfileMs';
         lastWorkload = state.workload;
         if (!comparisonSelectionWasManual) {
-          selectedComparisonWorkload = state.workload;
+          selectedComparisonWorkload = state.workload === 'optimization' ? 'pso' : state.workload;
           if (state.workload === 'gravity' && (state.dimension === '2D' || state.dimension === '3D'))
             selectedGravityDimension = state.dimension;
         }
@@ -455,9 +486,9 @@
       document.getElementById('balls-pill').textContent = isOptimization
         ? (state.evaluationCount || 0).toLocaleString() + ' evaluations · ' + (state.trialCount || 5) + ' trials'
         : (isBatch ? 'Items: ' : 'Balls: ') + (state.ballCount || '—');
-      document.getElementById('live-title').textContent = isOptimization ? 'Optimization workload timings' : (isBatch ? 'Simple iteration timings' : 'Live profile');
+      document.getElementById('live-title').textContent = isOptimization ? getSelectedAlgorithm() + ' timings' : (isBatch ? 'Simple iteration timings' : 'Live profile');
       document.getElementById('live-description').textContent = isOptimization
-        ? 'PSO and Random Search run one after another; the selected tab compares the six processing methods within one algorithm.'
+        ? 'The launcher measures both dedicated examples one after another. Each dashboard tab compares six processing methods within its selected example.'
         : (isBatch ? 'Each completed scene run adds its calculation and total wall time.' : 'Profiler samples update while the current Unity scene is running.');
       document.getElementById('profile-label').textContent = isWorkComparison ? 'Latest calculation' : 'Current work marker';
       document.getElementById('profile-hint').textContent = isWorkComparison ? 'milliseconds for one run' : 'milliseconds / sample';
@@ -470,7 +501,7 @@
       document.getElementById('legend-profile').textContent = isWorkComparison ? 'Calculation time' : 'Gravity marker';
       document.getElementById('legend-main').textContent = isWorkComparison ? 'Unused' : 'Main thread';
       document.getElementById('legend-frame').textContent = isWorkComparison ? 'Wall time' : 'Frame time';
-      document.getElementById('timeline-title').textContent = isOptimization ? 'Optimization processing-time runs' : (isBatch ? 'Batch calculation and wall time' : 'Frame and CPU timeline');
+      document.getElementById('timeline-title').textContent = isOptimization ? getSelectedAlgorithm() + ' processing-time runs' : (isBatch ? 'Batch calculation and wall time' : 'Frame and CPU timeline');
       document.getElementById('timeline-subtitle').textContent = isWorkComparison ? 'Completed runs · milliseconds' : 'Recent samples · milliseconds';
       document.querySelector('[data-metric="averageProfileMs"]').textContent = 'Compute avg';
       document.querySelector('[data-metric="p95FrameMs"]').textContent = isBatch || isOptimization ? 'Wall P95' : 'Frame P95';
@@ -485,7 +516,7 @@
       document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : 'Frame P95';
       document.getElementById('samples-heading').textContent = isOptimization ? 'Trials' : (isBatch ? 'Runs' : 'Samples');
       document.getElementById('results-note').textContent = isOptimization
-        ? 'PSO and Random Search are separate workloads. Each workload runs the same deterministic inputs through single-threaded, C# async, C# parallel, Unity Jobs, Unity coroutine, and Jobs + Burst. This table compares processing times for the selected algorithm only; it does not compare optimization quality.'
+        ? 'This dedicated example runs the same deterministic inputs through single-threaded, C# async, C# parallel, Unity Jobs, Unity coroutine, and Jobs + Burst. This table compares processing times for ' + getSelectedAlgorithm() + ' only; it does not compare optimization quality.'
         : (isBatch
           ? 'Batch timings come from each example’s calculation and total wall time. Coroutine wall time includes the frames spent yielding.'
           : 'Compute average and P95 use active calculation samples; frames with no strategy work are skipped. Unity coroutine adds the measured time from every chunk in one complete gravity loop, even when that loop spans several frames. Frame times separately show overall responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.');
@@ -571,7 +602,7 @@
         return '<div class="bar-row"><span class="bar-label" title="' + escapeText(result.strategy) + '">' + escapeText(result.strategy) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + width + '%"></div></div><span class="bar-value">' + valueText + '</span></div>';
       }).join('');
       document.getElementById('comparison-caption').textContent = isOptimization
-        ? 'Selected algorithm · average processing runtime; longer bars mean faster.'
+        ? getSelectedAlgorithm() + ' · average processing runtime; longer bars mean faster.'
         : (isBatch
           ? (selectedMetric === 'averageProfileMs' ? 'Average calculation time across repeated runs; longer bars mean faster.' : '95th percentile wall time; longer bars mean faster.')
           : (selectedMetric === 'averageProfileMs' ? 'Average calculation time per complete gravity loop; coroutine chunk times are summed across frames. Longer bars mean faster.' : '95th percentile frame time; longer bars mean faster.'));
@@ -601,9 +632,7 @@
       document.querySelectorAll('[data-metric]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
       const state = getSelectedComparison();
       if (state) {
-        const results = selectedComparisonWorkload === 'optimization'
-          ? (state.results || []).filter(result => result.algorithm === selectedOptimizationAlgorithm)
-          : (state.results || []);
+        const results = getResultsForSelection(state);
         drawResults(results, state);
       }
     }));
@@ -616,11 +645,6 @@
     }));
     document.querySelectorAll('[data-gravity-dimension]').forEach(button => button.addEventListener('click', () => {
       selectedGravityDimension = button.dataset.gravityDimension;
-      comparisonSelectionWasManual = true;
-      renderComparisonSelection();
-    }));
-    document.querySelectorAll('[data-optimization-algorithm]').forEach(button => button.addEventListener('click', () => {
-      selectedOptimizationAlgorithm = button.dataset.optimizationAlgorithm;
       comparisonSelectionWasManual = true;
       renderComparisonSelection();
     }));
