@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -9,40 +10,75 @@ using UnityEngine.SceneManagement;
 public static class GravitySceneGeneration
 {
     private const string SceneFolder = "Assets/Examples/GravitySimulation/Scenes";
-    private const string StarterScenePath = SceneFolder + "/SampleScene.unity";
-    private const string RemovedScenePath = SceneFolder + "/Gravity_UnityModularMainThread.unity";
+    private const string TwoDSceneFolder = SceneFolder + "/2D";
+    private const string ThreeDSceneFolder = SceneFolder + "/3D";
 
     [MenuItem("Tools/Gravity Simulation/Regenerate Example Scenes")]
     public static void Build()
     {
+        EnsureSceneFolders();
         var generatedScenes = new List<EditorBuildSettingsScene>();
-
-        CreateScene(StarterScenePath, "Gravity 2D Sprite Example", SimulationMode.SingleThreaded,
-            SimulationDimension.TwoD);
-        generatedScenes.Add(new EditorBuildSettingsScene(StarterScenePath, true));
 
         foreach (SimulationMode mode in System.Enum.GetValues(typeof(SimulationMode)))
         {
-            string path = SceneFolder + "/Gravity_" + SceneName(mode) + ".unity";
-            CreateScene(path, "Gravity " + DisplayName(mode), mode, SimulationDimension.ThreeD);
-            generatedScenes.Add(new EditorBuildSettingsScene(path, true));
+            string sceneFile = "Gravity_" + SceneName(mode) + ".unity";
+            string twoDPath = TwoDSceneFolder + "/" + sceneFile;
+            string threeDPath = ThreeDSceneFolder + "/" + sceneFile;
+
+            CreateScene(twoDPath, "Gravity " + DisplayName(mode) + " (2D)", mode,
+                SimulationDimension.TwoD);
+            CreateScene(threeDPath, "Gravity " + DisplayName(mode) + " (3D)", mode,
+                SimulationDimension.ThreeD);
+            generatedScenes.Add(new EditorBuildSettingsScene(twoDPath, true));
+            generatedScenes.Add(new EditorBuildSettingsScene(threeDPath, true));
         }
 
-        var buildScenes = EditorBuildSettings.scenes
-            .Where(scene => scene.path != RemovedScenePath)
-            .ToList();
-        foreach (EditorBuildSettingsScene generated in generatedScenes)
-        {
-            int existingIndex = buildScenes.FindIndex(scene => scene.path == generated.path);
-            if (existingIndex >= 0)
-                buildScenes[existingIndex] = generated;
-            else
-                buildScenes.Add(generated);
-        }
+        // Remove the previous flat scene layout after all replacement scenes are saved.
+        DeleteLegacyScenes();
 
-        EditorBuildSettings.scenes = buildScenes.ToArray();
+        // Keep the gravity examples first (as before) and preserve the order of other project scenes.
+        var buildScenes = generatedScenes
+            .Concat(EditorBuildSettings.scenes.Where(scene => !IsManagedGravityScene(scene.path)))
+            .ToArray();
+        EditorBuildSettings.scenes = buildScenes;
         AssetDatabase.SaveAssets();
         Debug.Log("GRAVITY_SCENES_REGENERATED count=" + generatedScenes.Count);
+    }
+
+    private static void EnsureSceneFolders()
+    {
+        if (!AssetDatabase.IsValidFolder(SceneFolder))
+            AssetDatabase.CreateFolder("Assets/Examples/GravitySimulation", "Scenes");
+        if (!AssetDatabase.IsValidFolder(TwoDSceneFolder))
+            AssetDatabase.CreateFolder(SceneFolder, "2D");
+        if (!AssetDatabase.IsValidFolder(ThreeDSceneFolder))
+            AssetDatabase.CreateFolder(SceneFolder, "3D");
+    }
+
+    private static void DeleteLegacyScenes()
+    {
+        AssetDatabase.DeleteAsset(SceneFolder + "/SampleScene.unity");
+        AssetDatabase.DeleteAsset(SceneFolder + "/Gravity_UnityModularMainThread.unity");
+        foreach (SimulationMode mode in System.Enum.GetValues(typeof(SimulationMode)))
+            AssetDatabase.DeleteAsset(SceneFolder + "/Gravity_" + SceneName(mode) + ".unity");
+    }
+
+    private static bool IsManagedGravityScene(string path)
+    {
+        if (path == SceneFolder + "/SampleScene.unity" ||
+            path == SceneFolder + "/Gravity_UnityModularMainThread.unity")
+            return true;
+
+        foreach (SimulationMode mode in System.Enum.GetValues(typeof(SimulationMode)))
+        {
+            string sceneFile = "Gravity_" + SceneName(mode) + ".unity";
+            if (path == SceneFolder + "/" + sceneFile ||
+                path == TwoDSceneFolder + "/" + sceneFile ||
+                path == ThreeDSceneFolder + "/" + sceneFile)
+                return true;
+        }
+
+        return false;
     }
 
     private static void CreateScene(string path, string sceneName, SimulationMode mode,

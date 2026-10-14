@@ -6,26 +6,41 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Examples/GravitySimulation/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/Examples/GravitySimulation/Scenes/2D/Gravity_SingleThreaded.unity
+    guid: b377d29b0c605a9408d1770e4bb274a1
   - enabled: 1
-    path: Assets/Examples/GravitySimulation/Scenes/Gravity_SingleThreaded.unity
-    guid: c9f80aa7918adb3459424b55d008810c
+    path: Assets/Examples/GravitySimulation/Scenes/3D/Gravity_SingleThreaded.unity
+    guid: 20d9df99e0c313246b0f6c5c956e6453
   - enabled: 1
-    path: Assets/Examples/GravitySimulation/Scenes/Gravity_CSharpAsync.unity
-    guid: 75748bd271350334ea274eff7a0e8564
+    path: Assets/Examples/GravitySimulation/Scenes/2D/Gravity_CSharpAsync.unity
+    guid: 9cdf720257774684d971a35652a82be6
   - enabled: 1
-    path: Assets/Examples/GravitySimulation/Scenes/Gravity_CSharpParallel.unity
-    guid: 59c314a74a0d2864bbe6fabfe862060c
+    path: Assets/Examples/GravitySimulation/Scenes/3D/Gravity_CSharpAsync.unity
+    guid: 472211a566978994fa3a8e24907d0a54
   - enabled: 1
-    path: Assets/Examples/GravitySimulation/Scenes/Gravity_UnityJobs.unity
-    guid: 332b67b1914b4e147b406cacb04ce30a
+    path: Assets/Examples/GravitySimulation/Scenes/2D/Gravity_CSharpParallel.unity
+    guid: 319d51a010c4cab4e8386a3e745a8612
   - enabled: 1
-    path: Assets/Examples/GravitySimulation/Scenes/Gravity_UnityCoroutine.unity
-    guid: 67cb482fd55facb41ab17722eeaf914f
+    path: Assets/Examples/GravitySimulation/Scenes/3D/Gravity_CSharpParallel.unity
+    guid: 92b5e45908b1f134e8b10ed7b5a7aa1c
   - enabled: 1
-    path: Assets/Examples/GravitySimulation/Scenes/Gravity_UnityJobsBurst.unity
-    guid: 44cd044bc327c7549970746006e9ed75
+    path: Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityJobs.unity
+    guid: 44d88ada588515a469b816c572d22aa5
+  - enabled: 1
+    path: Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityJobs.unity
+    guid: 4b7a3065610d8bc488e4ab365266d1b9
+  - enabled: 1
+    path: Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityCoroutine.unity
+    guid: 80f2b2f5eb05f044582c3e97b50985b3
+  - enabled: 1
+    path: Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityCoroutine.unity
+    guid: 64167c4e7a51e1148bb40e50bc3c168d
+  - enabled: 1
+    path: Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityJobsBurst.unity
+    guid: 538337c952469e246ba38badf572d52f
+  - enabled: 1
+    path: Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityJobsBurst.unity
+    guid: b2c8dc9000b8ddc4b926712bf3533fbd
   - enabled: 1
     path: Assets/Examples/BatchProcessing/Scenes/BatchProcessing.unity
     guid: 5526c4e2b60558547b091d4c9c61caaf

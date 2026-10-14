@@ -33,19 +33,18 @@ Choose **Tools → Batch Processing → Create Example Scene** to regenerate the
 
 ## Open the gravity example
 
-The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/GravitySimulation). Each scene is a standalone example with one controller and no runtime UI. The starter scene opens in 2D with sprite bodies; each strategy scene opens in 3D with sphere bodies. Use the controller Inspector to set body count, gravity, softening, gravity scale, and dimension.
+The gravity project is in [`Assets/Examples/GravitySimulation`](Assets/Examples/GravitySimulation). Every processing strategy has a dedicated 2D scene and a dedicated 3D scene. The scenes are grouped under `Scenes/2D` and `Scenes/3D`, with one controller and no runtime UI. Use the controller Inspector to set body count, gravity, softening, gravity scale, and dimension.
 
-| Scene | Starts with |
-| --- | --- |
-| [`SampleScene.unity`](Assets/Examples/GravitySimulation/Scenes/SampleScene.unity) | Single threaded, 2D sprites |
-| [`Gravity_SingleThreaded.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_SingleThreaded.unity) | Single threaded |
-| [`Gravity_CSharpAsync.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_CSharpAsync.unity) | C# async |
-| [`Gravity_CSharpParallel.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_CSharpParallel.unity) | C# parallel |
-| [`Gravity_UnityJobs.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_UnityJobs.unity) | Unity Jobs |
-| [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_UnityCoroutine.unity) | Unity coroutine |
-| [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/Gravity_UnityJobsBurst.unity) | Unity Jobs with Burst |
+| Processing strategy | 2D scene | 3D scene |
+| --- | --- | --- |
+| Single threaded | [`Gravity_SingleThreaded.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_SingleThreaded.unity) | [`Gravity_SingleThreaded.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_SingleThreaded.unity) |
+| C# async | [`Gravity_CSharpAsync.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_CSharpAsync.unity) | [`Gravity_CSharpAsync.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_CSharpAsync.unity) |
+| C# parallel | [`Gravity_CSharpParallel.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_CSharpParallel.unity) | [`Gravity_CSharpParallel.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_CSharpParallel.unity) |
+| Unity Jobs | [`Gravity_UnityJobs.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityJobs.unity) | [`Gravity_UnityJobs.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityJobs.unity) |
+| Unity coroutine | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityCoroutine.unity) | [`Gravity_UnityCoroutine.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityCoroutine.unity) |
+| Unity Jobs with Burst | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/2D/Gravity_UnityJobsBurst.unity) | [`Gravity_UnityJobsBurst.unity`](Assets/Examples/GravitySimulation/Scenes/3D/Gravity_UnityJobsBurst.unity) |
 
-All seven gravity scenes and the batch scene are in **Build Settings**. Regenerate the gravity scenes with **Tools → Gravity Simulation → Regenerate Example Scenes**.
+All 12 gravity scenes and the batch scene are in **Build Settings**. Regenerate them with **Tools → Gravity Simulation → Regenerate Example Scenes**.
 
 Each gravity strategy has one implementation script in its own assembly under `Assets/Examples/GravitySimulation/Scripts`. Those assemblies reference `GravitySimulation.Core` for the shared gravity formula and common scene setup.
 
@@ -73,7 +72,9 @@ Assets/Examples/
 │   └── Scripts/      One script containing the calculation and processing modes
 └── GravitySimulation/
     ├── Editor/       Gravity mode scene generator
-    ├── Scenes/       Starter scene and strategy scenes
+    ├── Scenes/
+    │   ├── 2D/       One scene per processing strategy
+    │   └── 3D/       One scene per processing strategy
     └── Scripts/      Shared gravity core and one script per strategy
 ```
 
