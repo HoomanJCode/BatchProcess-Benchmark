@@ -60,7 +60,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     {
         new ComparisonMode("Single threaded", "SingleThreaded", "SimpleIteration.SingleThreaded"),
         new ComparisonMode("C# async", "CSharpAsync", "SimpleIteration.CSharpAsync.Worker"),
-        new ComparisonMode("C# async tasks (batched)", "CSharpAsyncTasks", "SimpleIteration.CSharpAsyncTasks.Batch"),
+        new ComparisonMode("C# async tasks", "CSharpAsyncTasks", "SimpleIteration.CSharpAsyncTasks.Batch"),
         new ComparisonMode("C# parallel", "CSharpParallel", "SimpleIteration.CSharpParallel"),
         new ComparisonMode("Unity Jobs", "UnityJobs", "SimpleIteration.UnityJobs"),
         new ComparisonMode("Unity coroutine", "UnityCoroutine", "SimpleIteration.UnityCoroutine.Chunk"),
