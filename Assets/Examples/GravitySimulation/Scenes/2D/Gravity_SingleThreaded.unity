@@ -148,7 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b7c129d3b43b53e48bd00467b8e8234f, type: 3}
   m_Name:
   m_EditorClassIdentifier: GravitySimulation.Example.SingleThreaded::SingleThreadedGravityExample
-  _bodyCount: 128
+  _ballCount: 32
   _gravity: 1.15
   _softening: 0.2
   _gravityScale: 1
