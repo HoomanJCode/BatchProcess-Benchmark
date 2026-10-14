@@ -105,12 +105,13 @@ public static class GravitySceneGeneration
     private static void CreateScene(string path, string sceneName, SimulationMode mode,
         SimulationDimension dimension)
     {
-        // Start with an empty scene so each comparison contains only its camera, light, and controller.
+        // Start empty so each scene contains only what its 2D or 3D example needs.
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         scene.name = sceneName;
         CreateCamera(dimension);
-        // The 2D scene uses 2D physics, but the sphere mesh still needs a light to be visible.
-        CreateKeyLight();
+        // Only the 3D scenes use a sphere mesh that needs a directional light.
+        if (dimension == SimulationDimension.ThreeD)
+            CreateKeyLight();
         CreateController(mode, dimension);
 
         if (!EditorSceneManager.SaveScene(scene, path))

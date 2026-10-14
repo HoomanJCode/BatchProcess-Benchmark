@@ -27,8 +27,8 @@ public sealed class UnityJobsBurstGravityExample : MonoBehaviour
     private NativeArray<Vector3> _nativePositions;
     private NativeArray<float> _nativeMasses;
     private NativeArray<Vector3> _nativeAccelerations;
-    // Awake runs once when the scene starts: create the arrays, spheres, and physics bodies.
-    // Awake runs once when the scene starts: create the arrays, spheres, and physics bodies.
+    // Awake runs once when the scene starts: create the arrays, ball visuals, and physics bodies.
+    // Awake runs once when the scene starts: create the arrays, ball visuals, and physics bodies.
     private void Awake()
     {
         // Arrays keep each body's position, mass, and calculated gravity easy to find.
@@ -38,6 +38,8 @@ public sealed class UnityJobsBurstGravityExample : MonoBehaviour
         _positions = new Vector3[_ballCount];
         _masses = new float[_ballCount];
         _accelerations = new Vector3[_ballCount];
+        // Resources lets every 2D ball reuse one circle sprite asset.
+        Sprite ballSprite = Resources.Load<Sprite>("GravityBall");
         // Jobs read NativeArrays, so allocate native input and output buffers once.
         _nativePositions = new NativeArray<Vector3>(_ballCount, Allocator.Persistent);
         _nativeMasses = new NativeArray<float>(_ballCount, Allocator.Persistent);
@@ -73,29 +75,25 @@ public sealed class UnityJobsBurstGravityExample : MonoBehaviour
             _positions[i] = position;
             _masses[i] = mass;
 
-            // Every visible sphere has a collider and a dynamic physics body.
-            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.name = "Gravity Body " + i.ToString("D3");
-            sphere.transform.position = position;
-            float sphereScale = Mathf.Clamp(0.2f * Mathf.Pow(128f / _ballCount, 0.22f), 0.08f, 0.25f);
-            sphere.transform.localScale = Vector3.one * sphereScale;
-            sphere.GetComponent<Renderer>().material.color =
-                Color.HSVToRGB((i * 0.6180339f) % 1f, 0.68f, 1f);
+            // Use a flat circle sprite in the 2D scenes. All balls share this imported sprite.
+            float ballDiameter = Mathf.Clamp(0.2f * Mathf.Pow(128f / _ballCount, 0.22f), 0.08f, 0.25f);
+            Color ballColor = Color.HSVToRGB((i * 0.6180339f) % 1f, 0.68f, 1f);
 
             if (_is2D)
             {
-                // Keep the sphere mesh on a child so its disabled 3D collider can stay separate
-                // from the 2D collider and Rigidbody2D on the parent physics object.
-                sphere.GetComponent<SphereCollider>().enabled = false;
-                GameObject physicsBody = new GameObject(sphere.name + " Physics");
-                physicsBody.transform.position = position;
-                sphere.transform.SetParent(physicsBody.transform);
-                sphere.transform.localPosition = Vector3.zero;
+                // The sprite, circle collider, and Rigidbody2D all belong to this 2D ball.
+                GameObject ball = new GameObject("Gravity Ball " + i.ToString("D3"));
+                ball.transform.position = position;
+                ball.transform.localScale = Vector3.one * ballDiameter;
 
-                CircleCollider2D circle = physicsBody.AddComponent<CircleCollider2D>();
-                circle.radius = sphereScale * 0.5f;
+                SpriteRenderer spriteRenderer = ball.AddComponent<SpriteRenderer>();
+                spriteRenderer.sprite = ballSprite;
+                spriteRenderer.color = ballColor;
+
+                CircleCollider2D circle = ball.AddComponent<CircleCollider2D>();
+                circle.radius = 0.5f;
                 circle.isTrigger = false;
-                Rigidbody2D body = physicsBody.AddComponent<Rigidbody2D>();
+                Rigidbody2D body = ball.AddComponent<Rigidbody2D>();
                 body.bodyType = RigidbodyType2D.Dynamic;
                 body.mass = mass;
                 body.gravityScale = 0f; // The script calculates gravity itself.
@@ -107,6 +105,13 @@ public sealed class UnityJobsBurstGravityExample : MonoBehaviour
             }
             else
             {
+                // The 3D scene uses a lit sphere mesh with Unity's 3D physics components.
+                GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                sphere.name = "Gravity Ball " + i.ToString("D3");
+                sphere.transform.position = position;
+                sphere.transform.localScale = Vector3.one * ballDiameter;
+                sphere.GetComponent<Renderer>().material.color = ballColor;
+
                 Rigidbody body = sphere.AddComponent<Rigidbody>();
                 body.mass = mass;
                 body.useGravity = false; // The script calculates gravity itself.
