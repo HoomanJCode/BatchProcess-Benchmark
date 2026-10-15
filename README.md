@@ -1,6 +1,6 @@
 # Unity Processing and Simulation Examples
 
-This Unity project presents five workloads. Gravity, PSO, and Random Search use six processing methods. Simple Iteration adds a seventh batched C# Tasks method and lets every method use a configurable batch size.
+This Unity project presents five workloads. Gravity, PSO, and Random Search use six Unity/C# processing methods. Simple Iteration adds a seventh batched C# Tasks method and can also compare standalone Python methods in the local dashboard.
 
 ## The five examples
 
@@ -15,6 +15,19 @@ This Unity project presents five workloads. Gravity, PSO, and Random Search use 
 To fill every dashboard tab in one run, open `Assets/WebDashboard/Scenes/All_Examples_Benchmark.unity` and press **Play**. It runs Gravity 2D, Gravity 3D, Simple Iteration, PSO, and Random Search one after another. Unity serves the page locally at [http://127.0.0.1:8765/](http://127.0.0.1:8765/), and the browser saves each finished example on this PC. You can still run an individual `Gravity_Benchmark`, `SimpleIteration_Benchmark`, or `Optimization_Benchmark` scene when you only want that workload.
 
 Dashboard assets and its README are under [`Assets/WebDashboard`](Assets/WebDashboard/README.md).
+
+### Compare Python with Unity
+
+Python runs as a separate local process. It does not require Unity to calculate its results. Install the optional NumPy dependency and run the benchmark from PowerShell:
+
+```powershell
+py -m pip install -r Tools/PythonBatchBenchmark/requirements.txt
+py Tools/PythonBatchBenchmark/benchmark.py
+```
+
+The report is written to `Library/PythonBatchBenchmark/results.json`. Open the dashboard, select **Simple Iteration**, and click **Load Python timings** to add Python single-threaded, Python threads, Python processes, and NumPy vectorized results beside the Unity rows. Python's thread pool is CPU-bound and limited by Python's Global Interpreter Lock; the process pool uses multiple processes, while NumPy runs numeric operations in native code. Both Python and Unity reports must use the same item count, iterations, and batch size. The default settings match the Unity Simple Iteration scenes.
+
+Python compute and wall values report the elapsed time for one complete calculation; Python does not have Unity frame measurements. Python's built-in float uses 64-bit precision, while the Unity example uses 32-bit values, so small checksum differences are expected.
 
 ## Headless benchmarks
 
