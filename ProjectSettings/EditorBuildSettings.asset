@@ -152,5 +152,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/WebDashboard/Scenes/All_Examples_Benchmark.unity
     guid: 8dc33bf217364ab458111a7e6048bb45
+  - enabled: 1
+    path: Assets/Examples/SimpleIteration/Scenes/SimpleIteration_CSharpAsyncTasks.unity
+    guid: e851fe242425b984680f463f70c5bb24
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
