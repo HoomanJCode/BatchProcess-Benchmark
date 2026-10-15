@@ -48,6 +48,26 @@ Close the Unity Editor before using a headless helper. Use the Unity Editor exec
 
 Reports are saved under `Build/Headless/`. The dashboard build can be used for live presentation; headless reports are for command-line profiling.
 
+### Example batch benchmark result
+
+This is one local headless run captured on **October 16, 2026**. It used 100,000 items, 100 iterations per item, batches of 1,000, one warm-up run, and five measured runs per method. The player ran on Windows 11 Pro with an Intel Core i7-4790K (8 logical processors); the Python comparison used CPython 3.14.7, NumPy 2.4.4, and eight Python workers.
+
+| Processing method | Average compute (ms) | P95 compute (ms) |
+| --- | ---: | ---: |
+| Single threaded | 83.67 | 85.71 |
+| C# async | 115.02 | 142.60 |
+| C# async tasks | 31.11 | 33.79 |
+| C# parallel | 16.14 | 21.19 |
+| Unity Jobs | 12.57 | 13.18 |
+| Unity coroutine | 92.98 | 109.07 |
+| Unity Jobs + Burst | 5.36 | 6.04 |
+| Python single threaded | 728.41 | 769.84 |
+| Python threads | 628.61 | 670.35 |
+| Python processes | 211.83 | 228.18 |
+| Python NumPy vectorized | 47.92 | 57.40 |
+
+The coroutine's average wall time in this run was **1,662.33 ms** because its batches yielded across frames; compute time sums only the active chunk work. Use wall time to compare when the full workload finishes. With only five measured runs, P95 is the slowest sample. Treat these values as an example, not a general ranking; results vary with hardware and machine load. The latest combined report is written to `Build/Headless/batch-benchmark.json`.
+
 ## Folder layout
 
 ```text
