@@ -33,7 +33,7 @@ if (-not (Test-Path -LiteralPath $playerPath)) {
     throw "Unity reported a successful build but the player was not found at $playerPath. See $buildLog"
 }
 
-Write-Host "Running all six batch-processing methods without a graphics window..."
+Write-Host "Running seven Unity batch methods and the automatic Python comparison without a graphics window..."
 $playerArguments = "-batchmode -nographics -logFile `"$playerLog`" -gravity-benchmark-headless -gravity-benchmark-output `"$OutputPath`""
 $playerProcess = Start-Process -FilePath $playerPath -ArgumentList $playerArguments -Wait -PassThru
 if ($playerProcess.ExitCode -ne 0) {

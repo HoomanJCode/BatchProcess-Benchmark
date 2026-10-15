@@ -18,16 +18,17 @@ Dashboard assets and its README are under [`Assets/WebDashboard`](Assets/WebDash
 
 ### Compare Python with Unity
 
-Python runs as a separate local process. It does not require Unity to calculate its results. Install the optional NumPy dependency and run the benchmark from PowerShell:
+Python runs as a separate local process after the seven Unity Simple Iteration methods have finished. Press **Play** on `SimpleIteration_Benchmark` or `All_Examples_Benchmark`, or run the headless batch benchmark below; Python timings are added to the same dashboard and headless report automatically.
+
+The first run checks for NumPy. If needed, it creates a project-local Python environment under ignored `Library/PythonBatchBenchmark/venv` and installs NumPy there. Python 3 must be installed and available as `py` or `python` on `PATH`. Later runs reuse that environment. The benchmark can also be run on its own from PowerShell:
 
 ```powershell
-py -m pip install -r Tools/PythonBatchBenchmark/requirements.txt
-py Tools/PythonBatchBenchmark/benchmark.py
+py -3 Tools/PythonBatchBenchmark/setup_and_run.py
 ```
 
-The report is written to `Library/PythonBatchBenchmark/results.json`. Open the dashboard, select **Simple Iteration**, and click **Load Python timings** to add Python single-threaded, Python threads, Python processes, and NumPy vectorized results beside the Unity rows. Python's thread pool is CPU-bound and limited by Python's Global Interpreter Lock; the process pool uses multiple processes, while NumPy runs numeric operations in native code. Both Python and Unity reports must use the same item count, iterations, and batch size. The default settings match the Unity Simple Iteration scenes.
+The report is written to `Library/PythonBatchBenchmark/results.json`. It compares Python single-threaded loops, Python threads, Python processes, and NumPy vectorized operations with the Unity methods. Unity starts Python after its own timing passes and supplies the same item count, iterations, batch size, and number of measured runs.
 
-Python compute and wall values report the elapsed time for one complete calculation; Python does not have Unity frame measurements. Python's built-in float uses 64-bit precision, while the Unity example uses 32-bit values, so small checksum differences are expected.
+The Python thread pool starts one task per batch; CPU-bound work in a standard CPython build is limited by the Global Interpreter Lock. The process pool uses multiple processes and includes data transfer costs. NumPy performs vector operations in native code. Python compute times cover the calculation, while wall times also include the checksum pass; Python has no Unity frame timings. Python's built-in float uses 64-bit precision, while the Unity example uses 32-bit values, so small checksum differences are expected.
 
 ## Headless benchmarks
 

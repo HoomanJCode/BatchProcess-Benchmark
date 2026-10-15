@@ -29,6 +29,8 @@ except ImportError:
 
 def process_batch(values, start, end, iterations):
     """Run the same multiply, add, and wrap calculation for one batch."""
+    # Formula per iteration: value = value * 1.00001 + 0.00002; wrap by subtracting 1 at 1.
+    # Complexity: O(N * I) calculation work, where N is the batch item count and I the loops.
     for index in range(start, end):
         value = values[index]
         for step in range(iterations):
@@ -92,6 +94,8 @@ def main():
         numpy_one = numpy.float32(1.0)
         numpy_multiplier = numpy.float32(1.00001)
         numpy_addition = numpy.float32(0.00002)
+
+    print("STATUS|Python environment ready", flush=True)
 
     all_results = []
 
@@ -191,6 +195,7 @@ def main():
                 })
                 print("{0}: {1:.3f} ms average ({2} measured runs)".format(
                     method_name, average_compute_ms, len(measured_compute_times)))
+                print("METHOD_DONE|{0}".format(method_name), flush=True)
 
     # Save a small report which the local dashboard can load from the Simple Iteration tab.
     report = {
@@ -214,7 +219,7 @@ def main():
     options.output.parent.mkdir(parents=True, exist_ok=True)
     options.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print("Report saved to: {0}".format(options.output.resolve()))
-    print("Load that JSON in the dashboard's Simple Iteration tab to compare it with Unity.")
+    print("Unity starts this runner automatically and reads the report when the comparison finishes.")
 
 
 # endregion

@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -235,6 +236,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     {
         ComparisonMode[] modes = _isOptimizationComparison ? OptimizationModes : BatchModes;
         _state.status = "running";
+        _state.pythonMessage = "";
         _state.total = modes.Length;
         _state.completed = 0;
         _results.Clear();
@@ -440,10 +442,18 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             PublishState();
         }
 
+        // Run Python after Unity's methods finish, so both runtimes do not compete
+        // for CPU time during their measurements.
+        if (!_isOptimizationComparison)
+            yield return RunPythonBatchComparison();
+
         _state.status = "complete";
-        _state.phase = _isOptimizationComparison ? "Both algorithms measured across all six processing methods" : "All batch strategies measured";
+        _state.phase = _isOptimizationComparison ? "Both algorithms measured across all six processing methods" :
+            (string.IsNullOrEmpty(_state.pythonMessage) ? "Unity and Python batch methods measured" : "Unity methods measured · Python comparison needs attention");
         _state.progress = 1f;
         _state.activeExample = "Complete";
+        _state.completed = _results.Count;
+        _state.total = _results.Count;
         _state.results = _results.ToArray();
         PublishState();
         if (_headlessMode)
@@ -452,6 +462,245 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         if (!_isAllExamplesComparison)
             yield return StopEditorPlayModeAfterCompletion();
     }
+
+    #region Run Python batch methods outside Unity
+    // Run Python after Unity's methods have finished so both runtimes do not
+    // compete for CPU time during either measurement.
+    private IEnumerator RunPythonBatchComparison()
+    {
+        if (_results.Count == 0)
+            yield break;
+
+        string projectRoot = FindProjectRoot();
+        if (string.IsNullOrEmpty(projectRoot))
+        {
+            _state.pythonMessage = "Python methods skipped: project Tools/PythonBatchBenchmark files were not found.";
+            Debug.LogWarning(_state.pythonMessage);
+            yield break;
+        }
+
+        BenchmarkResult unitySettings = _results[0];
+        string pythonRunner = Path.Combine(projectRoot, "Tools", "PythonBatchBenchmark", "setup_and_run.py");
+        string[] pythonLaunchers = Environment.OSVersion.Platform == PlatformID.Win32NT
+            ? new[] { "py", "python" }
+            : new[] { "python3", "python" };
+        string arguments = "\"" + pythonRunner + "\" --items " + unitySettings.workItems +
+            " --iterations " + unitySettings.iterations + " --batch-size " + unitySettings.batchSize +
+            " --runs " + _batchRunsPerStrategy;
+        string outputPath = Path.Combine(projectRoot, "Library", "PythonBatchBenchmark", "results.json");
+        ConcurrentQueue<string> outputLines = new ConcurrentQueue<string>();
+        StringBuilder errorOutput = new StringBuilder();
+        object errorLock = new object();
+        System.Diagnostics.Process pythonProcess = null;
+        string startError = "";
+
+        _state.phase = "Setting up the local Python benchmark";
+        _state.completed = _results.Count;
+        _state.total = _results.Count + 4;
+        _state.progress = (float)_state.completed / _state.total;
+        PublishState();
+
+        for (int launcherIndex = 0; launcherIndex < pythonLaunchers.Length; launcherIndex++)
+        {
+            string launcher = pythonLaunchers[launcherIndex];
+            System.Diagnostics.Process candidate = new System.Diagnostics.Process();
+            candidate.StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = launcher,
+                Arguments = (launcher == "py" ? "-3 " : "") + arguments,
+                WorkingDirectory = projectRoot,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            candidate.OutputDataReceived += (sender, eventArgs) =>
+            {
+                if (eventArgs.Data != null)
+                    outputLines.Enqueue(eventArgs.Data);
+            };
+            candidate.ErrorDataReceived += (sender, eventArgs) =>
+            {
+                if (eventArgs.Data != null)
+                {
+                    lock (errorLock)
+                    {
+                        errorOutput.AppendLine(eventArgs.Data);
+                        if (errorOutput.Length > 2500)
+                            errorOutput.Remove(0, errorOutput.Length - 2500);
+                    }
+                }
+            };
+
+            try
+            {
+                if (candidate.Start())
+                {
+                    pythonProcess = candidate;
+                    pythonProcess.BeginOutputReadLine();
+                    pythonProcess.BeginErrorReadLine();
+                    break;
+                }
+                startError = "The '" + launcher + "' launcher did not start.";
+                candidate.Dispose();
+            }
+            catch (Exception exception)
+            {
+                startError = exception.Message;
+                candidate.Dispose();
+            }
+        }
+
+        if (pythonProcess == null)
+        {
+            _state.pythonMessage = "Python methods could not start. Install Python 3 and make 'py' or 'python' available on PATH. " + startError;
+            Debug.LogWarning(_state.pythonMessage);
+            yield break;
+        }
+
+        int completedPythonMethods = 0;
+        float timeoutAt = Time.realtimeSinceStartup + 600f;
+        while (!pythonProcess.HasExited && Time.realtimeSinceStartup < timeoutAt)
+        {
+            string outputLine;
+            while (outputLines.TryDequeue(out outputLine))
+            {
+                if (outputLine.StartsWith("STATUS|", StringComparison.Ordinal))
+                {
+                    _state.phase = outputLine.Substring("STATUS|".Length);
+                    PublishState();
+                }
+                else if (outputLine.StartsWith("METHOD_DONE|", StringComparison.Ordinal))
+                {
+                    completedPythonMethods++;
+                    _state.completed = _results.Count + completedPythonMethods;
+                    _state.progress = (float)_state.completed / _state.total;
+                    _state.phase = "Finished " + outputLine.Substring("METHOD_DONE|".Length);
+                    PublishState();
+                }
+            }
+            yield return null;
+        }
+
+        bool timedOut = !pythonProcess.HasExited;
+        if (timedOut)
+            pythonProcess.Kill();
+        pythonProcess.WaitForExit();
+        int exitCode = pythonProcess.ExitCode;
+        pythonProcess.Dispose();
+
+        string remainingLine;
+        while (outputLines.TryDequeue(out remainingLine))
+        {
+            if (remainingLine.StartsWith("METHOD_DONE|", StringComparison.Ordinal))
+                completedPythonMethods++;
+        }
+
+        if (timedOut || exitCode != 0)
+        {
+            string details;
+            lock (errorLock)
+                details = errorOutput.ToString().Trim();
+            _state.pythonMessage = timedOut
+                ? "Python comparison timed out after 10 minutes."
+                : "Python comparison failed. Check the Unity log for setup details.";
+            Debug.LogWarning("" + _state.pythonMessage + (string.IsNullOrEmpty(details) ? "" : "\n" + details));
+            _state.total = _results.Count;
+            _state.completed = _results.Count;
+            _state.progress = 1f;
+            yield break;
+        }
+
+        if (!File.Exists(outputPath))
+        {
+            _state.pythonMessage = "Python finished but did not create its results file.";
+            Debug.LogWarning(_state.pythonMessage);
+            _state.total = _results.Count;
+            _state.completed = _results.Count;
+            _state.progress = 1f;
+            yield break;
+        }
+
+        PythonBenchmarkReport report = null;
+        try
+        {
+            report = JsonUtility.FromJson<PythonBenchmarkReport>(File.ReadAllText(outputPath));
+        }
+        catch (Exception exception)
+        {
+            _state.pythonMessage = "Python results could not be read: " + exception.Message;
+        }
+
+        if (report == null || report.settings == null || report.results == null || report.results.Length == 0 ||
+            report.schemaVersion != 1 || report.workload != "simple-iteration" || report.results.Length != 4 ||
+            report.settings.workItems != unitySettings.workItems ||
+            report.settings.iterations != unitySettings.iterations || report.settings.batchSize != unitySettings.batchSize)
+        {
+            if (string.IsNullOrEmpty(_state.pythonMessage))
+                _state.pythonMessage = "Python results did not match the Unity workload settings.";
+            Debug.LogWarning(_state.pythonMessage);
+            _state.total = _results.Count;
+            _state.completed = _results.Count;
+            _state.progress = 1f;
+            yield break;
+        }
+
+        for (int resultIndex = 0; resultIndex < report.results.Length; resultIndex++)
+        {
+            PythonBenchmarkResult pythonResult = report.results[resultIndex];
+            if (pythonResult == null || string.IsNullOrEmpty(pythonResult.strategy) || pythonResult.sampleCount < 1 ||
+                float.IsNaN(pythonResult.averageProfileMs) || float.IsInfinity(pythonResult.averageProfileMs) ||
+                float.IsNaN(pythonResult.p95ProfileMs) || float.IsInfinity(pythonResult.p95ProfileMs))
+            {
+                _state.pythonMessage = "Python results contained an invalid method timing.";
+                Debug.LogWarning(_state.pythonMessage);
+                _state.total = _results.Count;
+                _state.completed = _results.Count;
+                _state.progress = 1f;
+                yield break;
+            }
+        }
+
+        for (int resultIndex = 0; resultIndex < report.results.Length; resultIndex++)
+        {
+            PythonBenchmarkResult pythonResult = report.results[resultIndex];
+            _results.Add(new BenchmarkResult
+            {
+                strategy = pythonResult.strategy,
+                markerName = "Python",
+                workItems = pythonResult.workItems,
+                iterations = pythonResult.iterations,
+                batchSize = pythonResult.batchSize,
+                sampleCount = pythonResult.sampleCount,
+                averageProfileMs = pythonResult.averageProfileMs,
+                medianProfileMs = pythonResult.medianProfileMs,
+                p95ProfileMs = pythonResult.p95ProfileMs,
+                averageFrameMs = pythonResult.averageFrameMs,
+                p95FrameMs = pythonResult.p95FrameMs
+            });
+        }
+
+        _state.total = _results.Count;
+        _state.completed = _results.Count;
+        _state.progress = 1f;
+        _state.results = _results.ToArray();
+        PublishState();
+        Debug.Log("Added " + report.results.Length + " Python methods to the Simple Iteration comparison. Report: " + outputPath);
+    }
+
+    private static string FindProjectRoot()
+    {
+        DirectoryInfo folder = new DirectoryInfo(Path.GetDirectoryName(Application.dataPath));
+        while (folder != null)
+        {
+            string runner = Path.Combine(folder.FullName, "Tools", "PythonBatchBenchmark", "setup_and_run.py");
+            if (File.Exists(runner))
+                return folder.FullName;
+            folder = folder.Parent;
+        }
+        return "";
+    }
+    #endregion
 
     private bool TryReadBatchValues(MonoBehaviour example, out float computeMs, out float wallMs,
         out int itemCount, out int iterations, out int batchSize, out string checksum)
@@ -953,6 +1202,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public string phase = "";
         public string markerName = "";
         public string dashboardMessage = "";
+        public string pythonMessage = "";
         public string updatedUtc = "";
         public float progress;
         public float profileMs;
@@ -994,6 +1244,38 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public float averageBestScore;
         public float bestX;
         public float bestY;
+        public int sampleCount;
+        public float averageProfileMs;
+        public float medianProfileMs;
+        public float p95ProfileMs;
+        public float averageFrameMs;
+        public float p95FrameMs;
+    }
+
+    [Serializable]
+    private sealed class PythonBenchmarkReport
+    {
+        public int schemaVersion;
+        public string workload;
+        public PythonBenchmarkSettings settings;
+        public PythonBenchmarkResult[] results;
+    }
+
+    [Serializable]
+    private sealed class PythonBenchmarkSettings
+    {
+        public int workItems;
+        public int iterations;
+        public int batchSize;
+    }
+
+    [Serializable]
+    private sealed class PythonBenchmarkResult
+    {
+        public string strategy;
+        public int workItems;
+        public int iterations;
+        public int batchSize;
         public int sampleCount;
         public float averageProfileMs;
         public float medianProfileMs;
