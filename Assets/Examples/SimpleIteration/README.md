@@ -17,7 +17,7 @@ The Unity comparison launcher runs one unmeasured warm-up pass and then repeated
 
 ## Python comparison
 
-`Tools/PythonBatchBenchmark/setup_and_run.py` runs outside Unity and measures Python single-threaded loops, one Python thread task per batch, one Python process task per batch, and NumPy vectorized operations. When you press **Play** on `SimpleIteration_Benchmark` or `All_Examples_Benchmark`, Unity runs this Python comparison automatically after its seven C# methods. The headless batch build uses the same automatic flow. It passes the Unity item count, iteration count, batch size, and run count to Python.
+`Tools/PythonBatchBenchmark/setup_and_run.py` runs outside Unity and measures Python single-threaded loops, Python thread tasks, Python process tasks, and NumPy vectorized operations. When you press **Play** on `SimpleIteration_Benchmark` or `All_Examples_Benchmark`, Unity runs this Python comparison automatically after its seven C# methods. The same Python methods also run for Gravity 2D/3D, PSO, and Random Search. The headless batch build uses the same automatic flow. For this workload, Unity passes the item count, iteration count, batch size, and run count to Python.
 
 If Python has no NumPy installed, the setup script creates an isolated environment in the ignored `Library/PythonBatchBenchmark/venv` folder and installs it there. Python 3 must be available as `py` or `python` on `PATH`. To run the Python comparison separately:
 
@@ -25,6 +25,6 @@ If Python has no NumPy installed, the setup script creates an isolated environme
 py -3 Tools/PythonBatchBenchmark/setup_and_run.py
 ```
 
-The report is written to `Library/PythonBatchBenchmark/results.json`. Unity reads it automatically and sends all eleven method rows to the dashboard. The browser saves the completed comparison in local storage.
+The report is written to `Library/PythonBatchBenchmark/results.json`. Unity reads it automatically and sends all eleven Simple Iteration method rows to the dashboard. The browser saves the completed comparison in local storage.
 
 The Python process pool is true multi-process work but includes task scheduling, inter-process transfer of each batch, and copying results back. The Python thread pool starts tasks but CPU-bound Python code normally remains limited by the Global Interpreter Lock. NumPy performs vector operations in native code and reuses its arrays during the calculation. Python's built-in numbers use 64-bit floats and the Unity example stores 32-bit floats, so their checksums can differ slightly. Python has no rendered frame, so its total elapsed calculation time fills both compute and wall-time columns; compare compute averages for the main runtime comparison.

@@ -16,4 +16,4 @@ acceleration_i += G * mass_j * r_ij / (|r_ij|² + softening²)^(3/2)
 
 The work per physics step is **O(N²)** for `N` balls. Positions, masses, and acceleration buffers use **O(N)** memory. The scene disables built-in world gravity because each strategy calculates and applies the attraction itself.
 
-Use `Scenes/Gravity_Benchmark.unity` to run all six processing methods in sequence and compare them in the local Web Dashboard.
+Use `Scenes/Gravity_Benchmark.unity` to run the six Unity processing methods followed by Python single-thread, threads, processes, and NumPy. Python evaluates the same gravity formula for a fixed deterministic 3D layout; it does not run Unity physics or have Unity frame timings. The results appear beside the Unity methods in the 3D dashboard tab.

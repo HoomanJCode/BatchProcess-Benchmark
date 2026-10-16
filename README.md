@@ -1,6 +1,6 @@
 # Unity Processing and Simulation Examples
 
-This Unity project presents five workloads. Gravity, PSO, and Random Search use six Unity/C# processing methods. Simple Iteration adds a seventh batched C# Tasks method and can also compare standalone Python methods in the local dashboard.
+This Unity project presents five workloads: Gravity 2D, Gravity 3D, Simple Iteration, PSO, and Random Search. Each workload compares its Unity/C# processing methods with Python single-thread, Python threads, Python processes, and NumPy vectorized processing in the local dashboard.
 
 ## The five examples
 
@@ -18,7 +18,7 @@ Dashboard assets and its README are under [`Assets/WebDashboard`](Assets/WebDash
 
 ### Compare Python with Unity
 
-Python runs as a separate local process after the seven Unity Simple Iteration methods have finished. Press **Play** on `SimpleIteration_Benchmark` or `All_Examples_Benchmark`, or run the headless batch benchmark below; Python timings are added to the same dashboard and headless report automatically.
+Python runs as a separate local process after each Unity workload finishes. Press **Play** on a gravity, Simple Iteration, or `Optimization_Benchmark` scene to compare that workload. `All_Examples_Benchmark` runs Gravity 2D, Gravity 3D, Simple Iteration, PSO, and Random Search in sequence. The four Python methods are added to the corresponding dashboard tab and headless report.
 
 The first run checks for NumPy. If needed, it creates a project-local Python environment under ignored `Library/PythonBatchBenchmark/venv` and installs NumPy there. Python 3 must be installed and available as `py` or `python` on `PATH`. Later runs reuse that environment. The benchmark can also be run on its own from PowerShell:
 
@@ -26,9 +26,17 @@ The first run checks for NumPy. If needed, it creates a project-local Python env
 py -3 Tools/PythonBatchBenchmark/setup_and_run.py
 ```
 
-The report is written to `Library/PythonBatchBenchmark/results.json`. It compares Python single-threaded loops, Python threads, Python processes, and NumPy vectorized operations with the Unity methods. Unity starts Python after its own timing passes and supplies the same item count, iterations, batch size, and number of measured runs.
+The report is written to `Library/PythonBatchBenchmark/results.json`. The Unity launcher passes the matching settings for the selected workload: item count and iterations, ball count and 2D/3D dimension, or particle/evaluation and trial counts. Standalone runs can select a workload with `--workload simple-iteration`, `gravity`, `pso`, or `random-search`. Unity starts Python after its own passes so the two runtimes do not compete for CPU during measurements.
 
-The Python thread pool starts one task per batch; CPU-bound work in a standard CPython build is limited by the Global Interpreter Lock. The process pool uses multiple processes and includes data transfer costs. NumPy performs vector operations in native code. Python compute times cover the calculation, while wall times also include the checksum pass; Python has no Unity frame timings. Python's built-in float uses 64-bit precision, while the Unity example uses 32-bit values, so small checksum differences are expected.
+Examples for running an individual Python workload from PowerShell:
+
+```powershell
+py -3 Tools/PythonBatchBenchmark/setup_and_run.py --workload gravity --dimension 3D --balls 128
+py -3 Tools/PythonBatchBenchmark/setup_and_run.py --workload pso --particles 64 --iterations 99 --trials 5
+py -3 Tools/PythonBatchBenchmark/setup_and_run.py --workload random-search --evaluations 6400 --trials 5
+```
+
+Python threads and processes split independent batches where the algorithm allows it; CPU-bound Python threads are limited by the Global Interpreter Lock in standard CPython. Process timing includes task scheduling and data transfer. NumPy uses native vector operations. Python has no Unity frame timings; gravity runs the same formula on a fixed deterministic layout, while Unity continues integrating physics and resolving collisions. Compare compute averages for algorithm cost; frame or wall times include different runtime overhead. Python and Unity can also differ slightly because their numeric operations use different precision.
 
 ## Headless benchmarks
 
