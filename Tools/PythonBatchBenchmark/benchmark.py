@@ -453,6 +453,10 @@ def benchmark_workload(options):
     ]
     if numpy is not None:
         methods.append(("Python NumPy vectorized", "numpy"))
+    if options.method != "all":
+        methods = [method for method in methods if method[1] == options.method]
+        if not methods:
+            raise ValueError("The selected Python method is unavailable: " + options.method)
     item_count = options.balls if options.workload == "gravity" else (
         options.items if options.workload == "simple-iteration" else options.particles if options.workload == "pso" else options.evaluations)
     worker_count = options.workers or min(8, max(1, os.cpu_count() or 1))
@@ -545,6 +549,8 @@ def main():
     parser.add_argument("--softening", type=float, default=0.2)
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--workers", type=int, default=0)
+    parser.add_argument("--method", choices=("all", "single", "threads", "processes", "numpy"), default="all",
+                        help="Run all Python methods or only one selected method.")
     parser.add_argument("--output", type=Path, default=default_output)
     options = parser.parse_args()
     if min(options.items, options.iterations, options.batch_size, options.balls,
