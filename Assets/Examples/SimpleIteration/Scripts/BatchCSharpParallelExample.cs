@@ -26,9 +26,10 @@ public sealed class BatchCSharpParallelExample : MonoBehaviour
 
     private void Start()
     {
-        _itemCount = Mathf.Max(1, _itemCount);
-        _iterations = Mathf.Max(1, _iterations);
-        _batchSize = Mathf.Max(1, _batchSize);
+        // Dashboard settings are applied before the workload arrays are allocated.
+        _itemCount = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.Items", _itemCount));
+        _iterations = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.Iterations", _iterations));
+        _batchSize = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.BatchSize", _batchSize));
         _values = new float[_itemCount];
         for (int i = 0; i < _values.Length; i++)
             _values[i] = ((i * 104729L) % 1000003L) / 1000003f;

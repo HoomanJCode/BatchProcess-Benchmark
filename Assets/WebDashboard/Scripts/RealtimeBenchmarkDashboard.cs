@@ -104,6 +104,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     private int _coroutineLoopChunkCount;
     private int _coroutineChunksPerLoop;
     private string _headlessOutputPath;
+    private bool _acceptDashboardCommands;
+    private string _requestedAlgorithm = "";
 
     private void Start()
     {
@@ -174,6 +176,120 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         }
     }
 
+    #region Browser controls for new benchmark runs
+    // The editor stays in Play mode after a comparison so the local page can start another run.
+    private void Update()
+    {
+        if (_headlessMode || _dashboardServer == null || !_acceptDashboardCommands)
+            return;
+
+        string requestJson;
+        if (!_dashboardServer.TryTakeRunRequest(out requestJson))
+            return;
+
+        DashboardRunRequest request = JsonUtility.FromJson<DashboardRunRequest>(requestJson);
+        if (request == null || !IsValidRunRequest(request))
+        {
+            _state.phase = "Settings were invalid; correct them and run again";
+            PublishState();
+            return;
+        }
+
+        ApplyRunRequest(request);
+        _acceptDashboardCommands = false;
+        _state.status = "starting";
+        _state.workload = request.workload == "pso" || request.workload == "randomSearch" ? "optimization" : request.workload;
+        _state.dimension = request.workload == "gravity" ? request.dimension :
+            (request.workload == "batch" ? "Batch processing" : "Optimization");
+        _state.warmupSeconds = _warmupSeconds;
+        _state.measurementSeconds = _measurementSeconds;
+        _state.batchRunsPerStrategy = _batchRunsPerStrategy;
+        _state.completed = 0;
+        _state.total = 0;
+        _state.progress = 0f;
+        _state.results = new BenchmarkResult[0];
+        _state.phase = "Starting requested comparison";
+        PublishState();
+        StartCoroutine(RunRequestedComparison(request));
+    }
+
+    private IEnumerator RunRequestedComparison(DashboardRunRequest request)
+    {
+        _is2D = request.dimension == "2D";
+        _isAllExamplesComparison = false;
+        _isBatchComparison = request.workload == "batch";
+        _isOptimizationComparison = request.workload == "pso" || request.workload == "randomSearch";
+        _requestedAlgorithm = request.workload == "pso" ? "Particle swarm (PSO)" :
+            (request.workload == "randomSearch" ? "Random search" : "");
+        _state.workload = request.workload == "pso" || request.workload == "randomSearch" ? "optimization" : request.workload;
+        _state.dimension = request.workload == "gravity" ? request.dimension :
+            (request.workload == "batch" ? "Batch processing" : "Optimization");
+        _results.Clear();
+        _state.results = new BenchmarkResult[0];
+
+        if (request.workload == "gravity")
+            yield return RunComparison();
+        else
+            yield return RunBatchComparison();
+
+        _acceptDashboardCommands = _state.status == "complete" || _state.status == "error";
+    }
+
+    private bool IsValidRunRequest(DashboardRunRequest request)
+    {
+        bool validWorkload = request.workload == "gravity" || request.workload == "batch" ||
+            request.workload == "pso" || request.workload == "randomSearch";
+        bool validDimension = request.dimension == "2D" || request.dimension == "3D";
+        return validWorkload && (request.workload != "gravity" || validDimension) &&
+            request.balls >= 1 && request.balls <= 2000 &&
+            request.measurementSeconds >= 1 && request.measurementSeconds <= 60 &&
+            request.warmupSeconds >= 0 && request.warmupSeconds <= 30 &&
+            request.runs >= 1 && request.runs <= 20 &&
+            request.items >= 1 && request.items <= 5000000 &&
+            request.iterations >= 1 && request.iterations <= 100000 &&
+            request.batchSize >= 1 && request.batchSize <= 5000000 &&
+            request.particles >= 2 && request.particles <= 10000 &&
+            request.evaluations >= 1 && request.evaluations <= 5000000 &&
+            request.trials >= 1 && request.trials <= 100;
+    }
+
+    private void ApplyRunRequest(DashboardRunRequest request)
+    {
+        _measurementSeconds = request.measurementSeconds;
+        _warmupSeconds = request.warmupSeconds;
+        _batchRunsPerStrategy = request.runs;
+        // Every strategy scene reads these shared values before it allocates or starts work.
+        PlayerPrefs.SetInt("SimulationLab.Balls", request.balls);
+        PlayerPrefs.SetInt("SimulationLab.Items", request.items);
+        PlayerPrefs.SetInt("SimulationLab.Iterations", request.iterations);
+        PlayerPrefs.SetInt("SimulationLab.BatchSize", request.batchSize);
+        // Random Search uses one candidate per iteration, so this maps exactly to evaluations per trial.
+        PlayerPrefs.SetInt("SimulationLab.PsoParticles", request.particles);
+        PlayerPrefs.SetInt("SimulationLab.PsoIterations", request.iterations);
+        PlayerPrefs.SetInt("SimulationLab.PsoTrials", request.trials);
+        PlayerPrefs.SetInt("SimulationLab.RandomSearchEvaluationsPerTrial", Mathf.Max(1, request.evaluations));
+        PlayerPrefs.SetInt("SimulationLab.RandomSearchTrials", request.trials);
+        PlayerPrefs.Save();
+    }
+
+    [Serializable]
+    private sealed class DashboardRunRequest
+    {
+        public string workload;
+        public string dimension;
+        public int balls;
+        public int measurementSeconds;
+        public int warmupSeconds;
+        public int runs;
+        public int items;
+        public int iterations;
+        public int batchSize;
+        public int particles;
+        public int evaluations;
+        public int trials;
+    }
+    #endregion
+
     #region Run every example for the full dashboard
     // The all-examples scene runs one comparison at a time so each dashboard tab gets its own saved result.
     private IEnumerator RunAllExamplesComparison()
@@ -226,7 +342,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         if (_headlessMode)
             FinishHeadlessRun(0);
         else
-            yield return StopEditorPlayModeAfterCompletion();
+            _acceptDashboardCommands = true;
     }
     #endregion
 
@@ -235,6 +351,14 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     private IEnumerator RunBatchComparison()
     {
         ComparisonMode[] modes = _isOptimizationComparison ? OptimizationModes : BatchModes;
+        if (_isOptimizationComparison && !string.IsNullOrEmpty(_requestedAlgorithm))
+        {
+            List<ComparisonMode> selectedModes = new List<ComparisonMode>();
+            for (int i = 0; i < modes.Length; i++)
+                if (modes[i].algorithm == _requestedAlgorithm)
+                    selectedModes.Add(modes[i]);
+            modes = selectedModes.ToArray();
+        }
         _state.status = "running";
         _state.pythonMessage = "";
         _state.total = modes.Length;
@@ -448,8 +572,10 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         // keeps its two algorithm tabs separate while sharing one Unity comparison run.
         if (_isOptimizationComparison)
         {
-            yield return RunPythonComparison("pso", "Particle swarm (PSO)");
-            yield return RunPythonComparison("random-search", "Random search");
+            if (string.IsNullOrEmpty(_requestedAlgorithm) || _requestedAlgorithm == "Particle swarm (PSO)")
+                yield return RunPythonComparison("pso", "Particle swarm (PSO)");
+            if (string.IsNullOrEmpty(_requestedAlgorithm) || _requestedAlgorithm == "Random search")
+                yield return RunPythonComparison("random-search", "Random search");
         }
         else
         {
@@ -465,11 +591,11 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _state.total = _results.Count;
         _state.results = _results.ToArray();
         PublishState();
+        _requestedAlgorithm = "";
         if (_headlessMode)
             Debug.Log("Headless comparison finished with " + _results.Count + " results.");
         FinishHeadlessRun(0);
-        if (!_isAllExamplesComparison)
-            yield return StopEditorPlayModeAfterCompletion();
+        _acceptDashboardCommands = !_headlessMode && !_isAllExamplesComparison;
     }
 
     #region Run Python methods outside Unity
@@ -776,6 +902,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _state.dashboardMessage = scenePath;
         PublishState();
         FinishHeadlessRun(exitCode);
+        _acceptDashboardCommands = !_headlessMode;
     }
 
     private void LateUpdate()
@@ -907,6 +1034,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 _state.dashboardMessage = scenePath;
                 PublishState();
                 FinishHeadlessRun(2);
+                _acceptDashboardCommands = !_headlessMode;
                 yield break;
             }
 
@@ -918,6 +1046,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 _state.dashboardMessage = scenePath;
                 PublishState();
                 FinishHeadlessRun(3);
+                _acceptDashboardCommands = !_headlessMode;
                 yield break;
             }
             yield return load;
@@ -984,20 +1113,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _state.results = _results.ToArray();
         PublishState();
         FinishHeadlessRun(0);
-        if (!_isAllExamplesComparison)
-            yield return StopEditorPlayModeAfterCompletion();
-    }
-
-    // Leave time for the browser to store the final complete snapshot before Edit mode resumes.
-    private IEnumerator StopEditorPlayModeAfterCompletion()
-    {
-        if (!Application.isEditor || _headlessMode)
-            yield break;
-
-        yield return new WaitForSecondsRealtime(2f);
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#endif
+        _acceptDashboardCommands = !_headlessMode && !_isAllExamplesComparison;
     }
 
     // A standalone player in batch mode writes a report instead of publishing dashboard updates.
@@ -1345,6 +1461,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         private readonly int _port;
         private string _dashboardHtmlPath;
         private readonly object _jsonLock = new object();
+        private readonly ConcurrentQueue<string> _runRequests = new ConcurrentQueue<string>();
         private TcpListener _listener;
         private Thread _thread;
         private bool _isRunning;
@@ -1383,6 +1500,11 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         {
             lock (_jsonLock)
                 _json = json;
+        }
+
+        public bool TryTakeRunRequest(out string requestJson)
+        {
+            return _runRequests.TryDequeue(out requestJson);
         }
 
         public void Stop()
@@ -1424,12 +1546,56 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 try
                 {
                     string requestLine = reader.ReadLine();
-                    string header;
-                    while (!string.IsNullOrEmpty(header = reader.ReadLine())) { }
+                    string method = "";
+                    string route = "";
+                    if (requestLine != null)
+                    {
+                        string[] requestParts = requestLine.Split(' ');
+                        if (requestParts.Length >= 2)
+                        {
+                            method = requestParts[0];
+                            route = requestParts[1];
+                        }
+                    }
 
-                    string route = requestLine == null ? "" : requestLine.Split(' ')[1];
+                    string header;
+                    int contentLength = 0;
+                    while (!string.IsNullOrEmpty(header = reader.ReadLine()))
+                    {
+                        if (header.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase))
+                            int.TryParse(header.Substring("Content-Length:".Length).Trim(), out contentLength);
+                    }
+
                     bool isStateRequest = route == "/state";
                     bool isPageRequest = route == "/" || route == "/index.html";
+                    bool isRunRequest = route == "/run" && method == "POST";
+                    if (isRunRequest)
+                    {
+                        if (contentLength <= 0 || contentLength > 4096)
+                        {
+                            WriteResponse(stream, "400 Bad Request", "application/json; charset=utf-8", "{\"error\":\"Invalid request body\"}");
+                            return;
+                        }
+
+                        char[] bodyCharacters = new char[contentLength];
+                        int charactersRead = 0;
+                        while (charactersRead < bodyCharacters.Length)
+                        {
+                            int count = reader.Read(bodyCharacters, charactersRead, bodyCharacters.Length - charactersRead);
+                            if (count <= 0)
+                                break;
+                            charactersRead += count;
+                        }
+                        if (charactersRead != bodyCharacters.Length)
+                        {
+                            WriteResponse(stream, "400 Bad Request", "application/json; charset=utf-8", "{\"error\":\"Incomplete request body\"}");
+                            return;
+                        }
+
+                        _runRequests.Enqueue(new string(bodyCharacters));
+                        WriteResponse(stream, "202 Accepted", "application/json; charset=utf-8", "{\"queued\":true}");
+                        return;
+                    }
                     if (!isStateRequest && !isPageRequest)
                     {
                         WriteResponse(stream, "404 Not Found", "text/plain; charset=utf-8", "Not found");
@@ -1458,7 +1624,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 "HTTP/1.1 " + status + "\r\n" +
                 "Content-Type: " + contentType + "\r\n" +
                 "Access-Control-Allow-Origin: *\r\n" +
-                "Access-Control-Allow-Methods: GET, OPTIONS\r\n" +
+                "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
                 "Access-Control-Allow-Headers: Content-Type\r\n" +
                 "Cache-Control: no-store\r\n" +
                 "Connection: close\r\n" +

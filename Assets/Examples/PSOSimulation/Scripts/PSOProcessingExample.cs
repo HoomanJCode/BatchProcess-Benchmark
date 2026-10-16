@@ -34,6 +34,11 @@ public sealed class PSOProcessingExample : MonoBehaviour
     #region Workload entry points
     private void Start()
     {
+        // Dashboard settings are applied before this example starts its selected method.
+        _particleCount = Mathf.Max(2, PlayerPrefs.GetInt("SimulationLab.PsoParticles", _particleCount));
+        _iterations = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.PsoIterations", _iterations));
+        _trialCount = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.PsoTrials", _trialCount));
+
         // Coroutine is an iterator so it can yield while processing chunks over several frames.
         if (_processingMethod == 4)
         {

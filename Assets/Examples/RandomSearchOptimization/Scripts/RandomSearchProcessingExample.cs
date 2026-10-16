@@ -34,6 +34,11 @@ public sealed class RandomSearchProcessingExample : MonoBehaviour
     #region Workload entry points
     private void Start()
     {
+        // Each iteration checks one candidate, so the dashboard controls the exact evaluation budget.
+        _particleCount = 1;
+        _iterations = Mathf.Max(0, PlayerPrefs.GetInt("SimulationLab.RandomSearchEvaluationsPerTrial", _iterations + 1) - 1);
+        _trialCount = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.RandomSearchTrials", _trialCount));
+
         // Coroutine is an iterator so it can yield while processing chunks over several frames.
         if (_processingMethod == 4)
         {
