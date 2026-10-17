@@ -56,25 +56,56 @@ Close the Unity Editor before using a headless helper. Use the Unity Editor exec
 
 Reports are saved under `Build/Headless/`. The dashboard build can be used for live presentation; headless reports are for command-line profiling.
 
-### Example batch benchmark result
+### Example gravity benchmark result
 
-This is one local headless run captured on **October 16, 2026**. It used 100,000 items, 100 iterations per item, batches of 1,000, one warm-up run, and five measured runs per method. The player ran on Windows 11 Pro with an Intel Core i7-4790K (8 logical processors); the Python comparison used CPython 3.14.7, NumPy 2.4.4, and eight Python workers.
+These are measured results from a Windows headless player run on **October 17, 2026**, with the laptop connected to AC power. Each 2D and 3D scene simulated 128 bodies and computed softened Newtonian attraction from every other body. Unity ran a 2-second warm-up and collected profiler samples for 8 seconds per strategy.
 
-| Processing method | Average compute (ms) | P95 compute (ms) |
-| --- | ---: | ---: |
-| Single threaded | 83.67 | 85.71 |
-| C# async | 115.02 | 142.60 |
-| C# async tasks | 31.11 | 33.79 |
-| C# parallel | 16.14 | 21.19 |
-| Unity Jobs | 12.57 | 13.18 |
-| Unity coroutine | 92.98 | 109.07 |
-| Unity Jobs + Burst | 5.36 | 6.04 |
-| Python single threaded | 728.41 | 769.84 |
-| Python threads | 628.61 | 670.35 |
-| Python processes | 211.83 | 228.18 |
-| Python NumPy vectorized | 47.92 | 57.40 |
+| Unity gravity strategy | 2D average (ms/step) | 2D P95 (ms/step) | 3D average (ms/step) | 3D P95 (ms/step) |
+| --- | ---: | ---: | ---: | ---: |
+| Single threaded | 1.18 | 1.28 | 1.97 | 2.69 |
+| C# async | 1.20 | 1.33 | 1.72 | 2.55 |
+| C# parallel | 0.52 | 0.58 | 0.84 | 1.26 |
+| Unity Jobs | 0.64 | 0.69 | 0.93 | 1.42 |
+| Unity coroutine | 1.35 | 1.74 | 2.12 | 2.96 |
+| Unity Jobs + Burst | 0.12 | 0.14 | 0.17 | 0.26 |
 
-The coroutine's average wall time in this run was **1,662.33 ms** because its batches yielded across frames; compute time sums only the active chunk work. Use wall time to compare when the full workload finishes. With only five measured runs, P95 is the slowest sample. Treat these values as an example, not a general ranking; results vary with hardware and machine load. The latest combined report is written to `Build/Headless/batch-benchmark.json`.
+The timing is the average and 95th-percentile cost of one complete gravity calculation, measured with the Unity Profiler marker for each strategy. The coroutine is measured across all of its chunks for a full gravity step. Each strategy uses the same deterministic starting layout and ball count; Unity then integrates motion and resolves collisions during the run. The reports contain 328–401 samples per strategy, except the frame-split coroutine, which completed 55–56 full-step samples. This player folder did not include the separate Python harness, so these tables report Unity methods only.
+
+For `N = 128` bodies, each target checks `N - 1` source bodies. That is `128 × 127 = 16,256` directed source-target evaluations per physics step, with quadratic work and linear storage.
+
+```text
+a_i += G * m_j * (x_j - x_i) / (|x_j - x_i|² + softening²)^(3/2)
+```
+
+```mermaid
+flowchart TD
+    A[128 bodies: positions and masses] --> B[Choose target body i]
+    B --> C[Visit every other source body j]
+    C --> D[Accumulate softened Newtonian acceleration]
+    D --> E[Apply force and integrate with Unity physics]
+    E --> F[Next physics step]
+    F --> B
+    C --> G[128 x 127 = 16,256 interactions per step]
+```
+
+#### Test environment and settings
+
+| Setting | Value |
+| --- | --- |
+| Machine | Microsoft Surface Laptop 5 |
+| CPU | 12th Gen Intel Core i7-1255U; 10 cores, 12 logical processors |
+| Memory | 16 GB RAM |
+| Operating system | Windows 11 Home, build 26300, 64-bit |
+| Unity | 6000.5.1f1; Standalone Windows x64 Development build |
+| Power | AC connected; Balanced power plan; battery status reported charging (2) |
+| Environment variables | `PROCESSOR_ARCHITECTURE=AMD64`; `NUMBER_OF_PROCESSORS=12` |
+| Benchmark-specific environment variables | None; settings are passed as command-line arguments |
+| Player flags | `-batchmode -nographics`; headless mode sets VSync to 0 and targets 60 FPS |
+| Workload flags | `-gravity-benchmark-dimension 2D` or `3D`; warm-up `2` seconds; measurement `8` seconds |
+
+The reports and a PowerShell rerun script are in `%USERPROFILE%\Desktop\GravitySimulation-Headless\`. From PowerShell, run `& "$env:USERPROFILE\Desktop\GravitySimulation-Headless\Run-Benchmark.ps1"`; the JSON and CSV reports are written beside the player. For the source-project helper, close the Unity Editor first and run `Tools/Run-HeadlessGravityBenchmark.ps1` with the installed Editor path and `-Dimension 2D` or `3D`.
+
+These figures describe one local run, not a general ranking. CPU power limits, background work, and hardware can change timings. The exact machine snapshot and run arguments are also saved in `benchmark-environment.txt` beside the Desktop player.
 
 ## Folder layout
 
