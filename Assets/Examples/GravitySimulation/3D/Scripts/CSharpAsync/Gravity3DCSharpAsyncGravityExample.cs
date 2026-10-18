@@ -1,12 +1,11 @@
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Serialization;
 
 /// <summary>
-/// Beginner example: C# async: one persistent C# worker task calculates gravity from reusable arrays; Unity objects stay on the main thread.
+/// Beginner example: C# async: Task.Run calculates different target bodies in parallel; Unity objects stay on the main thread.
 /// The setup and gravity formula are kept in this file so this strategy can be read on its own.
 /// </summary>
 public sealed class Gravity3DCSharpAsyncGravityExample : MonoBehaviour
@@ -29,10 +28,7 @@ public sealed class Gravity3DCSharpAsyncGravityExample : MonoBehaviour
     private readonly ProfilerMarker _gravityMarker = new ProfilerMarker("GravitySimulation.CSharpAsync");
     private static readonly ProfilerMarker WorkerMarker =
         new ProfilerMarker("GravitySimulation.CSharpAsync.Worker");
-    private AutoResetEvent _workAvailable;
-    private ManualResetEvent _workComplete;
-    private Task _workerTask;
-    private volatile bool _stopWorker;
+    private Task _calculationTask;
     private bool _hasPendingStep;
     private float _stepGravity;
     private float _stepSofteningSquared;
@@ -133,12 +129,6 @@ public sealed class Gravity3DCSharpAsyncGravityExample : MonoBehaviour
                 _bodies3D[i] = body;
             }
         }
-
-        // Create one long-lived worker. The arrays and synchronization objects are reused every step.
-        _workAvailable = new AutoResetEvent(false);
-        _workComplete = new ManualResetEvent(true);
-        _workerTask = Task.Factory.StartNew(
-            CalculateOnWorker, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
     }
     // Unity calls FixedUpdate once per physics step.
     private void FixedUpdate()
@@ -157,13 +147,15 @@ public sealed class Gravity3DCSharpAsyncGravityExample : MonoBehaviour
             }
         }
 
-        // A completed worker result is published by swapping buffers; no result array is created.
-        if (_hasPendingStep && _workComplete.WaitOne(0))
+        // Publish completed results. Each target body was calculated by its own Task.Run operation.
+        if (_hasPendingStep && _calculationTask.IsCompleted)
         {
+            _calculationTask.GetAwaiter().GetResult();
             Vector3[] previousResults = _accelerations;
             _accelerations = _nextAccelerations;
             _nextAccelerations = previousResults;
             _hasPendingStep = false;
+            _calculationTask = null;
         }
 
         // Unity physics objects are only touched on the main thread.
@@ -182,30 +174,27 @@ public sealed class Gravity3DCSharpAsyncGravityExample : MonoBehaviour
 
         if (!_hasPendingStep)
         {
-            // Reuse this input buffer until the worker signals that its calculation is finished.
+            // Keep a stable snapshot while the target-body tasks calculate gravity.
             Array.Copy(_positions, _positionSnapshot, _ballCount);
             _stepGravity = _gravity * _gravityScale;
             _stepSofteningSquared = _softening * _softening;
             _stepIs2D = _is2D;
             _hasPendingStep = true;
-            _workComplete.Reset();
-            _workAvailable.Set();
+            _calculationTask = CalculateInParallel();
         }
         return;
     }
 
-    // This task waits for requests instead of allocating a new Task for every physics step.
-    private void CalculateOnWorker()
+    // Each outer-loop index gets a Task.Run; its inner source-body loop stays sequential.
+    private Task CalculateInParallel()
     {
-        while (true)
+        Task[] tasks = new Task[_ballCount];
+        for (int i = 0; i < _ballCount; i++)
         {
-            _workAvailable.WaitOne();
-            if (_stopWorker)
-                return;
-
-            using (WorkerMarker.Auto())
+            int target = i;
+            tasks[target] = Task.Run(() =>
             {
-                for (int i = 0; i < _ballCount; i++)
+                using (WorkerMarker.Auto())
                 {
                     // GRAVITY FORMULA (one source body j acting on target body i):
                     // force_ij = G * mass_i * mass_j * offset / |offset|^3
@@ -216,9 +205,9 @@ public sealed class Gravity3DCSharpAsyncGravityExample : MonoBehaviour
                     Vector3 acceleration = Vector3.zero;
                     for (int other = 0; other < _ballCount; other++)
                     {
-                        if (other == i)
+                        if (other == target)
                             continue;
-                        Vector3 offset = _positionSnapshot[other] - _positionSnapshot[i];
+                        Vector3 offset = _positionSnapshot[other] - _positionSnapshot[target];
                         if (_stepIs2D)
                             offset.z = 0f;
                         float inverseDistance = 1f /
@@ -226,26 +215,12 @@ public sealed class Gravity3DCSharpAsyncGravityExample : MonoBehaviour
                         acceleration += offset * (_stepGravity * _masses[other] *
                             inverseDistance * inverseDistance * inverseDistance);
                     }
-                    _nextAccelerations[i] = acceleration;
+                    _nextAccelerations[target] = acceleration;
                 }
-            }
-
-            _workComplete.Set();
+            });
         }
-    }
 
-    private void OnDestroy()
-    {
-        // Wake and join the worker so it cannot outlive the scene or its reusable buffers.
-        if (_workerTask != null)
-        {
-            _stopWorker = true;
-            _workAvailable.Set();
-            _workerTask.Wait();
-            _workAvailable.Dispose();
-            _workComplete.Dispose();
-            _workerTask = null;
-        }
+        return Task.WhenAll(tasks);
     }
     #endregion
 }
