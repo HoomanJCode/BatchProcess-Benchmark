@@ -152,33 +152,41 @@ public sealed class Gravity3DCSharpAsyncGravityExample : MonoBehaviour
         }
     }
 
-    // Each target-body iteration gets a Task.Run; wait for the full batch inside the measured scope.
+    // Split targets into a bounded number of worker tasks; wait before applying forces on Unity's main thread.
     private void CalculateInParallel()
     {
-        Task[] tasks = new Task[_ballCount];
-        for (int i = 0; i < _ballCount; i++)
+        int workerCount = Mathf.Min(_ballCount, Mathf.Min(8, Mathf.Max(1, System.Environment.ProcessorCount)));
+        Task[] tasks = new Task[workerCount];
+        for (int worker = 0; worker < workerCount; worker++)
         {
-            int target = i;
-            tasks[target] = Task.Run(() =>
+            int firstTarget = _ballCount * worker / workerCount;
+            int afterLastTarget = _ballCount * (worker + 1) / workerCount;
+            tasks[worker] = Task.Run(() =>
             {
-                Vector3 acceleration = Vector3.zero;
-                for (int other = 0; other < _ballCount; other++)
-                {
-                    if (other == target)
-                        continue;
-                    Vector3 offset = _positions[other] - _positions[target];
-                    if (_is2D)
-                        offset.z = 0f;
-                    float inverseDistance = 1f /
-                        Mathf.Sqrt(offset.sqrMagnitude + _softening * _softening);
-                    acceleration += offset * (_gravity * _gravityScale * _masses[other] *
-                        inverseDistance * inverseDistance * inverseDistance);
-                }
-                _accelerations[target] = acceleration;
+                for (int target = firstTarget; target < afterLastTarget; target++)
+                    CalculateTargetAcceleration(target);
             });
         }
 
         Task.WhenAll(tasks).GetAwaiter().GetResult();
+    }
+
+    private void CalculateTargetAcceleration(int target)
+    {
+        Vector3 acceleration = Vector3.zero;
+        for (int other = 0; other < _ballCount; other++)
+        {
+            if (other == target)
+                continue;
+            Vector3 offset = _positions[other] - _positions[target];
+            if (_is2D)
+                offset.z = 0f;
+            float inverseDistance = 1f /
+                Mathf.Sqrt(offset.sqrMagnitude + _softening * _softening);
+            acceleration += offset * (_gravity * _gravityScale * _masses[other] *
+                inverseDistance * inverseDistance * inverseDistance);
+        }
+        _accelerations[target] = acceleration;
     }
     #endregion
 }
