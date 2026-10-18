@@ -19,4 +19,4 @@ The work per physics step is **O(N²)** for `N` balls. Positions, masses, and ac
 
 The C# async strategy splits target balls into a bounded set of `Task.Run` worker chunks and waits for them before applying forces. Its profiler marker covers task creation, scheduling, and completion. Each worker checks every source ball sequentially. The C# parallel strategy uses `Parallel.For` over target balls; its inner source-ball loop is sequential. Both strategies keep Unity physics reads and force application on the main thread. The async gravity calculation still waits inside `FixedUpdate`, so its calculation is parallel but does not leave the physics step running asynchronously.
 
-Use `Scenes/Gravity_Benchmark.unity` to run the five Unity processing methods followed by Python single-thread, threads, processes, and NumPy. Python evaluates the same gravity formula for a fixed deterministic 2D layout; it does not run Unity physics or have Unity frame timings. The results appear beside the Unity methods in the 2D dashboard tab.
+Use `Scenes/Gravity_Benchmark.unity` to run the five Unity processing methods. Results appear in the 2D dashboard tab.

@@ -14,4 +14,4 @@ best x = 0, best y = 0, best score = 0
 - Work: **O(P × I)** objective evaluations for `P` particles and `I` iterations; storage is **O(P)**.
 - Resources: none are required; particles and input arrays are created by the example.
 
-Open `Assets/WebDashboard/Scenes/Optimization_Benchmark.unity` to run PSO and Random Search through six Unity methods and four Python methods each. Select the **Particle Swarm (PSO)** tab to compare PSO processing runtimes. This project compares processing methods within the same workload; it does not rank the optimization algorithms by solution quality.
+Open `Assets/WebDashboard/Scenes/Optimization_Benchmark.unity` to run PSO and Random Search through six Unity methods each. Select the **Particle Swarm (PSO)** tab to compare PSO processing runtimes. This project compares processing methods within the same workload; it does not rank the optimization algorithms by solution quality.
