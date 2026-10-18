@@ -36,14 +36,14 @@ public static class GravityBenchmarkBuild
         BuildWindowsPlayer(scenes);
     }
 
-    /// <summary>Builds a player that compares six processing methods for both optimization workloads.</summary>
+    /// <summary>Builds a player that compares five processing methods for both optimization workloads.</summary>
     public static void BuildOptimizationPlayer()
     {
         // Generate the same comparison and example scenes used by the local dashboard.
         ExampleSceneGeneration.Build();
 
-        string[] methods = { "SingleThreaded", "CSharpAsync", "CSharpParallel", "UnityJobs", "UnityCoroutine", "UnityJobsBurst" };
-        string[] scenes = new string[13];
+        string[] methods = { "SingleThreaded", "CSharpAsync", "CSharpParallel", "UnityJobs", "UnityJobsBurst" };
+        string[] scenes = new string[11];
         scenes[0] = "Assets/WebDashboard/Scenes/Optimization_Benchmark.unity";
         int sceneIndex = 1;
         for (int algorithm = 0; algorithm < 2; algorithm++)
@@ -54,7 +54,7 @@ public static class GravityBenchmarkBuild
         BuildWindowsPlayer(scenes, "OptimizationBenchmark.exe");
     }
 
-    /// <summary>Creates a player for the six beginner batch-processing methods.</summary>
+    /// <summary>Creates a player for the five beginner batch-processing methods.</summary>
     public static void BuildBatchPlayer()
     {
         // Regenerate the same standalone scenes used by the Editor comparison launcher.
@@ -67,7 +67,6 @@ public static class GravityBenchmarkBuild
             "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_CSharpAsync.unity",
             "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_CSharpParallel.unity",
             "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_UnityJobs.unity",
-            "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_UnityCoroutine.unity",
             "Assets/Examples/SimpleIteration/Scenes/SimpleIteration_UnityJobsBurst.unity"
         };
         BuildWindowsPlayer(scenes, "BatchBenchmark.exe");

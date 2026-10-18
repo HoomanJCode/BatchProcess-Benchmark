@@ -160,9 +160,9 @@
     <div class="section-head"><div><h2>All comparison examples</h2><p>Run All Examples Benchmark to fill every tab; this page keeps the latest completed results in this browser.</p></div><span class="pill">5 EXAMPLES</span></div>
     <section class="overview-grid" aria-label="Overview of every comparison example">
       <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare five Unity methods in dedicated 2D and 3D workloads.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene and press Play.</p><p class="overview-settings" id="gravity-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through six Unity methods.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><p class="overview-settings" id="batch-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>PSO simulation</h3><p>Compare PSO across six Unity methods with the same search workload.</p><strong id="pso-overview-title">No completed run yet</strong><p id="pso-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="pso-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="pso-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>Random Search</h3><p>Compare Random Search across six Unity methods with the same search workload.</p><strong id="random-overview-title">No completed run yet</strong><p id="random-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="random-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="random-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through five Unity methods.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><p class="overview-settings" id="batch-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>PSO simulation</h3><p>Compare PSO across five Unity methods with the same search workload.</p><strong id="pso-overview-title">No completed run yet</strong><p id="pso-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="pso-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="pso-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Random Search</h3><p>Compare Random Search across five Unity methods with the same search workload.</p><strong id="random-overview-title">No completed run yet</strong><p id="random-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="random-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="random-overview-results" class="overview-strategies">No results saved.</div></details></article>
     </section>
 
     <div class="section-head"><div><h2 id="live-title">Live profile</h2><p id="live-description">Profiler samples update while the current Unity scene is running.</p></div><span class="pill" id="balls-pill">Balls: waiting</span></div>
@@ -238,7 +238,7 @@
     <div class="section-head"><div><h2 id="results-title">Selected comparison results</h2><p id="results-description">Each pass uses the configured warm-up and measurement duration.</p></div></div>
     <section class="panel chart-panel table-wrap">
       <table><thead><tr><th>Strategy</th><th id="count-heading">Balls</th><th id="iterations-heading" hidden>Iterations</th><th id="batch-size-heading" hidden>Batch size</th><th id="average-heading">Compute avg</th><th id="p95-heading">Compute P95</th><th id="solution-x-heading" hidden>Best X</th><th id="solution-y-heading" hidden>Best Y</th><th id="frame-average-heading">Frame avg</th><th id="frame-p95-heading">Frame P95</th><th id="samples-heading">Samples</th></tr></thead><tbody id="results"><tr><td colspan="11" class="empty">No completed runs yet.</td></tr></tbody></table>
-      <p class="note" id="results-note">Gravity calculation samples show average time per physics step. If Unity runs multiple physics steps in one rendered frame, their summed marker time is divided by the marker call count. Coroutine chunk times are summed into one complete gravity step across frames. Frame times separately show overall responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.</p>
+      <p class="note" id="results-note">Gravity calculation samples show average time per physics step. If Unity runs multiple physics steps in one rendered frame, their summed marker time is divided by the marker call count. Frame times separately show overall responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.</p>
     </section>
 
     <div class="section-head"><div><h2>Present it live</h2><p>The browser is a local monitor; Unity still performs every simulation.</p></div></div>
@@ -264,11 +264,11 @@
     let lastGravityDimension = null;
     let lastComparisonKey = null;
     let comparisonSelectionWasManual = false;
-    const overviewStorageKey = 'simulation-lab-latest-comparisons-v2';
+    const overviewStorageKey = 'simulation-lab-latest-comparisons-v3';
     let savedComparisons = loadSavedComparisons();
     let lastSavedCompletion = '';
     const inputSettingsKey = 'simulation-lab-run-settings-v1';
-    const methodSettingsKey = 'simulation-lab-method-settings-v1';
+    const methodSettingsKey = 'simulation-lab-method-settings-v2';
     const processingMethods = {
       gravity: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'], ['unity-parallel', 'C# parallel'],
@@ -276,16 +276,16 @@
       ],
       batch: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'],
-        ['unity-parallel', 'C# parallel'], ['unity-jobs', 'Unity Jobs'], ['unity-coroutine', 'Unity coroutine'],
+        ['unity-parallel', 'C# parallel'], ['unity-jobs', 'Unity Jobs'],
         ['unity-burst', 'Unity Jobs + Burst']
       ],
       pso: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'], ['unity-parallel', 'C# parallel'],
-        ['unity-jobs', 'Unity Jobs'], ['unity-coroutine', 'Unity coroutine'], ['unity-burst', 'Unity Jobs + Burst']
+        ['unity-jobs', 'Unity Jobs'], ['unity-burst', 'Unity Jobs + Burst']
       ],
       randomSearch: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'], ['unity-parallel', 'C# parallel'],
-        ['unity-jobs', 'Unity Jobs'], ['unity-coroutine', 'Unity coroutine'], ['unity-burst', 'Unity Jobs + Burst']
+        ['unity-jobs', 'Unity Jobs'], ['unity-burst', 'Unity Jobs + Burst']
       ]
     };
     let selectedMethodByWorkload = loadSelectedMethods();
@@ -614,7 +614,7 @@
       document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : 'Frame P95';
       document.getElementById('samples-heading').textContent = isOptimization ? 'Trials' : (isBatch ? 'Runs' : 'Samples');
       document.getElementById('results-note').textContent = isOptimization
-          ? 'This example compares the same deterministic workload across six Unity methods. Compare compute and wall time within this example. Lower times are better.'
+          ? 'This example compares the same deterministic workload across five Unity methods. Compare compute and wall time within this example. Lower times are better.'
         : (isBatch
           ? 'All Unity methods use the same item count, iteration count, and batch size. Lower times are better.'
           : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Frame timing separately shows responsiveness and includes Unity physics and Editor overhead. Lower times are better.');
@@ -801,7 +801,7 @@
         : (isBatch ? 'Items: ' : 'Balls: ') + (state.ballCount || '—');
       document.getElementById('live-title').textContent = isOptimization ? getSelectedAlgorithm() + ' timings' : (isBatch ? 'Simple iteration timings' : 'Live profile');
       document.getElementById('live-description').textContent = isOptimization
-        ? 'The launcher measures both dedicated examples one after another. Each tab compares six Unity processing methods within its selected example.'
+        ? 'The launcher measures both dedicated examples one after another. Each tab compares five Unity processing methods within its selected example.'
         : (isBatch ? 'Each completed scene run adds its calculation and total wall time.' : 'Profiler samples update while the current Unity scene is running.');
       document.getElementById('profile-label').textContent = isWorkComparison ? 'Latest calculation' : 'Current work marker';
       document.getElementById('profile-hint').textContent = isWorkComparison ? 'milliseconds for one run' : 'milliseconds / sample';
@@ -830,9 +830,9 @@
       document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : 'Frame P95';
       document.getElementById('samples-heading').textContent = isOptimization ? 'Trials' : (isBatch ? 'Runs' : 'Samples');
       document.getElementById('results-note').textContent = isOptimization
-        ? 'This example compares the same deterministic workload across six Unity methods. This table shows ' + getSelectedAlgorithm() + ' only; it does not compare optimization quality.'
+        ? 'This example compares the same deterministic workload across five Unity methods. This table shows ' + getSelectedAlgorithm() + ' only; it does not compare optimization quality.'
         : (isBatch
-          ? 'All methods use the same batch size. C# async runs one task per batch and awaits completion. Coroutine wall time includes the frames spent yielding.'
+          ? 'All methods use the same batch size. C# async runs one task per batch and awaits completion.'
           : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Frame times separately show responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.');
       document.getElementById('marker-pill').textContent = state.markerName || 'No marker yet';
       document.getElementById('updated').textContent = state.updatedUtc ? 'Updated ' + new Date(state.updatedUtc).toLocaleTimeString() : 'Waiting for first sample';

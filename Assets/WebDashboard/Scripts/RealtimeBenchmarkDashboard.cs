@@ -59,7 +59,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         new ComparisonMode("C# async", "CSharpAsync", "SimpleIteration.CSharpAsync.Worker"),
         new ComparisonMode("C# parallel", "CSharpParallel", "SimpleIteration.CSharpParallel"),
         new ComparisonMode("Unity Jobs", "UnityJobs", "SimpleIteration.UnityJobs"),
-        new ComparisonMode("Unity coroutine", "UnityCoroutine", "SimpleIteration.UnityCoroutine.Chunk"),
         new ComparisonMode("Unity Jobs + Burst", "UnityJobsBurst", "SimpleIteration.UnityJobsBurst")
     };
 
@@ -70,13 +69,11 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         new ComparisonMode("C# async", "PSO_CSharpAsync", "BatchProcessing.Optimization.PSO.Async", "PSOProcessingExample", "Particle swarm (PSO)"),
         new ComparisonMode("C# parallel", "PSO_CSharpParallel", "BatchProcessing.Optimization.PSO.Parallel", "PSOProcessingExample", "Particle swarm (PSO)"),
         new ComparisonMode("Unity Jobs", "PSO_UnityJobs", "BatchProcessing.Optimization.PSO.Jobs", "PSOProcessingExample", "Particle swarm (PSO)"),
-        new ComparisonMode("Unity coroutine", "PSO_UnityCoroutine", "BatchProcessing.Optimization.PSO.Coroutine", "PSOProcessingExample", "Particle swarm (PSO)"),
         new ComparisonMode("Unity Jobs + Burst", "PSO_UnityJobsBurst", "BatchProcessing.Optimization.PSO.Burst", "PSOProcessingExample", "Particle swarm (PSO)"),
         new ComparisonMode("Single threaded", "RandomSearch_SingleThreaded", "BatchProcessing.Optimization.Random.Single", "RandomSearchProcessingExample", "Random search"),
         new ComparisonMode("C# async", "RandomSearch_CSharpAsync", "BatchProcessing.Optimization.Random.Async", "RandomSearchProcessingExample", "Random search"),
         new ComparisonMode("C# parallel", "RandomSearch_CSharpParallel", "BatchProcessing.Optimization.Random.Parallel", "RandomSearchProcessingExample", "Random search"),
         new ComparisonMode("Unity Jobs", "RandomSearch_UnityJobs", "BatchProcessing.Optimization.Random.Jobs", "RandomSearchProcessingExample", "Random search"),
-        new ComparisonMode("Unity coroutine", "RandomSearch_UnityCoroutine", "BatchProcessing.Optimization.Random.Coroutine", "RandomSearchProcessingExample", "Random search"),
         new ComparisonMode("Unity Jobs + Burst", "RandomSearch_UnityJobsBurst", "BatchProcessing.Optimization.Random.Burst", "RandomSearchProcessingExample", "Random search")
     };
 
@@ -290,7 +287,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             return true;
 
         if (method == "unity-single" || method == "unity-async" || method == "unity-parallel" ||
-            method == "unity-jobs" || method == "unity-coroutine" || method == "unity-burst")
+            method == "unity-jobs" || method == "unity-burst")
             return true;
 
         return false;
@@ -304,7 +301,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             case "C# async": return "unity-async";
             case "C# parallel": return "unity-parallel";
             case "Unity Jobs": return "unity-jobs";
-            case "Unity coroutine": return "unity-coroutine";
             case "Unity Jobs + Burst": return "unity-burst";
             default: return "";
         }
@@ -680,7 +676,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         if (_state.status == "running" && (_isBatchComparison || _isOptimizationComparison))
         {
             // Batch examples finish once per scene, so they publish measured runs directly.
-            // Only refresh the browser while an async or coroutine example is still working.
+            // Only refresh the browser while an async example is still working.
             _sampleTimer += Time.unscaledDeltaTime;
             if (!_headlessMode && _sampleTimer >= DashboardUpdateInterval)
             {

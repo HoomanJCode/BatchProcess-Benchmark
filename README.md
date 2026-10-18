@@ -36,7 +36,7 @@ Reports are saved under `Build/Headless/`. The dashboard build can be used for l
 
 ### Example gravity benchmark result
 
-These are historical measurements from a Windows headless player run on **October 17, 2026**, with the laptop connected to AC power. Each 2D and 3D scene simulated 128 bodies and computed softened Newtonian attraction from every other body. Unity ran a 2-second warm-up and collected profiler samples for 8 seconds per strategy. Unity Coroutine has since been removed from the gravity examples. The C# async result predates the change to one `Task.Run` per target body; rerun the benchmark to measure the current methods.
+These are historical measurements from a Windows headless player run on **October 17, 2026**, with the laptop connected to AC power. Each 2D and 3D scene simulated 128 bodies and computed softened Newtonian attraction from every other body. Unity ran a 2-second warm-up and collected profiler samples for 8 seconds per strategy. Unity coroutine has since been removed from the benchmark; its row is retained only as a historical result. The C# async result predates the change to one `Task.Run` per target body; rerun the benchmark to measure the current methods.
 
 | Unity gravity strategy | 2D average (ms/step) | 2D P95 (ms/step) | 3D average (ms/step) | 3D P95 (ms/step) |
 | --- | ---: | ---: | ---: | ---: |
@@ -44,7 +44,7 @@ These are historical measurements from a Windows headless player run on **Octobe
 | C# async | 1.20 | 1.33 | 1.72 | 2.55 |
 | C# parallel | 0.52 | 0.58 | 0.84 | 1.26 |
 | Unity Jobs | 0.64 | 0.69 | 0.93 | 1.42 |
-| Unity coroutine | 1.35 | 1.74 | 2.12 | 2.96 |
+| Unity coroutine (historical) | 1.35 | 1.74 | 2.12 | 2.96 |
 | Unity Jobs + Burst | 0.12 | 0.14 | 0.17 | 0.26 |
 
 The timing is the average and 95th-percentile cost of one complete gravity calculation, measured with the Unity Profiler marker for each strategy. Each strategy uses the same deterministic starting layout and ball count; Unity then integrates motion and resolves collisions during the run. These tables report Unity methods only.

@@ -24,7 +24,6 @@ public static class ExampleSceneGeneration
             "SimpleIteration_CSharpAsync",
             "SimpleIteration_CSharpParallel",
             "SimpleIteration_UnityJobs",
-            "SimpleIteration_UnityCoroutine",
             "SimpleIteration_UnityJobsBurst"
         };
         System.Type[] exampleTypes =
@@ -33,7 +32,6 @@ public static class ExampleSceneGeneration
             typeof(BatchCSharpAsyncExample),
             typeof(BatchCSharpParallelExample),
             typeof(BatchUnityJobsExample),
-            typeof(BatchUnityCoroutineExample),
             typeof(BatchUnityJobsBurstExample)
         };
 
@@ -188,7 +186,7 @@ public static class ExampleSceneGeneration
     private static string[] CreateOptimizationWorkloadScenes()
     {
         string[] algorithms = { "PSO", "RandomSearch" };
-        string[] methods = { "SingleThreaded", "CSharpAsync", "CSharpParallel", "UnityJobs", "UnityCoroutine", "UnityJobsBurst" };
+        string[] methods = { "SingleThreaded", "CSharpAsync", "CSharpParallel", "UnityJobs", "UnityJobsBurst" };
         string[] paths = new string[algorithms.Length * methods.Length];
         int pathIndex = 0;
 
