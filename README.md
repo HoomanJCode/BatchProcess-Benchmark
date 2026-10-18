@@ -58,7 +58,7 @@ Reports are saved under `Build/Headless/`. The dashboard build can be used for l
 
 ### Example gravity benchmark result
 
-These are measured results from a Windows headless player run on **October 17, 2026**, with the laptop connected to AC power. Each 2D and 3D scene simulated 128 bodies and computed softened Newtonian attraction from every other body. Unity ran a 2-second warm-up and collected profiler samples for 8 seconds per strategy.
+These are measured results from a Windows headless player run on **October 17, 2026**, with the laptop connected to AC power. Each 2D and 3D scene simulated 128 bodies and computed softened Newtonian attraction from every other body. Unity ran a 2-second warm-up and collected profiler samples for 8 seconds per strategy. The C# async result below predates the change to one `Task.Run` per target body; rerun the benchmark to measure the updated implementation.
 
 | Unity gravity strategy | 2D average (ms/step) | 2D P95 (ms/step) | 3D average (ms/step) | 3D P95 (ms/step) |
 | --- | ---: | ---: | ---: | ---: |
