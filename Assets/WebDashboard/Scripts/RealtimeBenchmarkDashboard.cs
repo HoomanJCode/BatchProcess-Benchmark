@@ -27,7 +27,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     [SerializeField] private bool _isBatchComparison;
     [SerializeField] private bool _isOptimizationComparison;
     [SerializeField] private bool _isAllExamplesComparison;
-    [SerializeField, Min(1)] private int _batchRunsPerStrategy = 5;
+    [SerializeField, Min(1)] private int _batchRunsPerStrategy = 20;
     [SerializeField] private bool _openDashboardInBrowser = true;
 
     private const int RecorderCapacity = 512;
@@ -97,16 +97,17 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
 
     private void Start()
     {
+        // The dashboard is normally viewed in a browser while Unity runs in the background.
+        // Keep benchmark frames advancing so frame-time samples do not become focus-switch delays.
+        Application.runInBackground = true;
+        // Use the same frame budget in Editor and Player runs so frame metrics are comparable.
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = 60;
         // The runner must survive while each example scene is loaded in turn.
         DontDestroyOnLoad(gameObject);
         _headlessMode = HasCommandLineArgument("-gravity-benchmark-headless");
         if (_headlessMode)
         {
-            // A null graphics device can otherwise advance thousands of empty frames per second.
-            // Use the same fixed frame budget for every headless gravity strategy.
-            QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = 60;
-
             string dimension = GetCommandLineValue("-gravity-benchmark-dimension");
             if (!string.IsNullOrEmpty(dimension))
                 _is2D = string.Equals(dimension, "2D", StringComparison.OrdinalIgnoreCase);
@@ -469,7 +470,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 float runAverageBestScore = 0f;
                 float runBestX = 0f;
                 float runBestY = 0f;
-                string checksum = "—";
+                string resultSignature = "—";
                 float timeout = Time.realtimeSinceStartup + 120f;
                 while (Time.realtimeSinceStartup < timeout)
                 {
@@ -497,12 +498,12 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                             hasFinished = TryReadOptimizationValues(example, out computeMs, out wallMs,
                                 out evaluationCount, out trialCount, out particleCount, out iterations,
                                 out runBestScore, out runAverageBestScore,
-                                out runBestX, out runBestY, out checksum);
+                                out runBestX, out runBestY, out resultSignature);
                         }
                         else
                         {
                             hasFinished = TryReadBatchValues(example, out computeMs, out wallMs,
-                                out itemCount, out iterations, out batchSize, out checksum);
+                                out itemCount, out iterations, out batchSize, out resultSignature);
                         }
                     }
                     if (hasFinished)
@@ -512,9 +513,9 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                     yield return null;
                 }
 
-                if (example == null || checksum == "—")
+                if (example == null || resultSignature == "—")
                 {
-                    Debug.LogError("Headless comparison timed out: exampleFound=" + (example != null) + ", checksum=" + checksum);
+                    Debug.LogError("Headless comparison timed out: exampleFound=" + (example != null) + ", result=" + resultSignature);
                     SetBatchError(mode.displayName + " did not finish before the 120-second timeout", scenePath, 4);
                     yield break;
                 }
@@ -579,7 +580,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 averageBestScore = _isOptimizationComparison ? Average(optimizationScoreSamples) : 0f,
                 bestX = bestX,
                 bestY = bestY,
-                sampleCount = _isOptimizationComparison ? trialCount * computeSamples.Count : computeSamples.Count,
+                sampleCount = computeSamples.Count,
                 averageProfileMs = Average(computeSamples),
                 medianProfileMs = Percentile(computeSamples, 0.50f),
                 p95ProfileMs = Percentile(computeSamples, 0.95f),
@@ -644,7 +645,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         FieldInfo averageField = exampleType.GetField("_averageBestScore", flags);
         FieldInfo xField = exampleType.GetField("_bestX", flags);
         FieldInfo yField = exampleType.GetField("_bestY", flags);
-        FieldInfo checksumField = exampleType.GetField("_checksum", flags);
+        FieldInfo checksumField = exampleType.GetField("_resultSignature", flags);
         computeMs = computeField == null ? 0f : (float)computeField.GetValue(example);
         wallMs = wallField == null ? 0f : (float)wallField.GetValue(example);
         evaluationCount = countField == null ? 0 : (int)countField.GetValue(example);

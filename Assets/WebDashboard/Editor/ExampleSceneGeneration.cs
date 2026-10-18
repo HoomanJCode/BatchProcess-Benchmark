@@ -107,7 +107,7 @@ public static class ExampleSceneGeneration
         RealtimeBenchmarkDashboard runner = runnerObject.AddComponent<RealtimeBenchmarkDashboard>();
         SerializedObject settings = new SerializedObject(runner);
         settings.FindProperty("_isBatchComparison").boolValue = true;
-        settings.FindProperty("_batchRunsPerStrategy").intValue = 5;
+        settings.FindProperty("_batchRunsPerStrategy").intValue = 20;
         settings.FindProperty("_dashboardPort").intValue = 8765;
         settings.FindProperty("_openDashboardInBrowser").boolValue = true;
         settings.ApplyModifiedPropertiesWithoutUndo();
@@ -130,7 +130,7 @@ public static class ExampleSceneGeneration
         SerializedObject settings = new SerializedObject(runner);
         settings.FindProperty("_isOptimizationComparison").boolValue = true;
         settings.FindProperty("_isBatchComparison").boolValue = false;
-        settings.FindProperty("_batchRunsPerStrategy").intValue = 1;
+        settings.FindProperty("_batchRunsPerStrategy").intValue = 20;
         settings.FindProperty("_dashboardPort").intValue = 8765;
         settings.FindProperty("_openDashboardInBrowser").boolValue = true;
         settings.ApplyModifiedPropertiesWithoutUndo();
@@ -171,7 +171,7 @@ public static class ExampleSceneGeneration
         RealtimeBenchmarkDashboard runner = runnerObject.AddComponent<RealtimeBenchmarkDashboard>();
         SerializedObject settings = new SerializedObject(runner);
         settings.FindProperty("_isAllExamplesComparison").boolValue = true;
-        settings.FindProperty("_batchRunsPerStrategy").intValue = 1;
+        settings.FindProperty("_batchRunsPerStrategy").intValue = 20;
         settings.FindProperty("_dashboardPort").intValue = 8765;
         settings.FindProperty("_openDashboardInBrowser").boolValue = true;
         settings.ApplyModifiedPropertiesWithoutUndo();

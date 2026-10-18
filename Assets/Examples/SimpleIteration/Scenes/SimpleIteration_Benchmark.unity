@@ -154,7 +154,8 @@ MonoBehaviour:
   _is2D: 0
   _isBatchComparison: 1
   _isOptimizationComparison: 0
-  _batchRunsPerStrategy: 5
+  _isAllExamplesComparison: 0
+  _batchRunsPerStrategy: 20
   _openDashboardInBrowser: 1
 --- !u!4 &2011499134
 Transform:

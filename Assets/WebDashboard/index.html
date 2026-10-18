@@ -198,18 +198,18 @@
         <label>Items<input type="number" id="batch-items" min="1" max="5000000" value="100000"></label>
         <label>Iterations per item<input type="number" id="batch-iterations" min="1" max="100000" value="100"></label>
         <label>Batch size<input type="number" id="batch-size" min="1" max="5000000" value="1000"></label>
-        <label>Measured runs<input type="number" id="batch-runs" min="1" max="20" value="5"></label>
+        <label>Measured runs<input type="number" id="batch-runs" min="1" max="20" value="20"></label>
       </div>
       <div class="setting-grid" data-settings="pso" hidden>
         <label>Particles<input type="number" id="pso-particles" min="2" max="10000" value="64"></label>
         <label>Iterations<input type="number" id="pso-iterations" min="1" max="100000" value="99"></label>
         <label>Trials per method<input type="number" id="pso-trials" min="1" max="100" value="5"></label>
-        <label>Measured runs<input type="number" id="pso-runs" min="1" max="20" value="5"></label>
+        <label>Measured runs<input type="number" id="pso-runs" min="1" max="20" value="20"></label>
       </div>
       <div class="setting-grid" data-settings="randomSearch" hidden>
         <label>Evaluations per trial<input type="number" id="random-evaluations" min="1" max="5000000" value="6400"></label>
         <label>Trials per method<input type="number" id="random-trials" min="1" max="100" value="5"></label>
-        <label>Measured runs<input type="number" id="random-runs" min="1" max="20" value="5"></label>
+        <label>Measured runs<input type="number" id="random-runs" min="1" max="20" value="20"></label>
       </div>
       <div class="settings-actions"><p id="settings-status">Connect to Unity and enter Play mode to run a comparison.</p><button type="button" class="primary-button" id="run-selected-button" disabled>Run this comparison</button></div>
     </section>
@@ -238,7 +238,7 @@
     <div class="section-head"><div><h2 id="results-title">Selected comparison results</h2><p id="results-description">Each pass uses the configured warm-up and measurement duration.</p></div></div>
     <section class="panel chart-panel table-wrap">
       <table><thead><tr><th>Strategy</th><th id="count-heading">Balls</th><th id="iterations-heading" hidden>Iterations</th><th id="batch-size-heading" hidden>Batch size</th><th id="average-heading">Compute avg</th><th id="p95-heading">Compute P95</th><th id="solution-x-heading" hidden>Best X</th><th id="solution-y-heading" hidden>Best Y</th><th id="frame-average-heading">Frame avg</th><th id="frame-p95-heading">Frame P95</th><th id="samples-heading">Samples</th></tr></thead><tbody id="results"><tr><td colspan="11" class="empty">No completed runs yet.</td></tr></tbody></table>
-      <p class="note" id="results-note">Gravity calculation samples show average time per physics step. If Unity runs multiple physics steps in one rendered frame, their summed marker time is divided by the marker call count. Frame times separately show overall responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.</p>
+      <p class="note" id="results-note">Gravity calculation samples show average time per physics step. If Unity runs multiple physics steps in one rendered frame, their summed marker time is divided by the marker call count. Frame times include physics and Editor overhead; the Editor may throttle frames while it runs behind the dashboard browser. Use a standalone Development Build for reliable frame comparisons.</p>
     </section>
 
     <div class="section-head"><div><h2>Present it live</h2><p>The browser is a local monitor; Unity still performs every simulation.</p></div></div>
@@ -538,7 +538,7 @@
         balls: readSetting('gravity-' + selectedGravityDimension.toLowerCase() + '-balls', 128),
         measurementSeconds: readSetting('gravity-' + selectedGravityDimension.toLowerCase() + '-seconds', 8),
         warmupSeconds: readSetting('gravity-' + selectedGravityDimension.toLowerCase() + '-warmup', 2),
-        runs: 5,
+        runs: 20,
         items: readSetting('batch-items', 100000),
         iterations: workload === 'pso' ? readSetting('pso-iterations', 99) : (workload === 'batch' ? readSetting('batch-iterations', 100) : 99),
         batchSize: readSetting('batch-size', 1000),
@@ -548,7 +548,7 @@
       };
       request.selectedMethod = document.getElementById('run-method').value;
       if (workload !== 'gravity')
-        request.runs = readSetting(workload === 'batch' ? 'batch-runs' : (workload === 'pso' ? 'pso-runs' : 'random-runs'), 5);
+        request.runs = readSetting(workload === 'batch' ? 'batch-runs' : (workload === 'pso' ? 'pso-runs' : 'random-runs'), 20);
       saveRunSettings();
       const button = document.getElementById('run-selected-button');
       const status = document.getElementById('settings-status');
@@ -612,12 +612,12 @@
       document.getElementById('p95-heading').textContent = 'Compute P95';
       document.getElementById('frame-average-heading').textContent = isOptimization || isBatch ? 'Wall avg' : 'Frame avg';
       document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : 'Frame P95';
-      document.getElementById('samples-heading').textContent = isOptimization ? 'Trials' : (isBatch ? 'Runs' : 'Samples');
+      document.getElementById('samples-heading').textContent = isOptimization || isBatch ? 'Measured runs' : 'Samples';
       document.getElementById('results-note').textContent = isOptimization
           ? 'This example compares the same deterministic workload across five Unity methods. Compare compute and wall time within this example. Lower times are better.'
         : (isBatch
-          ? 'All Unity methods use the same item count, iteration count, and batch size. Lower times are better.'
-          : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Frame timing separately shows responsiveness and includes Unity physics and Editor overhead. Lower times are better.');
+          ? 'All Unity methods use the same item count, iteration count, and batch size. Runtime percentiles use measured runs; more runs make P95 more stable.'
+          : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Frame times include physics and Editor overhead, and the Editor may throttle while it runs behind the dashboard browser. Use a standalone Development Build for reliable frame comparisons.');
     }
 
     function renderGravityOverview(latest, isRunning, saved2D, saved3D, current) {
@@ -713,7 +713,7 @@
       const settings = document.getElementById(prefix + '-overview-settings');
       const settingsResult = results.length ? results[0] : null;
       settings.textContent = settingsResult
-        ? 'Settings: ' + Number(settingsResult.particleCount || 64).toLocaleString() + ' particles · ' + Number(settingsResult.iterations || 99).toLocaleString() + ' iterations · ' + Number(settingsResult.evaluationCount || 0).toLocaleString() + ' evaluations · ' + Number(settingsResult.sampleCount || 0).toLocaleString() + ' trials'
+        ? 'Settings: ' + Number(settingsResult.particleCount || 64).toLocaleString() + ' particles · ' + Number(settingsResult.iterations || 99).toLocaleString() + ' iterations · ' + Number(settingsResult.evaluationCount || 0).toLocaleString() + ' evaluations · ' + Number(settingsResult.sampleCount || 0).toLocaleString() + ' measured runs'
         : 'Settings: waiting for results';
       if (isRunning) {
         title.textContent = 'Running · ' + results.length + ' methods complete';
@@ -828,12 +828,12 @@
       document.getElementById('p95-heading').textContent = 'Compute P95';
       document.getElementById('frame-average-heading').textContent = isOptimization || isBatch ? 'Wall avg' : 'Frame avg';
       document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : 'Frame P95';
-      document.getElementById('samples-heading').textContent = isOptimization ? 'Trials' : (isBatch ? 'Runs' : 'Samples');
+      document.getElementById('samples-heading').textContent = isOptimization || isBatch ? 'Measured runs' : 'Samples';
       document.getElementById('results-note').textContent = isOptimization
         ? 'This example compares the same deterministic workload across five Unity methods. This table shows ' + getSelectedAlgorithm() + ' only; it does not compare optimization quality.'
         : (isBatch
           ? 'All methods use the same batch size. C# async runs one task per batch and awaits completion.'
-          : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Frame times separately show responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.');
+          : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Frame times include physics and Editor overhead, and the Editor may throttle while it runs behind the dashboard browser. Use a standalone Development Build for reliable frame comparisons.');
       document.getElementById('marker-pill').textContent = state.markerName || 'No marker yet';
       document.getElementById('updated').textContent = state.updatedUtc ? 'Updated ' + new Date(state.updatedUtc).toLocaleTimeString() : 'Waiting for first sample';
       drawTimeline(state);

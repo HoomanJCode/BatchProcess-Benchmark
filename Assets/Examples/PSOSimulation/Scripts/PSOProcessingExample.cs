@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 using Stopwatch = System.Diagnostics.Stopwatch;
 using Unity.Burst;
@@ -26,7 +27,7 @@ public sealed class PSOProcessingExample : MonoBehaviour
     [SerializeField] private float _bestY;
     [SerializeField] private float _computeMilliseconds;
     [SerializeField] private float _wallMilliseconds;
-    [SerializeField] private string _checksum = "—";
+    [SerializeField] private string _resultSignature = "—";
     #endregion
 
     #region Workload entry points
@@ -560,10 +561,13 @@ public sealed class PSOProcessingExample : MonoBehaviour
             : (float)((Stopwatch.GetTimestamp() - computeStart) * 1000d / Stopwatch.Frequency);
         _wallMilliseconds = (float)((Stopwatch.GetTimestamp() - wallStart) * 1000d / Stopwatch.Frequency);
         // Set the completion marker last so the dashboard never reads half-published async results.
-        _checksum = _bestScore.ToString("0.000000");
+        _resultSignature = "best=" + _bestScore.ToString("R", CultureInfo.InvariantCulture) +
+            "; mean=" + _averageBestScore.ToString("R", CultureInfo.InvariantCulture) +
+            "; x=" + _bestX.ToString("R", CultureInfo.InvariantCulture) +
+            "; y=" + _bestY.ToString("R", CultureInfo.InvariantCulture);
         Debug.Log("Optimization workload complete: algorithm=" + (_algorithm == 0 ? "PSO" : "Random Search") +
             ", evaluations=" + _evaluationCount + ", trials=" + _trialCount +
-            ", checksum=" + _checksum + ", computeMs=" + _computeMilliseconds + ", wallMs=" + _wallMilliseconds, this);
+            ", result=" + _resultSignature + ", computeMs=" + _computeMilliseconds + ", wallMs=" + _wallMilliseconds, this);
     }
 
     // A deterministic integer hash gives all processing methods the same repeatable pseudo-random values.
