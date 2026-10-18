@@ -96,9 +96,6 @@ public static class GravitySceneGeneration
     private static bool IsDimensionScene(string path, SimulationDimension dimension)
     {
         string sceneFolder = dimension == SimulationDimension.TwoD ? TwoDSceneFolder : ThreeDSceneFolder;
-        if (path == sceneFolder + "/Gravity_UnityCoroutine.unity" ||
-            path == sceneFolder + "/Benchmark/Gravity_UnityCoroutine.unity")
-            return true;
         foreach (SimulationMode mode in System.Enum.GetValues(typeof(SimulationMode)))
             if (path == sceneFolder + "/Gravity_" + SceneName(mode) + ".unity")
                 return true;
@@ -131,11 +128,7 @@ public static class GravitySceneGeneration
     {
         // This lets regeneration replace gravity scenes without removing other project scenes.
         if (path == SceneFolder + "/SampleScene.unity" ||
-            path == SceneFolder + "/Gravity_UnityModularMainThread.unity" ||
-            path == TwoDSceneFolder + "/Gravity_UnityCoroutine.unity" ||
-            path == ThreeDSceneFolder + "/Gravity_UnityCoroutine.unity" ||
-            path == TwoDSceneFolder + "/Benchmark/Gravity_UnityCoroutine.unity" ||
-            path == ThreeDSceneFolder + "/Benchmark/Gravity_UnityCoroutine.unity")
+            path == SceneFolder + "/Gravity_UnityModularMainThread.unity")
             return true;
 
         foreach (SimulationMode mode in System.Enum.GetValues(typeof(SimulationMode)))

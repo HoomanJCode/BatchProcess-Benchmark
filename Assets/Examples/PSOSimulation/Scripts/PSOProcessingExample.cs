@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Threading.Tasks;
 using Stopwatch = System.Diagnostics.Stopwatch;
 using Unity.Burst;
@@ -15,7 +14,7 @@ public sealed class PSOProcessingExample : MonoBehaviour
 {
     #region Settings and measured results
     [SerializeField, Range(0, 1)] private int _algorithm; // 0 = PSO, 1 = Random Search.
-    [SerializeField, Range(0, 5)] private int _processingMethod; // six methods, in the README order.
+    [SerializeField, Range(0, 4)] private int _processingMethod; // five methods, in the README order.
     [SerializeField, Min(2)] private int _particleCount = 64;
     [SerializeField, Min(1)] private int _iterations = 99;
     [SerializeField, Min(1)] private int _trialCount = 5;
@@ -28,7 +27,6 @@ public sealed class PSOProcessingExample : MonoBehaviour
     [SerializeField] private float _computeMilliseconds;
     [SerializeField] private float _wallMilliseconds;
     [SerializeField] private string _checksum = "—";
-    private long _coroutineComputeTicks;
     #endregion
 
     #region Workload entry points
@@ -38,13 +36,6 @@ public sealed class PSOProcessingExample : MonoBehaviour
         _particleCount = Mathf.Max(2, PlayerPrefs.GetInt("SimulationLab.PsoParticles", _particleCount));
         _iterations = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.PsoIterations", _iterations));
         _trialCount = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.PsoTrials", _trialCount));
-
-        // Coroutine is an iterator so it can yield while processing chunks over several frames.
-        if (_processingMethod == 4)
-        {
-            StartCoroutine(RunCoroutine());
-            return;
-        }
 
         RunSelectedMethod();
     }
@@ -70,16 +61,7 @@ public sealed class PSOProcessingExample : MonoBehaviour
             RunSearch(_processingMethod);
         }
 
-        FinishRun(computeStart, wallStart, false, asyncComputeMilliseconds);
-    }
-
-    private IEnumerator RunCoroutine()
-    {
-        long wallStart = Stopwatch.GetTimestamp();
-        _coroutineComputeTicks = 0;
-        // RunSearchCoroutine does the calculation in bounded chunks and yields between them.
-        yield return StartCoroutine(RunSearchCoroutine());
-        FinishRun(0, wallStart, true);
+        FinishRun(computeStart, wallStart, asyncComputeMilliseconds);
     }
 
     private void RunSearch(int method)
@@ -101,7 +83,7 @@ public sealed class PSOProcessingExample : MonoBehaviour
         _bestY = 0f;
         double trialScoreTotal = 0d;
 
-        // Each candidate point is generated from its index, so all six methods see identical inputs.
+        // Each candidate point is generated from its index, so all processing methods see identical inputs.
         int evaluationsPerTrial = _particleCount * (_iterations + 1);
         if (method == 6 && _trialCount > 1)
         {
@@ -111,7 +93,7 @@ public sealed class PSOProcessingExample : MonoBehaviour
 
         float[] scores = new float[evaluationsPerTrial];
         NativeArray<float> jobScores = default;
-        if (method == 3 || method == 5)
+        if (method == 3 || method == 4)
             jobScores = new NativeArray<float>(evaluationsPerTrial, Allocator.TempJob);
 
         for (int trial = 0; trial < _trialCount; trial++)
@@ -120,8 +102,8 @@ public sealed class PSOProcessingExample : MonoBehaviour
                 System.Threading.Tasks.Parallel.For(0, evaluationsPerTrial, index => ScoreRandomPoint(index, trial, scores));
             else if (method == 6)
                 RunTaskRunChunks(evaluationsPerTrial, index => ScoreRandomPoint(index, trial, scores));
-            else if (method == 3 || method == 5)
-                RunRandomJob(trial, scores, jobScores, method == 5);
+            else if (method == 3 || method == 4)
+                RunRandomJob(trial, scores, jobScores, method == 4);
             else
                 for (int index = 0; index < evaluationsPerTrial; index++)
                     ScoreRandomPoint(index, trial, scores);
@@ -244,7 +226,7 @@ public sealed class PSOProcessingExample : MonoBehaviour
         NativeArray<float> jobVx = default; NativeArray<float> jobVy = default;
         NativeArray<float> jobPersonalX = default; NativeArray<float> jobPersonalY = default;
         NativeArray<float> jobScores = default;
-        if (method == 3 || method == 5)
+        if (method == 3 || method == 4)
         {
             // Reuse job buffers for every iteration instead of allocating native memory in the loop.
             jobX = new NativeArray<float>(particleCount, Allocator.TempJob);
@@ -294,10 +276,10 @@ public sealed class PSOProcessingExample : MonoBehaviour
                     RunTaskRunChunks(particleCount, particle =>
                         UpdateParticle(particle, iteration, trial, sharedX, sharedY, x, y, vx, vy, personalX, personalY, nextScore));
                 }
-                else if (method == 3 || method == 5)
+                else if (method == 3 || method == 4)
                 {
                     RunParticleJob(iteration, trial, globalX, globalY, x, y, vx, vy, personalX, personalY, nextScore,
-                        jobX, jobY, jobVx, jobVy, jobPersonalX, jobPersonalY, jobScores, method == 5);
+                        jobX, jobY, jobVx, jobVy, jobPersonalX, jobPersonalY, jobScores, method == 4);
                 }
                 else
                 {
@@ -571,116 +553,11 @@ public sealed class PSOProcessingExample : MonoBehaviour
     }
     #endregion
 
-    #region Coroutine and result publishing
-    private IEnumerator RunSearchCoroutine()
+    private void FinishRun(long computeStart, long wallStart, float asyncComputeMilliseconds = 0f)
     {
-        // Keep each frame's chunk bounded and sum only active calculation time, not yielded frames.
-        if (_algorithm == 1)
-        {
-            int budget = _particleCount * (_iterations + 1);
-            _evaluationCount = _trialCount * budget;
-            _bestScore = float.MaxValue;
-            _bestX = 0f;
-            _bestY = 0f;
-            double total = 0d;
-            float[] scores = new float[budget];
-            for (int trial = 0; trial < _trialCount; trial++)
-            {
-                for (int start = 0; start < budget; start += 128)
-                {
-                    int end = Mathf.Min(start + 128, budget);
-                    long chunkStart = Stopwatch.GetTimestamp();
-                    for (int index = start; index < end; index++)
-                    {
-                        float x = ToRange(StableValue(index * 2 + trial * 100003 + _randomSeed));
-                        float y = ToRange(StableValue(index * 2 + 1 + trial * 100003 + _randomSeed));
-                        // Sphere objective: score = x² + y²; minimum is zero at (0, 0).
-                        scores[index] = x * x + y * y;
-                    }
-                    _coroutineComputeTicks += Stopwatch.GetTimestamp() - chunkStart;
-                    yield return null;
-                }
-                long reduceStart = Stopwatch.GetTimestamp();
-                float best = float.MaxValue;
-                int bestIndex = -1;
-                for (int index = 0; index < budget; index++)
-                    if (scores[index] < best) { best = scores[index]; bestIndex = index; }
-                total += best;
-                if (best < _bestScore)
-                {
-                    _bestScore = best;
-                    GetRandomPoint(bestIndex, trial, out _bestX, out _bestY);
-                }
-                _coroutineComputeTicks += Stopwatch.GetTimestamp() - reduceStart;
-            }
-            _averageBestScore = (float)(total / _trialCount);
-        }
-        else
-        {
-            // Coroutine PSO updates particles in chunks, then applies one ordered best-score reduction.
-            int count = Mathf.Max(2, _particleCount);
-            _evaluationCount = _trialCount * count * (_iterations + 1);
-            _bestScore = float.MaxValue;
-            _bestX = 0f;
-            _bestY = 0f;
-            double total = 0d;
-            float[] x = new float[count]; float[] y = new float[count];
-            float[] vx = new float[count]; float[] vy = new float[count];
-            float[] personalX = new float[count]; float[] personalY = new float[count];
-            float[] personalScore = new float[count]; float[] scores = new float[count];
-            for (int trial = 0; trial < _trialCount; trial++)
-            {
-                float globalScore = float.MaxValue; float globalX = 0f; float globalY = 0f;
-                long setupStart = Stopwatch.GetTimestamp();
-                for (int p = 0; p < count; p++)
-                {
-                    x[p] = ToRange(StableValue(p * 4 + trial * 100003 + _randomSeed));
-                    y[p] = ToRange(StableValue(p * 4 + 1 + trial * 100003 + _randomSeed));
-                    vx[p] = StableValue(p * 4 + 2 + trial * 100003 + _randomSeed) - 0.5f;
-                    vy[p] = StableValue(p * 4 + 3 + trial * 100003 + _randomSeed) - 0.5f;
-                    personalX[p] = x[p]; personalY[p] = y[p];
-                    personalScore[p] = x[p] * x[p] + y[p] * y[p];
-                    if (personalScore[p] < globalScore) { globalScore = personalScore[p]; globalX = x[p]; globalY = y[p]; }
-                }
-                _coroutineComputeTicks += Stopwatch.GetTimestamp() - setupStart;
-                for (int iteration = 0; iteration < _iterations; iteration++)
-                {
-                    for (int start = 0; start < count; start += 16)
-                    {
-                        int end = Mathf.Min(start + 16, count);
-                        long chunkStart = Stopwatch.GetTimestamp();
-                        for (int p = start; p < end; p++)
-                            UpdateParticle(p, iteration, trial, globalX, globalY, x, y, vx, vy, personalX, personalY, scores);
-                        _coroutineComputeTicks += Stopwatch.GetTimestamp() - chunkStart;
-                        yield return null;
-                    }
-                    long reduceStart = Stopwatch.GetTimestamp();
-                    for (int p = 0; p < count; p++)
-                    {
-                        if (scores[p] < personalScore[p]) { personalScore[p] = scores[p]; personalX[p] = x[p]; personalY[p] = y[p]; }
-                        if (scores[p] < globalScore) { globalScore = scores[p]; globalX = x[p]; globalY = y[p]; }
-                    }
-                    _coroutineComputeTicks += Stopwatch.GetTimestamp() - reduceStart;
-                }
-                total += globalScore;
-                if (globalScore < _bestScore)
-                {
-                    _bestScore = globalScore;
-                    _bestX = globalX;
-                    _bestY = globalY;
-                }
-            }
-            _averageBestScore = (float)(total / _trialCount);
-        }
-    }
-
-    private void FinishRun(long computeStart, long wallStart, bool isCoroutine = false, float asyncComputeMilliseconds = 0f)
-    {
-        _computeMilliseconds = isCoroutine
-            ? (float)(_coroutineComputeTicks * 1000d / Stopwatch.Frequency)
-            : _processingMethod == 1
-                ? asyncComputeMilliseconds
-                : (float)((Stopwatch.GetTimestamp() - computeStart) * 1000d / Stopwatch.Frequency);
+        _computeMilliseconds = _processingMethod == 1
+            ? asyncComputeMilliseconds
+            : (float)((Stopwatch.GetTimestamp() - computeStart) * 1000d / Stopwatch.Frequency);
         _wallMilliseconds = (float)((Stopwatch.GetTimestamp() - wallStart) * 1000d / Stopwatch.Frequency);
         // Set the completion marker last so the dashboard never reads half-published async results.
         _checksum = _bestScore.ToString("0.000000");
@@ -709,5 +586,4 @@ public sealed class PSOProcessingExample : MonoBehaviour
         x = ToRange(StableValue(index * 2 + trial * 100003 + _randomSeed));
         y = ToRange(StableValue(index * 2 + 1 + trial * 100003 + _randomSeed));
     }
-    #endregion
 }

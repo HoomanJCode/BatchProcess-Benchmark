@@ -11,6 +11,6 @@ For each value, every iteration multiplies by `1.00001`, adds `0.00002`, and sub
 - Complexity: **O(N × I)** work and **O(N)** stored values (`N` values, `I` iterations per value)
 - Resources: none are needed; the example creates its input values in code.
 
-The Unity comparison launcher runs one unmeasured warm-up pass and then repeated measured runs for each of the six C# methods. Every scene has a **Batch Size** setting, defaulting to 1,000 items. With 100,000 items this creates 100 batches; set it to 10,000 to create 10. Keep the value equal in every scene when comparing methods.
+The Unity comparison launcher runs one unmeasured warm-up pass and then repeated measured runs for each of the five C# methods. Every scene has a **Batch Size** setting, defaulting to 1,000 items. With 100,000 items this creates 100 batches; set it to 10,000 to create 10. Keep the value equal in every scene when comparing methods.
 
 **C# async** starts one worker task per batch and awaits all tasks without blocking Unity's main thread. The batches write to separate array elements, so they can run concurrently. This measures task-based parallel processing; **C# parallel** uses `Parallel.For` as a separate synchronous parallel-processing approach. Task creation and scheduling are included in the measurement, so the best batch size depends on the workload and PC. For a headless run, see `Tools/Run-HeadlessBatchBenchmark.ps1` in the project root.

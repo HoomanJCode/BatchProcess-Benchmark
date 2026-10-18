@@ -149,7 +149,7 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::RandomSearchProcessingExample
   _algorithm: 1
-  _processingMethod: 5
+  _processingMethod: 4
   _particleCount: 64
   _iterations: 99
   _trialCount: 5

@@ -48,9 +48,6 @@ EditorBuildSettings:
     path: Assets/Examples/SimpleIteration/Scenes/SimpleIteration_UnityJobs.unity
     guid: fe987ee6c08848699f86247607983bd6
   - enabled: 1
-    path: Assets/Examples/SimpleIteration/Scenes/SimpleIteration_UnityCoroutine.unity
-    guid: 3a41a7a8bb844111bd8a232cd9c5637d
-  - enabled: 1
     path: Assets/Examples/SimpleIteration/Scenes/SimpleIteration_UnityJobsBurst.unity
     guid: 2d0a7d1dd7a44f8483a2f9c21793f61c
   - enabled: 1
@@ -72,9 +69,6 @@ EditorBuildSettings:
     path: Assets/Examples/PSOSimulation/Scenes/PSO_UnityJobs.unity
     guid: e29f995f58a28ff429f8cf6f2d15eef7
   - enabled: 1
-    path: Assets/Examples/PSOSimulation/Scenes/PSO_UnityCoroutine.unity
-    guid: dc2a30b92bd111a4eb83554eec494f02
-  - enabled: 1
     path: Assets/Examples/PSOSimulation/Scenes/PSO_UnityJobsBurst.unity
     guid: 7b73e45257d236a468dadd97fcb16091
   - enabled: 1
@@ -89,9 +83,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Examples/RandomSearchOptimization/Scenes/RandomSearch_UnityJobs.unity
     guid: c535e0ad5219c8d4e851fbc52ba2dedd
-  - enabled: 1
-    path: Assets/Examples/RandomSearchOptimization/Scenes/RandomSearch_UnityCoroutine.unity
-    guid: f7f49c8e00abaa344a0aed31de8954d6
   - enabled: 1
     path: Assets/Examples/RandomSearchOptimization/Scenes/RandomSearch_UnityJobsBurst.unity
     guid: 7b44d127cd4910644a00e1af10169f1a
