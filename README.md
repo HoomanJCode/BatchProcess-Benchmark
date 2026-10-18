@@ -58,7 +58,7 @@ Reports are saved under `Build/Headless/`. The dashboard build can be used for l
 
 ### Example gravity benchmark result
 
-These are measured results from a Windows headless player run on **October 17, 2026**, with the laptop connected to AC power. Each 2D and 3D scene simulated 128 bodies and computed softened Newtonian attraction from every other body. Unity ran a 2-second warm-up and collected profiler samples for 8 seconds per strategy. The C# async result below predates the change to one `Task.Run` per target body; rerun the benchmark to measure the updated implementation.
+These are historical measurements from a Windows headless player run on **October 17, 2026**, with the laptop connected to AC power. Each 2D and 3D scene simulated 128 bodies and computed softened Newtonian attraction from every other body. Unity ran a 2-second warm-up and collected profiler samples for 8 seconds per strategy. Unity Coroutine has since been removed from the gravity examples. The C# async result predates the change to one `Task.Run` per target body; rerun the benchmark to measure the current methods.
 
 | Unity gravity strategy | 2D average (ms/step) | 2D P95 (ms/step) | 3D average (ms/step) | 3D P95 (ms/step) |
 | --- | ---: | ---: | ---: | ---: |
@@ -69,7 +69,7 @@ These are measured results from a Windows headless player run on **October 17, 2
 | Unity coroutine | 1.35 | 1.74 | 2.12 | 2.96 |
 | Unity Jobs + Burst | 0.12 | 0.14 | 0.17 | 0.26 |
 
-The timing is the average and 95th-percentile cost of one complete gravity calculation, measured with the Unity Profiler marker for each strategy. The coroutine is measured across all of its chunks for a full gravity step. Each strategy uses the same deterministic starting layout and ball count; Unity then integrates motion and resolves collisions during the run. The reports contain 328–401 samples per strategy, except the frame-split coroutine, which completed 55–56 full-step samples. This player folder did not include the separate Python harness, so these tables report Unity methods only.
+The timing is the average and 95th-percentile cost of one complete gravity calculation, measured with the Unity Profiler marker for each strategy. Each strategy uses the same deterministic starting layout and ball count; Unity then integrates motion and resolves collisions during the run. This player folder did not include the separate Python harness, so these tables report Unity methods only.
 
 For `N = 128` bodies, each target checks `N - 1` source bodies. That is `128 × 127 = 16,256` directed source-target evaluations per physics step, with quadratic work and linear storage.
 

@@ -16,7 +16,6 @@ public static class GravitySceneGeneration
         CSharpAsync,
         CSharpParallel,
         UnityJobs,
-        UnityCoroutine,
         UnityJobsBurst
     }
 
@@ -97,6 +96,9 @@ public static class GravitySceneGeneration
     private static bool IsDimensionScene(string path, SimulationDimension dimension)
     {
         string sceneFolder = dimension == SimulationDimension.TwoD ? TwoDSceneFolder : ThreeDSceneFolder;
+        if (path == sceneFolder + "/Gravity_UnityCoroutine.unity" ||
+            path == sceneFolder + "/Benchmark/Gravity_UnityCoroutine.unity")
+            return true;
         foreach (SimulationMode mode in System.Enum.GetValues(typeof(SimulationMode)))
             if (path == sceneFolder + "/Gravity_" + SceneName(mode) + ".unity")
                 return true;
@@ -129,7 +131,11 @@ public static class GravitySceneGeneration
     {
         // This lets regeneration replace gravity scenes without removing other project scenes.
         if (path == SceneFolder + "/SampleScene.unity" ||
-            path == SceneFolder + "/Gravity_UnityModularMainThread.unity")
+            path == SceneFolder + "/Gravity_UnityModularMainThread.unity" ||
+            path == TwoDSceneFolder + "/Gravity_UnityCoroutine.unity" ||
+            path == ThreeDSceneFolder + "/Gravity_UnityCoroutine.unity" ||
+            path == TwoDSceneFolder + "/Benchmark/Gravity_UnityCoroutine.unity" ||
+            path == ThreeDSceneFolder + "/Benchmark/Gravity_UnityCoroutine.unity")
             return true;
 
         foreach (SimulationMode mode in System.Enum.GetValues(typeof(SimulationMode)))
@@ -227,7 +233,6 @@ public static class GravitySceneGeneration
             case SimulationMode.CSharpAsync: return "CSharpAsyncGravityExample";
             case SimulationMode.CSharpParallel: return "CSharpParallelGravityExample";
             case SimulationMode.UnityJobs: return "UnityJobsGravityExample";
-            case SimulationMode.UnityCoroutine: return "UnityCoroutineGravityExample";
             case SimulationMode.UnityJobsBurst: return "UnityJobsBurstGravityExample";
             default: return "SingleThreadedGravityExample";
         }
@@ -241,7 +246,6 @@ public static class GravitySceneGeneration
             case SimulationMode.CSharpAsync: return "CSharpAsync";
             case SimulationMode.CSharpParallel: return "CSharpParallel";
             case SimulationMode.UnityJobs: return "UnityJobs";
-            case SimulationMode.UnityCoroutine: return "UnityCoroutine";
             case SimulationMode.UnityJobsBurst: return "UnityJobsBurst";
             default: return mode.ToString();
         }

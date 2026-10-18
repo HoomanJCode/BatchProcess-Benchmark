@@ -26,13 +26,11 @@ public static class GravityBenchmarkBuild
             "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_CSharpAsync.unity",
             "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_CSharpParallel.unity",
             "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_UnityJobs.unity",
-            "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_UnityCoroutine.unity",
             "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity",
             "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_SingleThreaded.unity",
             "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_CSharpAsync.unity",
             "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_CSharpParallel.unity",
             "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_UnityJobs.unity",
-            "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_UnityCoroutine.unity",
             "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity"
         };
         BuildWindowsPlayer(scenes);

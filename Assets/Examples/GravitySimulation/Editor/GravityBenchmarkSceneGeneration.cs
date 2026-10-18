@@ -18,7 +18,7 @@ public static class GravityBenchmarkSceneGeneration
     private const int ComparisonBallCount = 128;
     private static readonly string[] ExampleScenes =
     {
-        "SingleThreaded", "CSharpAsync", "CSharpParallel", "UnityJobs", "UnityCoroutine", "UnityJobsBurst"
+        "SingleThreaded", "CSharpAsync", "CSharpParallel", "UnityJobs", "UnityJobsBurst"
     };
 
     [MenuItem("Tools/Gravity Simulation/Create Comparison Scenes")]

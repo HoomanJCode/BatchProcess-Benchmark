@@ -30,12 +30,6 @@ EditorBuildSettings:
     path: Assets/Examples/GravitySimulation/3D/Scenes/Gravity_UnityJobs.unity
     guid: 4b7a3065610d8bc488e4ab365266d1b9
   - enabled: 1
-    path: Assets/Examples/GravitySimulation/2D/Scenes/Gravity_UnityCoroutine.unity
-    guid: 80f2b2f5eb05f044582c3e97b50985b3
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/3D/Scenes/Gravity_UnityCoroutine.unity
-    guid: 64167c4e7a51e1148bb40e50bc3c168d
-  - enabled: 1
     path: Assets/Examples/GravitySimulation/2D/Scenes/Gravity_UnityJobsBurst.unity
     guid: 538337c952469e246ba38badf572d52f
   - enabled: 1
@@ -137,12 +131,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_UnityJobs.unity
     guid: 5b202305216185547959a79a6805a7bd
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_UnityCoroutine.unity
-    guid: cc71229b21ed2cd47abf01b7def03faf
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_UnityCoroutine.unity
-    guid: 64d081bf9a6df144ba90e72b318d292f
   - enabled: 1
     path: Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity
     guid: 92fb61741aaf6524991a0353937733c2
