@@ -57,7 +57,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     {
         new ComparisonMode("Single threaded", "SingleThreaded", "SimpleIteration.SingleThreaded"),
         new ComparisonMode("C# async", "CSharpAsync", "SimpleIteration.CSharpAsync.Worker"),
-        new ComparisonMode("C# async tasks", "CSharpAsyncTasks", "SimpleIteration.CSharpAsyncTasks.Batch"),
         new ComparisonMode("C# parallel", "CSharpParallel", "SimpleIteration.CSharpParallel"),
         new ComparisonMode("Unity Jobs", "UnityJobs", "SimpleIteration.UnityJobs"),
         new ComparisonMode("Unity coroutine", "UnityCoroutine", "SimpleIteration.UnityCoroutine.Chunk"),
@@ -296,7 +295,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             method == "python-numpy")
             return true;
 
-        return workload == "batch" && method == "unity-async-tasks";
+        return false;
     }
 
     private bool IsPythonMethodSelected
@@ -310,7 +309,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         {
             case "Single threaded": return "unity-single";
             case "C# async": return "unity-async";
-            case "C# async tasks": return "unity-async-tasks";
             case "C# parallel": return "unity-parallel";
             case "Unity Jobs": return "unity-jobs";
             case "Unity coroutine": return "unity-coroutine";

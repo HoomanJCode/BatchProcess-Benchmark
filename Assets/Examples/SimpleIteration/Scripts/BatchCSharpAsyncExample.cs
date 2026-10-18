@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Unity.Profiling;
 using UnityEngine;
 
-/// <summary>Processes values on a C# worker task. Time: O(N * I), space: O(N).</summary>
+/// <summary>Processes disjoint batches concurrently on C# worker tasks. Time: O(N * I), space: O(N + B).</summary>
 public sealed class BatchCSharpAsyncExample : MonoBehaviour
 {
     #region Settings and reusable data
@@ -29,19 +29,20 @@ public sealed class BatchCSharpAsyncExample : MonoBehaviour
         for (int i = 0; i < _values.Length; i++)
             _values[i] = ((i * 104729L) % 1000003L) / 1000003f;
 
-        // Task.Run moves the same calculation to a worker thread. It runs once for this scene.
+        // Each Task.Run processes a separate batch; Task.WhenAll waits without blocking Unity's main thread.
         long startedAt = Stopwatch.GetTimestamp();
         long computeStartedAt = Stopwatch.GetTimestamp();
-        await Task.Run(() =>
+        int batchCount = (_itemCount + _batchSize - 1) / _batchSize;
+        Task[] tasks = new Task[batchCount];
+        for (int batchIndex = 0; batchIndex < batchCount; batchIndex++)
         {
-            using (_marker.Auto())
+            int firstItem = batchIndex * _batchSize;
+            int afterLastItem = Mathf.Min(firstItem + _batchSize, _itemCount);
+            tasks[batchIndex] = Task.Run(() =>
             {
-                for (int batchStart = 0; batchStart < _values.Length; batchStart += _batchSize)
+                using (_marker.Auto())
                 {
-                    int batchEnd = batchStart + _batchSize;
-                    if (batchEnd > _values.Length)
-                        batchEnd = _values.Length;
-                    for (int i = batchStart; i < batchEnd; i++)
+                    for (int i = firstItem; i < afterLastItem; i++)
                     {
                         float value = _values[i];
                         for (int step = 0; step < _iterations; step++)
@@ -55,8 +56,9 @@ public sealed class BatchCSharpAsyncExample : MonoBehaviour
                         _values[i] = value;
                     }
                 }
-            }
-        });
+            });
+        }
+        await Task.WhenAll(tasks);
         _computeMilliseconds = (float)((Stopwatch.GetTimestamp() - computeStartedAt) * 1000d / Stopwatch.Frequency);
 
         double sum = 0d;
