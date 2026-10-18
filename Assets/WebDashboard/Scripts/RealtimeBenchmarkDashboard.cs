@@ -290,17 +290,10 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             return true;
 
         if (method == "unity-single" || method == "unity-async" || method == "unity-parallel" ||
-            method == "unity-jobs" || method == "unity-coroutine" || method == "unity-burst" ||
-            method == "python-single" || method == "python-threads" || method == "python-processes" ||
-            method == "python-numpy")
+            method == "unity-jobs" || method == "unity-coroutine" || method == "unity-burst")
             return true;
 
         return false;
-    }
-
-    private bool IsPythonMethodSelected
-    {
-        get { return _requestedMethod.StartsWith("python-", StringComparison.Ordinal); }
     }
 
     private static string GetUnityMethodId(string displayName)
@@ -326,8 +319,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             if (_isOptimizationComparison && !string.IsNullOrEmpty(_requestedAlgorithm) &&
                 mode.algorithm != _requestedAlgorithm)
                 continue;
-            if (IsPythonMethodSelected)
-                continue;
             if (!string.IsNullOrEmpty(_requestedMethod) && GetUnityMethodId(mode.displayName) != _requestedMethod)
                 continue;
             selected.Add(mode);
@@ -335,22 +326,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         return selected.ToArray();
     }
 
-    private int GetPythonMethodCount()
-    {
-        return string.IsNullOrEmpty(_requestedMethod) ? 4 : (IsPythonMethodSelected ? 1 : 0);
-    }
-
-    private static string GetPythonMethodArgument(string selectedMethod)
-    {
-        switch (selectedMethod)
-        {
-            case "python-single": return "single";
-            case "python-threads": return "threads";
-            case "python-processes": return "processes";
-            case "python-numpy": return "numpy";
-            default: return "all";
-        }
-    }
     #endregion
 
     #region Run every example for the full dashboard
@@ -416,8 +391,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         ComparisonMode[] allModes = _isOptimizationComparison ? OptimizationModes : BatchModes;
         ComparisonMode[] modes = SelectUnityModes(allModes);
         _state.status = "running";
-        _state.pythonMessage = "";
-        _state.total = modes.Length + GetPythonMethodCount();
+        _state.total = modes.Length;
         _state.completed = 0;
         _results.Clear();
         PublishState();
@@ -622,29 +596,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             PublishState();
         }
 
-        // Run Python after Unity's methods finish, so both runtimes do not compete
-        // for CPU time during their measurements.
-        // Python repeats the same complete workload after Unity is done. Optimization
-        // keeps its two algorithm tabs separate while sharing one Unity comparison run.
-        if (_isOptimizationComparison)
-        {
-            if ((string.IsNullOrEmpty(_requestedAlgorithm) || _requestedAlgorithm == "Particle swarm (PSO)") &&
-                (string.IsNullOrEmpty(_requestedMethod) || IsPythonMethodSelected))
-                yield return RunPythonComparison("pso", "Particle swarm (PSO)");
-            if ((string.IsNullOrEmpty(_requestedAlgorithm) || _requestedAlgorithm == "Random search") &&
-                (string.IsNullOrEmpty(_requestedMethod) || IsPythonMethodSelected))
-                yield return RunPythonComparison("random-search", "Random search");
-        }
-        else if (string.IsNullOrEmpty(_requestedMethod) || IsPythonMethodSelected)
-        {
-            yield return RunPythonComparison("simple-iteration", "");
-        }
-
         _state.status = "complete";
-        _state.phase = string.IsNullOrEmpty(_state.pythonMessage)
-            ? (string.IsNullOrEmpty(_requestedMethod) ? "Unity and Python methods measured" :
-                (IsPythonMethodSelected ? "Python method measured" : "Unity method measured"))
-            : (IsPythonMethodSelected ? "Python comparison needs attention" : "Unity methods measured · Python comparison needs attention");
+        _state.phase = string.IsNullOrEmpty(_requestedMethod) ? "Unity methods measured" : "Unity method measured";
         _state.progress = 1f;
         _state.activeExample = "Complete";
         _state.completed = _results.Count;
@@ -658,284 +611,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         FinishHeadlessRun(0);
         _acceptDashboardCommands = !_headlessMode && !_isAllExamplesComparison;
     }
-
-    #region Run Python methods outside Unity
-    // Run Python only after Unity finishes its passes so the two runtimes do not compete.
-    private IEnumerator RunPythonComparison(string workload, string algorithmName)
-    {
-        BenchmarkResult unitySettings = null;
-        for (int i = 0; i < _results.Count; i++)
-        {
-            if ((workload != "pso" && workload != "random-search") || _results[i].algorithm == algorithmName)
-            {
-                unitySettings = _results[i];
-                break;
-            }
-        }
-        if (unitySettings == null && IsPythonMethodSelected)
-        {
-            // Python-only reruns still use the exact workload settings selected in the dashboard.
-            unitySettings = new BenchmarkResult
-            {
-                algorithm = algorithmName,
-                balls = PlayerPrefs.GetInt("SimulationLab.Balls", 128),
-                workItems = PlayerPrefs.GetInt("SimulationLab.Items", 100000),
-                iterations = PlayerPrefs.GetInt("SimulationLab.Iterations", 100),
-                batchSize = PlayerPrefs.GetInt("SimulationLab.BatchSize", 1000),
-                particleCount = PlayerPrefs.GetInt("SimulationLab.PsoParticles", 64),
-                sampleCount = _batchRunsPerStrategy * PlayerPrefs.GetInt(
-                    workload == "pso" ? "SimulationLab.PsoTrials" : "SimulationLab.RandomSearchTrials", 5),
-                evaluationCount = PlayerPrefs.GetInt("SimulationLab.RandomSearchEvaluationsPerTrial", 6400) *
-                    PlayerPrefs.GetInt("SimulationLab.RandomSearchTrials", 5)
-            };
-        }
-        if (unitySettings == null)
-            yield break;
-
-        string projectRoot = FindProjectRoot();
-        if (string.IsNullOrEmpty(projectRoot))
-        {
-            _state.pythonMessage = "Python methods skipped: benchmark files were not found.";
-            Debug.LogWarning(_state.pythonMessage);
-            yield break;
-        }
-
-        string pythonRunner = Path.Combine(projectRoot, "Tools", "PythonBatchBenchmark", "setup_and_run.py");
-        string outputPath = Path.Combine(projectRoot, "Library", "PythonBatchBenchmark", "results.json");
-        string arguments = "\"" + pythonRunner + "\" --workload " + workload +
-            " --runs " + _batchRunsPerStrategy;
-        if (IsPythonMethodSelected)
-            arguments += " --method " + GetPythonMethodArgument(_requestedMethod);
-        if (workload == "gravity")
-        {
-            arguments += " --dimension " + (_is2D ? "2D" : "3D") + " --balls " + unitySettings.balls;
-        }
-        else if (workload == "simple-iteration")
-        {
-            arguments += " --items " + unitySettings.workItems + " --iterations " + unitySettings.iterations +
-                " --batch-size " + unitySettings.batchSize;
-        }
-        else if (workload == "pso")
-        {
-            int trialCount = Mathf.Max(1, unitySettings.sampleCount / _batchRunsPerStrategy);
-            arguments += " --algorithm-name \"" + algorithmName + "\" --particles " + unitySettings.particleCount +
-                " --iterations " + unitySettings.iterations + " --trials " + trialCount;
-        }
-        else
-        {
-            int trialCount = Mathf.Max(1, unitySettings.sampleCount / _batchRunsPerStrategy);
-            int evaluationsPerTrial = Mathf.Max(1, unitySettings.evaluationCount / trialCount);
-            arguments += " --algorithm-name \"" + algorithmName + "\" --evaluations " + evaluationsPerTrial +
-                " --trials " + trialCount;
-        }
-
-        ConcurrentQueue<string> outputLines = new ConcurrentQueue<string>();
-        StringBuilder errorOutput = new StringBuilder();
-        object errorLock = new object();
-        System.Diagnostics.Process pythonProcess = null;
-        string startError = "";
-        _state.phase = "Starting Python " + (workload == "gravity" ? (_is2D ? "2D gravity" : "3D gravity") : workload) + " methods";
-        _state.completed = _results.Count;
-        int pythonMethodCount = GetPythonMethodCount();
-        _state.total = _results.Count + pythonMethodCount;
-        _state.progress = (float)_state.completed / _state.total;
-        PublishState();
-
-        string[] pythonLaunchers = Environment.OSVersion.Platform == PlatformID.Win32NT
-            ? new[] { "py", "python" }
-            : new[] { "python3", "python" };
-        for (int launcherIndex = 0; launcherIndex < pythonLaunchers.Length; launcherIndex++)
-        {
-            string launcher = pythonLaunchers[launcherIndex];
-            System.Diagnostics.Process candidate = new System.Diagnostics.Process();
-            candidate.StartInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = launcher,
-                Arguments = (launcher == "py" ? "-3 " : "") + arguments,
-                WorkingDirectory = projectRoot,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            };
-            candidate.OutputDataReceived += (sender, eventArgs) =>
-            {
-                if (eventArgs.Data != null) outputLines.Enqueue(eventArgs.Data);
-            };
-            candidate.ErrorDataReceived += (sender, eventArgs) =>
-            {
-                if (eventArgs.Data != null)
-                {
-                    lock (errorLock)
-                    {
-                        errorOutput.AppendLine(eventArgs.Data);
-                        if (errorOutput.Length > 2500) errorOutput.Remove(0, errorOutput.Length - 2500);
-                    }
-                }
-            };
-            try
-            {
-                if (candidate.Start())
-                {
-                    pythonProcess = candidate;
-                    pythonProcess.BeginOutputReadLine();
-                    pythonProcess.BeginErrorReadLine();
-                    break;
-                }
-                startError = "The '" + launcher + "' launcher did not start.";
-                candidate.Dispose();
-            }
-            catch (Exception exception)
-            {
-                startError = exception.Message;
-                candidate.Dispose();
-            }
-        }
-
-        if (pythonProcess == null)
-        {
-            _state.pythonMessage = "Python methods could not start. Install Python 3 and make 'py' or 'python' available on PATH. " + startError;
-            Debug.LogWarning(_state.pythonMessage);
-            yield break;
-        }
-
-        int completedPythonMethods = 0;
-        float timeoutAt = Time.realtimeSinceStartup + 600f;
-        while (!pythonProcess.HasExited && Time.realtimeSinceStartup < timeoutAt)
-        {
-            string outputLine;
-            while (outputLines.TryDequeue(out outputLine))
-            {
-                if (outputLine.StartsWith("STATUS|", StringComparison.Ordinal))
-                {
-                    _state.phase = outputLine.Substring("STATUS|".Length);
-                    PublishState();
-                }
-                else if (outputLine.StartsWith("METHOD_DONE|", StringComparison.Ordinal))
-                {
-                    completedPythonMethods++;
-                    _state.completed = _results.Count + completedPythonMethods;
-                    _state.progress = (float)_state.completed / _state.total;
-                    _state.phase = "Finished " + outputLine.Substring("METHOD_DONE|".Length);
-                    PublishState();
-                }
-            }
-            yield return null;
-        }
-
-        bool timedOut = !pythonProcess.HasExited;
-        if (timedOut) pythonProcess.Kill();
-        pythonProcess.WaitForExit();
-        int exitCode = pythonProcess.ExitCode;
-        pythonProcess.Dispose();
-        if (timedOut || exitCode != 0)
-        {
-            string details;
-            lock (errorLock) details = errorOutput.ToString().Trim();
-            _state.pythonMessage = timedOut ? "Python comparison timed out after 10 minutes." : "Python comparison failed. Check the Unity log.";
-            Debug.LogWarning(_state.pythonMessage + (string.IsNullOrEmpty(details) ? "" : "\n" + details));
-            yield break;
-        }
-
-        PythonBenchmarkReport report = null;
-        try { report = JsonUtility.FromJson<PythonBenchmarkReport>(File.ReadAllText(outputPath)); }
-        catch (Exception exception) { _state.pythonMessage = "Python results could not be read: " + exception.Message; }
-        bool settingsMatch = false;
-        if (report != null && report.settings != null)
-        {
-            if (workload == "simple-iteration")
-                settingsMatch = report.settings.workItems == unitySettings.workItems &&
-                    report.settings.iterations == unitySettings.iterations && report.settings.batchSize == unitySettings.batchSize;
-            else if (workload == "gravity")
-                settingsMatch = report.settings.balls == unitySettings.balls;
-            else if (workload == "pso")
-                settingsMatch = report.settings.particles == unitySettings.particleCount &&
-                    report.settings.iterations == unitySettings.iterations &&
-                    report.settings.trials == Mathf.Max(1, unitySettings.sampleCount / _batchRunsPerStrategy);
-            else
-                settingsMatch = report.settings.evaluations == unitySettings.evaluationCount /
-                    Mathf.Max(1, unitySettings.sampleCount / _batchRunsPerStrategy) &&
-                    report.settings.trials == Mathf.Max(1, unitySettings.sampleCount / _batchRunsPerStrategy);
-        }
-        int expectedPythonResults = IsPythonMethodSelected ? 1 : 4;
-        if (report == null || report.settings == null || report.results == null || report.results.Length != expectedPythonResults ||
-            report.schemaVersion != 2 || report.workload != workload ||
-            report.dimension != (_state.workload == "gravity" ? _state.dimension : "") ||
-            report.algorithm != algorithmName || !settingsMatch)
-        {
-            if (string.IsNullOrEmpty(_state.pythonMessage)) _state.pythonMessage = "Python results did not match this example's settings.";
-            Debug.LogWarning(_state.pythonMessage);
-            yield break;
-        }
-
-        for (int i = 0; i < report.results.Length; i++)
-        {
-            PythonBenchmarkResult pythonResult = report.results[i];
-            if (pythonResult == null || string.IsNullOrEmpty(pythonResult.strategy) || pythonResult.algorithm != algorithmName || pythonResult.sampleCount < 1 ||
-                (IsPythonMethodSelected && pythonResult.strategy != GetPythonMethodDisplayName(_requestedMethod)) ||
-                float.IsNaN(pythonResult.averageProfileMs) || float.IsInfinity(pythonResult.averageProfileMs) ||
-                float.IsNaN(pythonResult.p95ProfileMs) || float.IsInfinity(pythonResult.p95ProfileMs))
-            {
-                _state.pythonMessage = "Python results contained an invalid method timing.";
-                Debug.LogWarning(_state.pythonMessage);
-                yield break;
-            }
-        }
-        for (int i = 0; i < report.results.Length; i++)
-        {
-            PythonBenchmarkResult value = report.results[i];
-            _results.Add(new BenchmarkResult
-            {
-                algorithm = value.algorithm,
-                strategy = value.strategy,
-                markerName = "Python",
-                balls = value.balls,
-                workItems = value.workItems,
-                iterations = value.iterations,
-                batchSize = value.batchSize,
-                evaluationCount = value.evaluationCount,
-                particleCount = value.particleCount,
-                sampleCount = value.sampleCount,
-                averageProfileMs = value.averageProfileMs,
-                medianProfileMs = value.medianProfileMs,
-                p95ProfileMs = value.p95ProfileMs,
-                averageFrameMs = value.averageFrameMs,
-                p95FrameMs = value.p95FrameMs
-            });
-        }
-        _state.total = _results.Count;
-        _state.completed = _results.Count;
-        _state.progress = 1f;
-        _state.results = _results.ToArray();
-        PublishState();
-        Debug.Log("Added Python methods for " + workload + (string.IsNullOrEmpty(algorithmName) ? "" : " · " + algorithmName) + ". Report: " + outputPath);
-    }
-
-    private static string GetPythonMethodDisplayName(string selectedMethod)
-    {
-        switch (selectedMethod)
-        {
-            case "python-single": return "Python single threaded";
-            case "python-threads": return "Python threads";
-            case "python-processes": return "Python processes";
-            case "python-numpy": return "Python NumPy vectorized";
-            default: return "";
-        }
-    }
-
-    private static string FindProjectRoot()
-    {
-        DirectoryInfo folder = new DirectoryInfo(Path.GetDirectoryName(Application.dataPath));
-        while (folder != null)
-        {
-            string runner = Path.Combine(folder.FullName, "Tools", "PythonBatchBenchmark", "setup_and_run.py");
-            if (File.Exists(runner))
-                return folder.FullName;
-            folder = folder.Parent;
-        }
-        return "";
-    }
-    #endregion
 
     private bool TryReadBatchValues(MonoBehaviour example, out float computeMs, out float wallMs,
         out int itemCount, out int iterations, out int batchSize, out string checksum)
@@ -1067,7 +742,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     {
         ComparisonMode[] modes = SelectUnityModes(Modes);
         _state.status = "running";
-        _state.total = modes.Length + GetPythonMethodCount();
+        _state.total = modes.Length;
         PublishState();
 
         for (int modeIndex = 0; modeIndex < modes.Length; modeIndex++)
@@ -1151,14 +826,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 yield return new WaitForSecondsRealtime(0.4f);
         }
 
-        // Python calculates one independent gravity step using the same ball count and formula.
-        if (string.IsNullOrEmpty(_requestedMethod) || IsPythonMethodSelected)
-            yield return RunPythonComparison("gravity", "");
         _state.status = "complete";
-        _state.phase = string.IsNullOrEmpty(_state.pythonMessage)
-            ? (string.IsNullOrEmpty(_requestedMethod) ? "Unity and Python gravity methods measured" :
-                (IsPythonMethodSelected ? "Python gravity method measured" : "Unity gravity method measured"))
-            : (IsPythonMethodSelected ? "Python comparison needs attention" : "Unity gravity methods measured · Python comparison needs attention");
+        _state.phase = string.IsNullOrEmpty(_requestedMethod) ? "Unity methods measured" : "Unity method measured";
         _state.progress = 1f;
         _state.activeExample = "Complete";
         _state.results = _results.ToArray();
@@ -1387,7 +1056,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public string phase = "";
         public string markerName = "";
         public string dashboardMessage = "";
-        public string pythonMessage = "";
         public string updatedUtc = "";
         public float progress;
         public float profileMs;
@@ -1430,49 +1098,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public float averageBestScore;
         public float bestX;
         public float bestY;
-        public int sampleCount;
-        public float averageProfileMs;
-        public float medianProfileMs;
-        public float p95ProfileMs;
-        public float averageFrameMs;
-        public float p95FrameMs;
-    }
-
-    [Serializable]
-    private sealed class PythonBenchmarkReport
-    {
-        public int schemaVersion;
-        public string workload;
-        public string dimension;
-        public string algorithm;
-        public PythonBenchmarkSettings settings;
-        public PythonBenchmarkResult[] results;
-    }
-
-    [Serializable]
-    private sealed class PythonBenchmarkSettings
-    {
-        public int workItems;
-        public int iterations;
-        public int batchSize;
-        public int balls;
-        public int particles;
-        public int evaluations;
-        public int trials;
-        public int measuredRuns;
-    }
-
-    [Serializable]
-    private sealed class PythonBenchmarkResult
-    {
-        public string algorithm;
-        public string strategy;
-        public int balls;
-        public int workItems;
-        public int iterations;
-        public int batchSize;
-        public int evaluationCount;
-        public int particleCount;
         public int sampleCount;
         public float averageProfileMs;
         public float medianProfileMs;

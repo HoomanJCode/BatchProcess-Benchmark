@@ -159,10 +159,10 @@
 
     <div class="section-head"><div><h2>All comparison examples</h2><p>Run All Examples Benchmark to fill every tab; this page keeps the latest completed results in this browser.</p></div><span class="pill">5 EXAMPLES</span></div>
     <section class="overview-grid" aria-label="Overview of every comparison example">
-      <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare five Unity methods and four Python methods in dedicated 2D and 3D workloads.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene and press Play.</p><p class="overview-settings" id="gravity-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through six Unity methods and four Python methods.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><p class="overview-settings" id="batch-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>PSO simulation</h3><p>Compare PSO across six Unity methods and four Python methods with the same search workload.</p><strong id="pso-overview-title">No completed run yet</strong><p id="pso-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="pso-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="pso-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>Random Search</h3><p>Compare Random Search across six Unity methods and four Python methods with the same search workload.</p><strong id="random-overview-title">No completed run yet</strong><p id="random-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="random-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="random-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare five Unity methods in dedicated 2D and 3D workloads.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene and press Play.</p><p class="overview-settings" id="gravity-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through six Unity methods.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><p class="overview-settings" id="batch-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>PSO simulation</h3><p>Compare PSO across six Unity methods with the same search workload.</p><strong id="pso-overview-title">No completed run yet</strong><p id="pso-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="pso-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="pso-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Random Search</h3><p>Compare Random Search across six Unity methods with the same search workload.</p><strong id="random-overview-title">No completed run yet</strong><p id="random-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="random-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="random-overview-results" class="overview-strategies">No results saved.</div></details></article>
     </section>
 
     <div class="section-head"><div><h2 id="live-title">Live profile</h2><p id="live-description">Profiler samples update while the current Unity scene is running.</p></div><span class="pill" id="balls-pill">Balls: waiting</span></div>
@@ -178,7 +178,7 @@
       <button type="button" role="tab" data-gravity-dimension="3D" aria-selected="false">3D</button>
     </div>
     <section class="panel settings-panel" aria-label="Benchmark settings">
-      <div class="chart-title"><div><h3 id="settings-title">Run Gravity simulation again</h3><p id="settings-description">Choose the workload size and profiler time. The same settings are applied to each Unity strategy and its Python comparison.</p></div></div>
+      <div class="chart-title"><div><h3 id="settings-title">Run Gravity simulation again</h3><p id="settings-description">Choose the workload size and profiler time. The same settings are applied to each Unity strategy.</p></div></div>
       <div class="setting-grid method-setting">
         <label>Processing method (optional)<select id="run-method"><option value="">All methods</option></select><span class="method-hint">Choose one method to rerun only it. Leave “All methods” selected to compare the complete set.</span></label>
       </div>
@@ -272,27 +272,20 @@
     const processingMethods = {
       gravity: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'], ['unity-parallel', 'C# parallel'],
-        ['unity-jobs', 'Unity Jobs'], ['unity-burst', 'Unity Jobs + Burst'],
-        ['python-single', 'Python single threaded'], ['python-threads', 'Python threads'],
-        ['python-processes', 'Python processes'], ['python-numpy', 'Python NumPy vectorized']
+        ['unity-jobs', 'Unity Jobs'], ['unity-burst', 'Unity Jobs + Burst']
       ],
       batch: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'],
         ['unity-parallel', 'C# parallel'], ['unity-jobs', 'Unity Jobs'], ['unity-coroutine', 'Unity coroutine'],
-        ['unity-burst', 'Unity Jobs + Burst'], ['python-single', 'Python single threaded'], ['python-threads', 'Python threads'],
-        ['python-processes', 'Python processes'], ['python-numpy', 'Python NumPy vectorized']
+        ['unity-burst', 'Unity Jobs + Burst']
       ],
       pso: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'], ['unity-parallel', 'C# parallel'],
-        ['unity-jobs', 'Unity Jobs'], ['unity-coroutine', 'Unity coroutine'], ['unity-burst', 'Unity Jobs + Burst'],
-        ['python-single', 'Python single threaded'], ['python-threads', 'Python threads'],
-        ['python-processes', 'Python processes'], ['python-numpy', 'Python NumPy vectorized']
+        ['unity-jobs', 'Unity Jobs'], ['unity-coroutine', 'Unity coroutine'], ['unity-burst', 'Unity Jobs + Burst']
       ],
       randomSearch: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'], ['unity-parallel', 'C# parallel'],
-        ['unity-jobs', 'Unity Jobs'], ['unity-coroutine', 'Unity coroutine'], ['unity-burst', 'Unity Jobs + Burst'],
-        ['python-single', 'Python single threaded'], ['python-threads', 'Python threads'],
-        ['python-processes', 'Python processes'], ['python-numpy', 'Python NumPy vectorized']
+        ['unity-jobs', 'Unity Jobs'], ['unity-coroutine', 'Unity coroutine'], ['unity-burst', 'Unity Jobs + Burst']
       ]
     };
     let selectedMethodByWorkload = loadSelectedMethods();
@@ -302,10 +295,17 @@
     function loadSavedComparisons() {
       try {
         const saved = JSON.parse(localStorage.getItem(overviewStorageKey) || '{}');
+        let removedLegacyResults = false;
         Object.keys(saved).forEach(key => {
+          if (saved[key] && saved[key].results) {
+            const originalCount = saved[key].results.length;
+            saved[key].results = saved[key].results.filter(result => result.markerName !== 'Python');
+            removedLegacyResults = removedLegacyResults || saved[key].results.length !== originalCount;
+          }
           if (saved[key] && saved[key].results && saved[key].results.length)
             saved[key].status = 'complete';
         });
+        if (removedLegacyResults) localStorage.setItem(overviewStorageKey, JSON.stringify(saved));
         return saved;
       } catch (error) {
         return {};
@@ -381,9 +381,10 @@
 
     function getResultsForSelection(state) {
       if (!state || !state.results) return [];
+      const unityResults = state.results.filter(result => result.markerName !== 'Python');
       return isOptimizationSelection()
-        ? state.results.filter(result => result.algorithm === getSelectedAlgorithm())
-        : state.results;
+        ? unityResults.filter(result => result.algorithm === getSelectedAlgorithm())
+        : unityResults;
     }
 
     function renderOverview(currentState) {
@@ -449,22 +450,19 @@
       });
       document.querySelector('[data-metric="averageProfileMs"]').textContent = 'Compute avg';
       const selectedResults = getResultsForSelection(state);
-      const hasPythonResults = selectedResults.some(result => result.markerName === 'Python');
-      const isGravityWithPython = selectedComparisonWorkload === 'gravity' && hasPythonResults;
-      document.querySelector('[data-metric="p95FrameMs"]').textContent = isWorkComparison ? 'Wall P95' : (isGravityWithPython ? 'Frame/wall P95' : 'Frame P95');
+      document.querySelector('[data-metric="p95FrameMs"]').textContent = isWorkComparison ? 'Wall P95' : 'Frame P95';
       document.querySelector('[data-metric="p95FrameMs"]').hidden = false;
       document.getElementById('results-title').textContent = isOptimization ? selectedAlgorithm + ' processing methods' :
         (isBatch ? 'Simple iteration methods' : selectedGravityDimension + ' gravity processing methods');
       document.getElementById('results-description').textContent = state && state.status === 'complete'
-        ? 'Completed comparison · ' + selectedResults.length + ' processing methods · results saved in this browser.' +
-          (state.pythonMessage ? ' ' + state.pythonMessage : '')
+        ? 'Completed comparison · ' + selectedResults.length + ' Unity processing methods · results saved in this browser.'
         : 'Run the matching Unity comparison scene to fill this view.';
 
       if (state) {
-        updateComparisonHeadings(state, hasPythonResults);
+        updateComparisonHeadings(state);
         drawResults(selectedResults, state);
       } else {
-        updateComparisonHeadings({ workload: isOptimization ? 'optimization' : selectedComparisonWorkload, dimension: selectedGravityDimension }, false);
+        updateComparisonHeadings({ workload: isOptimization ? 'optimization' : selectedComparisonWorkload, dimension: selectedGravityDimension });
         drawResults([], { workload: isOptimization ? 'optimization' : selectedComparisonWorkload, dimension: selectedGravityDimension });
       }
       renderSelectedInsights(state, selectedResults);
@@ -602,7 +600,7 @@
       document.getElementById('insight-slowest').textContent = slowest.strategy + ' · ' + formatMs(slowest.averageProfileMs);
     }
 
-    function updateComparisonHeadings(state, hasPythonResults) {
+    function updateComparisonHeadings(state) {
       const isBatch = state.workload === 'batch';
       const isOptimization = isOptimizationSelection() || state.workload === 'optimization';
       document.getElementById('count-heading').textContent = isOptimization ? 'Evaluations' : (isBatch ? 'Items' : 'Balls');
@@ -612,17 +610,14 @@
       document.getElementById('solution-y-heading').hidden = true;
       document.getElementById('average-heading').textContent = 'Compute avg';
       document.getElementById('p95-heading').textContent = 'Compute P95';
-      const isGravityWithPython = state.workload === 'gravity' && hasPythonResults;
-      document.getElementById('frame-average-heading').textContent = isOptimization || isBatch ? 'Wall avg' : (isGravityWithPython ? 'Frame/wall avg' : 'Frame avg');
-      document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : (isGravityWithPython ? 'Frame/wall P95' : 'Frame P95');
+      document.getElementById('frame-average-heading').textContent = isOptimization || isBatch ? 'Wall avg' : 'Frame avg';
+      document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : 'Frame P95';
       document.getElementById('samples-heading').textContent = isOptimization ? 'Trials' : (isBatch ? 'Runs' : 'Samples');
       document.getElementById('results-note').textContent = isOptimization
-          ? 'This example compares the same deterministic workload across six Unity methods and four Python methods. Compare compute and wall time within this example. Lower times are better.'
+          ? 'This example compares the same deterministic workload across six Unity methods. Compare compute and wall time within this example. Lower times are better.'
         : (isBatch
-          ? 'Unity and Python use the same item count, iteration count, and batch size. Python process time includes data transfer between processes; NumPy uses native float32 array operations. Python has no Unity frames, so its wall time includes the checksum pass. Lower times are better.'
-          : (isGravityWithPython
-            ? 'Unity reports frame timing. Python reports process wall time for the same gravity equation on a fixed initial layout; Python has no Unity frame or physics timing. Compare compute averages for calculation cost. Lower times are better.'
-          : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Frame timing separately shows responsiveness and includes Unity physics and Editor overhead. Lower times are better.'));
+          ? 'All Unity methods use the same item count, iteration count, and batch size. Lower times are better.'
+          : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Frame timing separately shows responsiveness and includes Unity physics and Editor overhead. Lower times are better.');
     }
 
     function renderGravityOverview(latest, isRunning, saved2D, saved3D, current) {
@@ -694,10 +689,15 @@
         container.textContent = 'No results saved.';
         return;
       }
-      container.innerHTML = comparison.results.map(result => {
+      const results = comparison.results.filter(result => result.markerName !== 'Python');
+      if (!results.length) {
+        container.textContent = 'No results saved.';
+        return;
+      }
+      container.innerHTML = results.map(result => {
         const strategyName = displayStrategyName(result.strategy);
         const label = isOptimization ? (escapeText(result.algorithm) + ' · ' + escapeText(strategyName)) : escapeText(strategyName);
-        const metric = formatMs(result.averageProfileMs) + ' · wall P95 ' + formatMs(result.p95FrameMs);
+      const metric = formatMs(result.averageProfileMs) + ' · ' + (isOptimization || (comparison.workload === 'batch') ? 'wall P95 ' : 'frame P95 ') + formatMs(result.p95FrameMs);
         return '<div class="overview-strategy"><span>' + label + '</span><span>' + metric + '</span></div>';
       }).join('');
     }
@@ -707,7 +707,7 @@
       const detail = document.getElementById(prefix + '-overview-detail');
       const strategyList = document.getElementById(prefix + '-overview-results');
       const results = comparison && comparison.results
-        ? comparison.results.filter(result => result.algorithm === algorithm)
+        ? comparison.results.filter(result => result.markerName !== 'Python' && result.algorithm === algorithm)
         : [];
       renderStrategyList(strategyList, { results: results }, true);
       const settings = document.getElementById(prefix + '-overview-settings');
@@ -741,7 +741,7 @@
       }
       container.innerHTML = savedLists.map(item => '<div><strong>' + item[0] + '</strong>' +
         item[1].results.map(result => '<div class="overview-strategy"><span>' + escapeText(displayStrategyName(result.strategy)) +
-          '</span><span>' + formatMs(result.averageProfileMs) + ' · ' + (result.markerName === 'Python' ? 'wall P95 ' : 'frame P95 ') + formatMs(result.p95FrameMs) + '</span></div>').join('') +
+          '</span><span>' + formatMs(result.averageProfileMs) + ' · frame P95 ' + formatMs(result.p95FrameMs) + '</span></div>').join('') +
         '</div>').join('');
     }
 
@@ -755,6 +755,8 @@
     }
 
     function updatePage(state) {
+      if (state.results)
+        state.results = state.results.filter(result => result.markerName !== 'Python');
       unityConnected = true;
       if (state.workload === 'gravity' && (state.dimension === '2D' || state.dimension === '3D')) {
         if (lastGravityDimension !== state.dimension && !comparisonSelectionWasManual)
@@ -786,8 +788,6 @@
         : (state.status === 'complete'
           ? (isBatch ? 'Measured ' + (state.results || []).length + ' strategies · ' + (state.batchRunsPerStrategy || 5) + ' runs each' : 'Measured ' + (state.results || []).length + ' strategies · ' + state.measurementSeconds + ' seconds per pass')
           : (isBatch ? (state.ballCount ? state.ballCount + ' items · ' : '') + (state.batchRunsPerStrategy || 5) + ' runs per strategy' : (state.ballCount ? state.ballCount + ' balls · ' : '') + (state.measurementSeconds || 8) + ' second measurement'));
-      if (state.pythonMessage)
-        document.getElementById('run-meta').textContent += ' · ' + state.pythonMessage;
       document.getElementById('dimension-pill').textContent = state.dimension ? state.dimension + ' · LOCAL ONLY' : 'LOCAL ONLY';
       document.getElementById('phase-label').textContent = state.phase || 'Waiting';
       document.getElementById('progress-label').textContent = (state.completed || 0) + ' / ' + (state.total || 5);
@@ -801,7 +801,7 @@
         : (isBatch ? 'Items: ' : 'Balls: ') + (state.ballCount || '—');
       document.getElementById('live-title').textContent = isOptimization ? getSelectedAlgorithm() + ' timings' : (isBatch ? 'Simple iteration timings' : 'Live profile');
       document.getElementById('live-description').textContent = isOptimization
-        ? 'The launcher measures both dedicated examples one after another. Each tab compares six Unity and four Python processing methods within its selected example.'
+        ? 'The launcher measures both dedicated examples one after another. Each tab compares six Unity processing methods within its selected example.'
         : (isBatch ? 'Each completed scene run adds its calculation and total wall time.' : 'Profiler samples update while the current Unity scene is running.');
       document.getElementById('profile-label').textContent = isWorkComparison ? 'Latest calculation' : 'Current work marker';
       document.getElementById('profile-hint').textContent = isWorkComparison ? 'milliseconds for one run' : 'milliseconds / sample';
@@ -817,8 +817,7 @@
       document.getElementById('timeline-title').textContent = isOptimization ? getSelectedAlgorithm() + ' processing-time runs' : (isBatch ? 'Batch calculation and wall time' : 'Frame and CPU timeline');
       document.getElementById('timeline-subtitle').textContent = isWorkComparison ? 'Completed runs · milliseconds' : 'Recent samples · milliseconds';
       document.querySelector('[data-metric="averageProfileMs"]').textContent = 'Compute avg';
-      const selectedHasPython = getResultsForSelection(state).some(result => result.markerName === 'Python');
-      document.querySelector('[data-metric="p95FrameMs"]').textContent = isBatch || isOptimization ? 'Wall P95' : (state.workload === 'gravity' && selectedHasPython ? 'Frame/wall P95' : 'Frame P95');
+      document.querySelector('[data-metric="p95FrameMs"]').textContent = isBatch || isOptimization ? 'Wall P95' : 'Frame P95';
       document.querySelector('[data-metric="p95FrameMs"]').hidden = false;
       document.getElementById('count-heading').textContent = isOptimization ? 'Evaluations' : (isBatch ? 'Items' : 'Balls');
       document.getElementById('iterations-heading').hidden = !isBatch;
@@ -827,11 +826,11 @@
       document.getElementById('solution-y-heading').hidden = true;
       document.getElementById('average-heading').textContent = 'Compute avg';
       document.getElementById('p95-heading').textContent = 'Compute P95';
-      document.getElementById('frame-average-heading').textContent = isOptimization || isBatch ? 'Wall avg' : (state.workload === 'gravity' && selectedHasPython ? 'Frame/wall avg' : 'Frame avg');
-      document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : (state.workload === 'gravity' && selectedHasPython ? 'Frame/wall P95' : 'Frame P95');
+      document.getElementById('frame-average-heading').textContent = isOptimization || isBatch ? 'Wall avg' : 'Frame avg';
+      document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : 'Frame P95';
       document.getElementById('samples-heading').textContent = isOptimization ? 'Trials' : (isBatch ? 'Runs' : 'Samples');
       document.getElementById('results-note').textContent = isOptimization
-        ? 'This example compares the same deterministic workload across six Unity methods and four Python methods. This table shows ' + getSelectedAlgorithm() + ' only; it does not compare optimization quality.'
+        ? 'This example compares the same deterministic workload across six Unity methods. This table shows ' + getSelectedAlgorithm() + ' only; it does not compare optimization quality.'
         : (isBatch
           ? 'All methods use the same batch size. C# async runs one task per batch and awaits completion. Coroutine wall time includes the frames spent yielding.'
           : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Frame times separately show responsiveness and include Unity physics and Editor overhead. For a fair CPU comparison, keep the ball count and machine the same, and use a standalone Development Build for final numbers.');
@@ -898,8 +897,6 @@
       }
       const isBatch = state && state.workload === 'batch';
       const isOptimization = state && state.workload === 'optimization';
-      const hasPythonResults = results.some(result => result.markerName === 'Python');
-      const isGravityWithPython = state && state.workload === 'gravity' && hasPythonResults;
       body.innerHTML = results.map(result => '<tr><td>' + escapeText(displayStrategyName(result.strategy)) + '</td><td>' + (isOptimization ? result.evaluationCount : (isBatch ? result.workItems : result.balls)) + '</td>' +
         (isBatch ? '<td>' + result.iterations + '</td>' : '<td hidden></td>') +
         (isBatch ? '<td>' + Number(result.batchSize || 0).toLocaleString() + '</td>' : '<td hidden></td>') +
@@ -926,12 +923,8 @@
       document.getElementById('comparison-caption').textContent = selectedMetric === 'averageProfileMs'
         ? (isOptimization ? getSelectedAlgorithm() + ' · average processing runtime; shorter bars are faster.' : (isBatch
           ? 'Average calculation time across repeated runs; shorter bars are faster.'
-          : (isGravityWithPython
-            ? 'Average gravity calculation time; Unity measures a physics step and Python calculates the same formula on a fixed layout. Shorter bars are faster.'
-            : 'Average calculation time per gravity physics step. Shorter bars are faster.')))
-        : (isBatch || isOptimization ? '95th percentile wall time; shorter bars are faster.' : (isGravityWithPython
-          ? '95th percentile Unity frame time or Python process wall time; these show different kinds of overhead.'
-          : '95th percentile frame time; shorter bars are faster.'));
+          : 'Average calculation time per gravity physics step. Shorter bars are faster.'))
+        : (isBatch || isOptimization ? '95th percentile wall time; shorter bars are faster.' : '95th percentile frame time; shorter bars are faster.');
       document.getElementById('comparison-caption').textContent += ' Log scale; values show actual milliseconds.';
 
       const verdict = document.getElementById('comparison-verdict');
