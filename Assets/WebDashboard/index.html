@@ -580,24 +580,31 @@
       document.getElementById('marker-pill').hidden = isComplete;
       if (!isComplete) return;
 
-      const sorted = results.slice().sort((a, b) => a.averageProfileMs - b.averageProfileMs);
+      const metricName = selectedMetric === 'averageProfileMs'
+        ? 'Compute average'
+        : (state.workload === 'gravity' ? 'Frame P95' : 'Wall P95');
+      const sorted = results.slice().sort((a, b) =>
+        (Number(a[selectedMetric]) || 0) - (Number(b[selectedMetric]) || 0));
       const fastest = sorted[0];
       const slowest = sorted[sorted.length - 1];
       const baseline = results.find(result => result.strategy === 'Single threaded');
       const middle = Math.floor(sorted.length / 2);
       const median = sorted.length % 2 === 0
-        ? (sorted[middle - 1].averageProfileMs + sorted[middle].averageProfileMs) / 2
-        : sorted[middle].averageProfileMs;
-      const speedup = baseline && fastest.averageProfileMs > 0
-        ? baseline.averageProfileMs / fastest.averageProfileMs
+        ? ((Number(sorted[middle - 1][selectedMetric]) || 0) + (Number(sorted[middle][selectedMetric]) || 0)) / 2
+        : (Number(sorted[middle][selectedMetric]) || 0);
+      const fastestTime = Number(fastest[selectedMetric]) || 0;
+      const slowestTime = Number(slowest[selectedMetric]) || 0;
+      const baselineTime = baseline ? Number(baseline[selectedMetric]) || 0 : 0;
+      const speedup = baselineTime > 0 && fastestTime > 0
+        ? baselineTime / fastestTime
         : 0;
 
       document.getElementById('timeline-title').textContent = 'Completed workload insights';
-      document.getElementById('timeline-subtitle').textContent = 'Processing methods for the selected example';
-      document.getElementById('insight-fastest').textContent = fastest.strategy + ' · ' + formatMs(fastest.averageProfileMs);
+      document.getElementById('timeline-subtitle').textContent = metricName + ' by processing method';
+      document.getElementById('insight-fastest').textContent = fastest.strategy + ' · ' + formatMs(fastestTime);
       document.getElementById('insight-speedup').textContent = speedup > 0 ? speedup.toFixed(2) + '×' : 'Baseline unavailable';
       document.getElementById('insight-median').textContent = formatMs(median);
-      document.getElementById('insight-slowest').textContent = slowest.strategy + ' · ' + formatMs(slowest.averageProfileMs);
+      document.getElementById('insight-slowest').textContent = slowest.strategy + ' · ' + formatMs(slowestTime);
     }
 
     function updateComparisonHeadings(state) {
@@ -958,6 +965,7 @@
       if (state) {
         const results = getResultsForSelection(state);
         drawResults(results, state);
+        renderSelectedInsights(state, results);
       }
     }));
     document.querySelectorAll('[data-comparison-workload]').forEach(button => button.addEventListener('click', () => {
