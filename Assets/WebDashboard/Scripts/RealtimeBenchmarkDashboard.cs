@@ -44,12 +44,11 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     private const string RandomSearchSceneFolder = "Assets/Examples/RandomSearchOptimization/Scenes/";
 
     // Keep these entries in the same order as the strategies listed in the README.
-    // Async and coroutine work use their own markers because those calculations can
-    // happen on a worker thread or in chunks rather than inside FixedUpdate.
+    // Async task work and coroutine chunks use markers that cover a complete calculation.
     private static readonly ComparisonMode[] Modes =
     {
         new ComparisonMode("Single threaded", "SingleThreaded", "GravitySimulation.SingleThreaded"),
-        new ComparisonMode("C# async", "CSharpAsync", "GravitySimulation.CSharpAsync.Worker"),
+        new ComparisonMode("C# async", "CSharpAsync", "GravitySimulation.CSharpAsync"),
         new ComparisonMode("C# parallel", "CSharpParallel", "GravitySimulation.CSharpParallel"),
         new ComparisonMode("Unity Jobs", "UnityJobs", "GravitySimulation.UnityJobs"),
         new ComparisonMode("Unity coroutine", "UnityCoroutine", "GravitySimulation.UnityCoroutine.Chunk"),
