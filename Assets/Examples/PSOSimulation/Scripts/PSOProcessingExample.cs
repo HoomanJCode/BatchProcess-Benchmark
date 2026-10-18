@@ -53,18 +53,24 @@ public sealed class PSOProcessingExample : MonoBehaviour
     {
         long wallStart = Stopwatch.GetTimestamp();
         long computeStart = wallStart;
+        float asyncComputeMilliseconds = 0f;
 
-        // Async runs the same simple loop on a worker and awaits it before publishing results.
+        // C# async runs the workload coordinator off the Unity thread and fans independent work out to worker tasks.
         if (_processingMethod == 1)
         {
-            await Task.Run(() => RunSearch(0));
+            asyncComputeMilliseconds = await Task.Run(() =>
+            {
+                long workerStart = Stopwatch.GetTimestamp();
+                RunSearch(6);
+                return (float)((Stopwatch.GetTimestamp() - workerStart) * 1000d / Stopwatch.Frequency);
+            });
         }
         else
         {
             RunSearch(_processingMethod);
         }
 
-        FinishRun(computeStart, wallStart);
+        FinishRun(computeStart, wallStart, false, asyncComputeMilliseconds);
     }
 
     private IEnumerator RunCoroutine()
@@ -91,10 +97,18 @@ public sealed class PSOProcessingExample : MonoBehaviour
     {
         _evaluationCount = _trialCount * _particleCount * (_iterations + 1);
         _bestScore = float.MaxValue;
+        _bestX = 0f;
+        _bestY = 0f;
         double trialScoreTotal = 0d;
 
         // Each candidate point is generated from its index, so all six methods see identical inputs.
         int evaluationsPerTrial = _particleCount * (_iterations + 1);
+        if (method == 6 && _trialCount > 1)
+        {
+            RunRandomSearchTaskRuns(evaluationsPerTrial);
+            return;
+        }
+
         float[] scores = new float[evaluationsPerTrial];
         NativeArray<float> jobScores = default;
         if (method == 3 || method == 5)
@@ -104,6 +118,8 @@ public sealed class PSOProcessingExample : MonoBehaviour
         {
             if (method == 2)
                 System.Threading.Tasks.Parallel.For(0, evaluationsPerTrial, index => ScoreRandomPoint(index, trial, scores));
+            else if (method == 6)
+                RunTaskRunChunks(evaluationsPerTrial, index => ScoreRandomPoint(index, trial, scores));
             else if (method == 3 || method == 5)
                 RunRandomJob(trial, scores, jobScores, method == 5);
             else
@@ -122,10 +138,74 @@ public sealed class PSOProcessingExample : MonoBehaviour
         }
 
         _averageBestScore = (float)(trialScoreTotal / _trialCount);
-        _bestX = 0f;
-        _bestY = 0f;
         if (jobScores.IsCreated)
             jobScores.Dispose();
+    }
+
+    private void RunRandomSearchTaskRuns(int evaluationsPerTrial)
+    {
+        int workerCount = Math.Min(_trialCount, Math.Min(8, Math.Max(1, Environment.ProcessorCount)));
+        float[] trialBestScores = new float[_trialCount];
+        int[] trialBestIndices = new int[_trialCount];
+        Task[] tasks = new Task[workerCount];
+        for (int worker = 0; worker < workerCount; worker++)
+        {
+            int firstTrial = _trialCount * worker / workerCount;
+            int afterLastTrial = _trialCount * (worker + 1) / workerCount;
+            tasks[worker] = Task.Run(() =>
+            {
+                for (int trial = firstTrial; trial < afterLastTrial; trial++)
+                {
+                    float bestScore = float.MaxValue;
+                    int bestIndex = -1;
+                    for (int index = 0; index < evaluationsPerTrial; index++)
+                    {
+                        float x = ToRange(StableValue(index * 2 + trial * 100003 + _randomSeed));
+                        float y = ToRange(StableValue(index * 2 + 1 + trial * 100003 + _randomSeed));
+                        float score = x * x + y * y;
+                        if (score < bestScore)
+                        {
+                            bestScore = score;
+                            bestIndex = index;
+                        }
+                    }
+                    trialBestScores[trial] = bestScore;
+                    trialBestIndices[trial] = bestIndex;
+                }
+            });
+        }
+
+        Task.WhenAll(tasks).GetAwaiter().GetResult();
+        double scoreTotal = 0d;
+        for (int trial = 0; trial < _trialCount; trial++)
+        {
+            scoreTotal += trialBestScores[trial];
+            if (trialBestScores[trial] < _bestScore)
+            {
+                _bestScore = trialBestScores[trial];
+                GetRandomPoint(trialBestIndices[trial], trial, out _bestX, out _bestY);
+            }
+        }
+        _averageBestScore = (float)(scoreTotal / _trialCount);
+    }
+
+    // Keep task count bounded by available worker threads instead of creating one task per item.
+    private static void RunTaskRunChunks(int itemCount, Action<int> processItem)
+    {
+        int workerCount = Math.Min(itemCount, Math.Min(8, Math.Max(1, Environment.ProcessorCount)));
+        Task[] tasks = new Task[workerCount];
+        for (int worker = 0; worker < workerCount; worker++)
+        {
+            int firstItem = itemCount * worker / workerCount;
+            int afterLastItem = itemCount * (worker + 1) / workerCount;
+            tasks[worker] = Task.Run(() =>
+            {
+                for (int item = firstItem; item < afterLastItem; item++)
+                    processItem(item);
+            });
+        }
+
+        Task.WhenAll(tasks).GetAwaiter().GetResult();
     }
 
     private void ScoreRandomPoint(int index, int trial, float[] scores)
@@ -141,8 +221,16 @@ public sealed class PSOProcessingExample : MonoBehaviour
     private void RunParticleSwarm(int method)
     {
         int particleCount = Mathf.Max(2, _particleCount);
+        if (method == 6 && _trialCount > 1)
+        {
+            RunParticleSwarmTaskRuns(particleCount);
+            return;
+        }
+
         _evaluationCount = _trialCount * particleCount * (_iterations + 1);
         _bestScore = float.MaxValue;
+        _bestX = 0f;
+        _bestY = 0f;
         double trialScoreTotal = 0d;
         float[] x = new float[particleCount];
         float[] y = new float[particleCount];
@@ -199,6 +287,13 @@ public sealed class PSOProcessingExample : MonoBehaviour
                     System.Threading.Tasks.Parallel.For(0, particleCount, particle =>
                         UpdateParticle(particle, iteration, trial, sharedX, sharedY, x, y, vx, vy, personalX, personalY, nextScore));
                 }
+                else if (method == 6)
+                {
+                    float sharedX = globalX;
+                    float sharedY = globalY;
+                    RunTaskRunChunks(particleCount, particle =>
+                        UpdateParticle(particle, iteration, trial, sharedX, sharedY, x, y, vx, vy, personalX, personalY, nextScore));
+                }
                 else if (method == 3 || method == 5)
                 {
                     RunParticleJob(iteration, trial, globalX, globalY, x, y, vx, vy, personalX, personalY, nextScore,
@@ -231,12 +326,14 @@ public sealed class PSOProcessingExample : MonoBehaviour
 
             trialScoreTotal += globalScore;
             if (globalScore < _bestScore)
+            {
                 _bestScore = globalScore;
+                _bestX = globalX;
+                _bestY = globalY;
+            }
         }
 
         _averageBestScore = (float)(trialScoreTotal / _trialCount);
-        _bestX = 0f;
-        _bestY = 0f;
         if (jobX.IsCreated) jobX.Dispose();
         if (jobY.IsCreated) jobY.Dispose();
         if (jobVx.IsCreated) jobVx.Dispose();
@@ -244,6 +341,106 @@ public sealed class PSOProcessingExample : MonoBehaviour
         if (jobPersonalX.IsCreated) jobPersonalX.Dispose();
         if (jobPersonalY.IsCreated) jobPersonalY.Dispose();
         if (jobScores.IsCreated) jobScores.Dispose();
+    }
+
+    private void RunParticleSwarmTaskRuns(int particleCount)
+    {
+        _evaluationCount = _trialCount * particleCount * (_iterations + 1);
+        _bestScore = float.MaxValue;
+        _bestX = 0f;
+        _bestY = 0f;
+        int workerCount = Math.Min(_trialCount, Math.Min(8, Math.Max(1, Environment.ProcessorCount)));
+        ParticleTrialResult[] results = new ParticleTrialResult[_trialCount];
+        Task[] tasks = new Task[workerCount];
+        for (int worker = 0; worker < workerCount; worker++)
+        {
+            int firstTrial = _trialCount * worker / workerCount;
+            int afterLastTrial = _trialCount * (worker + 1) / workerCount;
+            tasks[worker] = Task.Run(() =>
+            {
+                for (int trial = firstTrial; trial < afterLastTrial; trial++)
+                    results[trial] = RunParticleSwarmTrial(trial, particleCount);
+            });
+        }
+
+        Task.WhenAll(tasks).GetAwaiter().GetResult();
+        double scoreTotal = 0d;
+        for (int trial = 0; trial < _trialCount; trial++)
+        {
+            ParticleTrialResult result = results[trial];
+            scoreTotal += result.Score;
+            if (result.Score < _bestScore)
+            {
+                _bestScore = result.Score;
+                _bestX = result.X;
+                _bestY = result.Y;
+            }
+        }
+        _averageBestScore = (float)(scoreTotal / _trialCount);
+    }
+
+    private ParticleTrialResult RunParticleSwarmTrial(int trial, int particleCount)
+    {
+        float[] x = new float[particleCount]; float[] y = new float[particleCount];
+        float[] vx = new float[particleCount]; float[] vy = new float[particleCount];
+        float[] personalX = new float[particleCount]; float[] personalY = new float[particleCount];
+        float[] personalScore = new float[particleCount]; float[] nextScore = new float[particleCount];
+        float globalScore = float.MaxValue; float globalX = 0f; float globalY = 0f;
+        for (int particle = 0; particle < particleCount; particle++)
+        {
+            x[particle] = ToRange(StableValue(particle * 4 + trial * 100003 + _randomSeed));
+            y[particle] = ToRange(StableValue(particle * 4 + 1 + trial * 100003 + _randomSeed));
+            vx[particle] = StableValue(particle * 4 + 2 + trial * 100003 + _randomSeed) - 0.5f;
+            vy[particle] = StableValue(particle * 4 + 3 + trial * 100003 + _randomSeed) - 0.5f;
+            personalX[particle] = x[particle];
+            personalY[particle] = y[particle];
+            personalScore[particle] = x[particle] * x[particle] + y[particle] * y[particle];
+            if (personalScore[particle] < globalScore)
+            {
+                globalScore = personalScore[particle];
+                globalX = x[particle];
+                globalY = y[particle];
+            }
+        }
+
+        for (int iteration = 0; iteration < _iterations; iteration++)
+        {
+            for (int particle = 0; particle < particleCount; particle++)
+                UpdateParticle(particle, iteration, trial, globalX, globalY, x, y, vx, vy, personalX, personalY, nextScore);
+
+            for (int particle = 0; particle < particleCount; particle++)
+            {
+                float score = nextScore[particle];
+                if (score < personalScore[particle])
+                {
+                    personalScore[particle] = score;
+                    personalX[particle] = x[particle];
+                    personalY[particle] = y[particle];
+                }
+                if (score < globalScore)
+                {
+                    globalScore = score;
+                    globalX = x[particle];
+                    globalY = y[particle];
+                }
+            }
+        }
+
+        return new ParticleTrialResult(globalScore, globalX, globalY);
+    }
+
+    private struct ParticleTrialResult
+    {
+        public readonly float Score;
+        public readonly float X;
+        public readonly float Y;
+
+        public ParticleTrialResult(float score, float x, float y)
+        {
+            Score = score;
+            X = x;
+            Y = y;
+        }
     }
 
     private void UpdateParticle(int particle, int iteration, int trial, float globalX, float globalY,
@@ -383,6 +580,8 @@ public sealed class PSOProcessingExample : MonoBehaviour
             int budget = _particleCount * (_iterations + 1);
             _evaluationCount = _trialCount * budget;
             _bestScore = float.MaxValue;
+            _bestX = 0f;
+            _bestY = 0f;
             double total = 0d;
             float[] scores = new float[budget];
             for (int trial = 0; trial < _trialCount; trial++)
@@ -403,10 +602,15 @@ public sealed class PSOProcessingExample : MonoBehaviour
                 }
                 long reduceStart = Stopwatch.GetTimestamp();
                 float best = float.MaxValue;
+                int bestIndex = -1;
                 for (int index = 0; index < budget; index++)
-                    if (scores[index] < best) best = scores[index];
+                    if (scores[index] < best) { best = scores[index]; bestIndex = index; }
                 total += best;
-                if (best < _bestScore) _bestScore = best;
+                if (best < _bestScore)
+                {
+                    _bestScore = best;
+                    GetRandomPoint(bestIndex, trial, out _bestX, out _bestY);
+                }
                 _coroutineComputeTicks += Stopwatch.GetTimestamp() - reduceStart;
             }
             _averageBestScore = (float)(total / _trialCount);
@@ -417,6 +621,8 @@ public sealed class PSOProcessingExample : MonoBehaviour
             int count = Mathf.Max(2, _particleCount);
             _evaluationCount = _trialCount * count * (_iterations + 1);
             _bestScore = float.MaxValue;
+            _bestX = 0f;
+            _bestY = 0f;
             double total = 0d;
             float[] x = new float[count]; float[] y = new float[count];
             float[] vx = new float[count]; float[] vy = new float[count];
@@ -457,18 +663,24 @@ public sealed class PSOProcessingExample : MonoBehaviour
                     _coroutineComputeTicks += Stopwatch.GetTimestamp() - reduceStart;
                 }
                 total += globalScore;
-                if (globalScore < _bestScore) _bestScore = globalScore;
+                if (globalScore < _bestScore)
+                {
+                    _bestScore = globalScore;
+                    _bestX = globalX;
+                    _bestY = globalY;
+                }
             }
             _averageBestScore = (float)(total / _trialCount);
         }
-        _bestX = 0f; _bestY = 0f;
     }
 
-    private void FinishRun(long computeStart, long wallStart, bool isCoroutine = false)
+    private void FinishRun(long computeStart, long wallStart, bool isCoroutine = false, float asyncComputeMilliseconds = 0f)
     {
         _computeMilliseconds = isCoroutine
             ? (float)(_coroutineComputeTicks * 1000d / Stopwatch.Frequency)
-            : (float)((Stopwatch.GetTimestamp() - computeStart) * 1000d / Stopwatch.Frequency);
+            : _processingMethod == 1
+                ? asyncComputeMilliseconds
+                : (float)((Stopwatch.GetTimestamp() - computeStart) * 1000d / Stopwatch.Frequency);
         _wallMilliseconds = (float)((Stopwatch.GetTimestamp() - wallStart) * 1000d / Stopwatch.Frequency);
         // Set the completion marker last so the dashboard never reads half-published async results.
         _checksum = _bestScore.ToString("0.000000");
@@ -491,5 +703,11 @@ public sealed class PSOProcessingExample : MonoBehaviour
     }
 
     private static float ToRange(float value) { return value * 10f - 5f; }
+
+    private void GetRandomPoint(int index, int trial, out float x, out float y)
+    {
+        x = ToRange(StableValue(index * 2 + trial * 100003 + _randomSeed));
+        y = ToRange(StableValue(index * 2 + 1 + trial * 100003 + _randomSeed));
+    }
     #endregion
 }
