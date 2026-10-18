@@ -157,11 +157,10 @@
       </article>
     </section>
 
-    <div class="section-head"><div><h2>All comparison examples</h2><p>Run All Examples Benchmark to fill every tab; this page keeps the latest completed results in this browser.</p></div><span class="pill">5 EXAMPLES</span></div>
+    <div class="section-head"><div><h2>All comparison examples</h2><p>Run All Examples Benchmark to fill every tab; this page keeps the latest completed results in this browser.</p></div><span class="pill">4 EXAMPLES</span></div>
     <section class="overview-grid" aria-label="Overview of every comparison example">
       <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare five Unity methods in dedicated 2D and 3D workloads.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene and press Play.</p><p class="overview-settings" id="gravity-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
       <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through five Unity methods.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><p class="overview-settings" id="batch-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
-      <article class="panel overview-card"><h3>PSO simulation</h3><p>Compare PSO across five Unity methods with the same search workload.</p><strong id="pso-overview-title">No completed run yet</strong><p id="pso-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="pso-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="pso-overview-results" class="overview-strategies">No results saved.</div></details></article>
       <article class="panel overview-card"><h3>Random Search</h3><p>Compare Random Search across five Unity methods with the same search workload.</p><strong id="random-overview-title">No completed run yet</strong><p id="random-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="random-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="random-overview-results" class="overview-strategies">No results saved.</div></details></article>
     </section>
 
@@ -170,7 +169,6 @@
     <div class="comparison-tabs" role="tablist" aria-label="Comparison workload">
       <button type="button" role="tab" data-comparison-workload="gravity" aria-selected="true">Gravity simulation</button>
       <button type="button" role="tab" data-comparison-workload="batch" aria-selected="false">Simple iteration</button>
-      <button type="button" role="tab" data-comparison-workload="pso" aria-selected="false">PSO simulation</button>
       <button type="button" role="tab" data-comparison-workload="randomSearch" aria-selected="false">Random Search</button>
     </div>
     <div id="gravity-dimension-tabs" class="dimension-tabs" role="tablist" aria-label="Gravity dimension">
@@ -200,12 +198,6 @@
         <label>Batch size<input type="number" id="batch-size" min="1" max="5000000" value="1000"></label>
         <label>Measured runs<input type="number" id="batch-runs" min="1" max="20" value="20"></label>
       </div>
-      <div class="setting-grid" data-settings="pso" hidden>
-        <label>Particles<input type="number" id="pso-particles" min="2" max="10000" value="64"></label>
-        <label>Iterations<input type="number" id="pso-iterations" min="1" max="100000" value="99"></label>
-        <label>Trials per method<input type="number" id="pso-trials" min="1" max="100" value="5"></label>
-        <label>Measured runs<input type="number" id="pso-runs" min="1" max="20" value="20"></label>
-      </div>
       <div class="setting-grid" data-settings="randomSearch" hidden>
         <label>Evaluations per trial<input type="number" id="random-evaluations" min="1" max="5000000" value="6400"></label>
         <label>Trials per method<input type="number" id="random-trials" min="1" max="100" value="5"></label>
@@ -224,7 +216,7 @@
           <div class="insight"><span>Speedup vs single threaded</span><strong id="insight-speedup">—</strong></div>
           <div class="insight"><span>Median method time</span><strong id="insight-median">—</strong></div>
           <div class="insight"><span>Slowest method</span><strong id="insight-slowest">—</strong></div>
-        </div><p class="note">These insights compare processing time within the selected workload. They do not compare optimization algorithms with each other.</p></div>
+        </div><p class="note">These insights compare processing time for the selected workload; they do not measure solution quality.</p></div>
       </article>
       <article class="panel chart-panel">
         <div class="chart-title"><div><h3>Compare completed runs</h3><p id="comparison-caption">Complete a pass to fill the chart.</p></div>
@@ -245,7 +237,7 @@
     <section class="how" aria-label="How to use the dashboard">
       <div class="step"><b>1</b><div><strong>Start the dashboard</strong><span>Use the local command in the project README, then open this page in your browser.</span></div></div>
       <div class="step"><b>2</b><div><strong>Run the full comparison</strong><span>Open All_Examples_Benchmark in Unity and press Play. It fills the dashboard overview and saves each result set in this browser.</span></div></div>
-      <div class="step"><b>3</b><div><strong>Select a comparison tab</strong><span>After each run, its results are saved in this browser. Select Gravity, Simple Iteration, PSO Simulation, or Random Search. Gravity also has separate 2D and 3D views.</span></div></div>
+      <div class="step"><b>3</b><div><strong>Select a comparison tab</strong><span>After each run, its results are saved in this browser. Select Gravity, Simple Iteration, or Random Search. Gravity also has separate 2D and 3D views.</span></div></div>
     </section>
     <footer><span>Simulation Lab · localhost only · no cloud connection · <a class="project-link" href="https://github.com/HoomanJCode/Gravity-Simulation" target="_blank" rel="noopener noreferrer">Project on GitHub</a></span><span id="updated">Waiting for first sample</span></footer>
   </main>
@@ -279,10 +271,6 @@
         ['unity-parallel', 'C# parallel'], ['unity-jobs', 'Unity Jobs'],
         ['unity-burst', 'Unity Jobs + Burst']
       ],
-      pso: [
-        ['unity-single', 'Single threaded'], ['unity-async', 'C# async'], ['unity-parallel', 'C# parallel'],
-        ['unity-jobs', 'Unity Jobs'], ['unity-burst', 'Unity Jobs + Burst']
-      ],
       randomSearch: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'], ['unity-parallel', 'C# parallel'],
         ['unity-jobs', 'Unity Jobs'], ['unity-burst', 'Unity Jobs + Burst']
@@ -299,7 +287,8 @@
         Object.keys(saved).forEach(key => {
           if (saved[key] && saved[key].results) {
             const originalCount = saved[key].results.length;
-            saved[key].results = saved[key].results.filter(result => result.markerName !== 'Python');
+            saved[key].results = saved[key].results.filter(result =>
+              result.markerName !== 'Python' && result.algorithm !== 'Particle swarm (PSO)');
             removedLegacyResults = removedLegacyResults || saved[key].results.length !== originalCount;
           }
           if (saved[key] && saved[key].results && saved[key].results.length)
@@ -358,6 +347,7 @@
           ? savedResults
           : (state.workload === 'optimization'
           ? (savedComparisons[key] && savedComparisons[key].results || []).filter(previous =>
+              previous.algorithm !== 'Particle swarm (PSO)' &&
               !state.results.some(current => current.algorithm === previous.algorithm)).concat(state.results)
           : state.results),
         measurementSeconds: state.measurementSeconds || 0,
@@ -372,11 +362,11 @@
     }
 
     function isOptimizationSelection() {
-      return selectedComparisonWorkload === 'pso' || selectedComparisonWorkload === 'randomSearch';
+      return selectedComparisonWorkload === 'randomSearch';
     }
 
     function getSelectedAlgorithm() {
-      return selectedComparisonWorkload === 'randomSearch' ? 'Random search' : 'Particle swarm (PSO)';
+      return 'Random search';
     }
 
     function getResultsForSelection(state) {
@@ -408,7 +398,6 @@
       renderGravityOverview(latestGravity, liveGravity, saved2D, saved3D,
         currentState && currentState.workload === 'gravity' ? currentState : null);
       renderOverviewCard('batch', batch, liveBatch, currentState && currentState.workload === 'batch' ? currentState : null);
-      renderOptimizationOverviewCard('pso', 'Particle swarm (PSO)', optimization, liveOptimization);
       renderOptimizationOverviewCard('random', 'Random search', optimization, liveOptimization);
     }
 
@@ -481,15 +470,13 @@
       document.querySelectorAll('[data-gravity-settings]').forEach(group => {
         group.hidden = group.dataset.gravitySettings !== selectedGravityDimension;
       });
-      const names = { gravity: 'Gravity simulation', batch: 'Simple iteration', pso: 'PSO simulation', randomSearch: 'Random Search' };
+      const names = { gravity: 'Gravity simulation', batch: 'Simple iteration', randomSearch: 'Random Search' };
       document.getElementById('settings-title').textContent = 'Run ' + names[workload] + ' again';
       document.getElementById('settings-description').textContent = workload === 'gravity'
         ? 'Set the ball count and time measured for each Unity strategy. The selected 2D or 3D view is used for this run.'
         : (workload === 'batch'
           ? 'Set the shared item count, iterations, and batch size. Every processing method uses the same workload.'
-          : (workload === 'pso'
-            ? 'Set the shared PSO population and iteration count. Trials are repeated for each processing method.'
-            : 'Set the number of candidate evaluations per trial. Every processing method receives the same search budget.'));
+          : 'Set the number of candidate evaluations per trial. Every processing method receives the same search budget.');
       const button = document.getElementById('run-selected-button');
       const selectedMethodName = methodSelect.selectedOptions[0] ? methodSelect.selectedOptions[0].textContent : 'All methods';
       const canRun = unityConnected && !runRequestPending && lastState && (lastState.status === 'complete' || lastState.status === 'error');
@@ -540,15 +527,14 @@
         warmupSeconds: readSetting('gravity-' + selectedGravityDimension.toLowerCase() + '-warmup', 2),
         runs: 20,
         items: readSetting('batch-items', 100000),
-        iterations: workload === 'pso' ? readSetting('pso-iterations', 99) : (workload === 'batch' ? readSetting('batch-iterations', 100) : 99),
+        iterations: workload === 'batch' ? readSetting('batch-iterations', 100) : 99,
         batchSize: readSetting('batch-size', 1000),
-        particles: readSetting('pso-particles', 64),
         evaluations: readSetting('random-evaluations', 6400),
-        trials: readSetting(workload === 'pso' ? 'pso-trials' : 'random-trials', 5)
+        trials: readSetting('random-trials', 5)
       };
       request.selectedMethod = document.getElementById('run-method').value;
       if (workload !== 'gravity')
-        request.runs = readSetting(workload === 'batch' ? 'batch-runs' : (workload === 'pso' ? 'pso-runs' : 'random-runs'), 20);
+        request.runs = readSetting(workload === 'batch' ? 'batch-runs' : 'random-runs', 20);
       saveRunSettings();
       const button = document.getElementById('run-selected-button');
       const status = document.getElementById('settings-status');
@@ -774,7 +760,7 @@
         selectedMetric = 'averageProfileMs';
         lastWorkload = state.workload;
         if (!comparisonSelectionWasManual) {
-          selectedComparisonWorkload = state.workload === 'optimization' ? 'pso' : state.workload;
+          selectedComparisonWorkload = state.workload === 'optimization' ? 'randomSearch' : state.workload;
         }
         document.querySelectorAll('[data-metric]').forEach(button =>
           button.setAttribute('aria-pressed', String(button.dataset.metric === selectedMetric)));

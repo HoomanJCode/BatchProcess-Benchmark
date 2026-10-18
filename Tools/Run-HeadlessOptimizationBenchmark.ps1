@@ -33,7 +33,7 @@ if (-not (Test-Path -LiteralPath $playerPath)) {
     throw "Unity reported a successful build but the player was not found at $playerPath. See $buildLog"
 }
 
-Write-Host "Running PSO and Random Search headless..."
+Write-Host "Running Random Search headless..."
 $playerArguments = "-batchmode -nographics -logFile `"$playerLog`" -gravity-benchmark-headless -gravity-benchmark-output `"$OutputPath`""
 $playerProcess = Start-Process -FilePath $playerPath -ArgumentList $playerArguments -Wait -PassThru
 if ($playerProcess.ExitCode -ne 0) {

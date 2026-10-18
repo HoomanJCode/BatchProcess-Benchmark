@@ -38,7 +38,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     private const string TwoDBenchmarkSceneFolder = "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/";
     private const string ThreeDBenchmarkSceneFolder = "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/";
     private const string SimpleIterationSceneFolder = "Assets/Examples/SimpleIteration/Scenes/";
-    private const string PsoSceneFolder = "Assets/Examples/PSOSimulation/Scenes/";
     private const string RandomSearchSceneFolder = "Assets/Examples/RandomSearchOptimization/Scenes/";
 
     // Keep these entries in the same order as the strategies listed in the README.
@@ -62,14 +61,9 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         new ComparisonMode("Unity Jobs + Burst", "UnityJobsBurst", "SimpleIteration.UnityJobsBurst")
     };
 
-    // Each algorithm is a workload. We run it once with every processing method.
+    // Random Search is the optimization workload. Compare it with every processing method.
     private static readonly ComparisonMode[] OptimizationModes =
     {
-        new ComparisonMode("Single threaded", "PSO_SingleThreaded", "BatchProcessing.Optimization.PSO.Single", "PSOProcessingExample", "Particle swarm (PSO)"),
-        new ComparisonMode("C# async", "PSO_CSharpAsync", "BatchProcessing.Optimization.PSO.Async", "PSOProcessingExample", "Particle swarm (PSO)"),
-        new ComparisonMode("C# parallel", "PSO_CSharpParallel", "BatchProcessing.Optimization.PSO.Parallel", "PSOProcessingExample", "Particle swarm (PSO)"),
-        new ComparisonMode("Unity Jobs", "PSO_UnityJobs", "BatchProcessing.Optimization.PSO.Jobs", "PSOProcessingExample", "Particle swarm (PSO)"),
-        new ComparisonMode("Unity Jobs + Burst", "PSO_UnityJobsBurst", "BatchProcessing.Optimization.PSO.Burst", "PSOProcessingExample", "Particle swarm (PSO)"),
         new ComparisonMode("Single threaded", "RandomSearch_SingleThreaded", "BatchProcessing.Optimization.Random.Single", "RandomSearchProcessingExample", "Random search"),
         new ComparisonMode("C# async", "RandomSearch_CSharpAsync", "BatchProcessing.Optimization.Random.Async", "RandomSearchProcessingExample", "Random search"),
         new ComparisonMode("C# parallel", "RandomSearch_CSharpParallel", "BatchProcessing.Optimization.Random.Parallel", "RandomSearchProcessingExample", "Random search"),
@@ -187,7 +181,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         ApplyRunRequest(request);
         _acceptDashboardCommands = false;
         _state.status = "starting";
-        _state.workload = request.workload == "pso" || request.workload == "randomSearch" ? "optimization" : request.workload;
+        _state.workload = request.workload == "randomSearch" ? "optimization" : request.workload;
         _state.dimension = request.workload == "gravity" ? request.dimension :
             (request.workload == "batch" ? "Batch processing" : "Optimization");
         _state.warmupSeconds = _warmupSeconds;
@@ -208,11 +202,10 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _is2D = request.dimension == "2D";
         _isAllExamplesComparison = false;
         _isBatchComparison = request.workload == "batch";
-        _isOptimizationComparison = request.workload == "pso" || request.workload == "randomSearch";
-        _requestedAlgorithm = request.workload == "pso" ? "Particle swarm (PSO)" :
-            (request.workload == "randomSearch" ? "Random search" : "");
+        _isOptimizationComparison = request.workload == "randomSearch";
+        _requestedAlgorithm = request.workload == "randomSearch" ? "Random search" : "";
         _requestedMethod = request.selectedMethod ?? "";
-        _state.workload = request.workload == "pso" || request.workload == "randomSearch" ? "optimization" : request.workload;
+        _state.workload = request.workload == "randomSearch" ? "optimization" : request.workload;
         _state.dimension = request.workload == "gravity" ? request.dimension :
             (request.workload == "batch" ? "Batch processing" : "Optimization");
         _results.Clear();
@@ -229,7 +222,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     private bool IsValidRunRequest(DashboardRunRequest request)
     {
         bool validWorkload = request.workload == "gravity" || request.workload == "batch" ||
-            request.workload == "pso" || request.workload == "randomSearch";
+            request.workload == "randomSearch";
         bool validDimension = request.dimension == "2D" || request.dimension == "3D";
         return validWorkload && (request.workload != "gravity" || validDimension) &&
             IsValidSelectedMethod(request.workload, request.selectedMethod) &&
@@ -240,7 +233,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             request.items >= 1 && request.items <= 5000000 &&
             request.iterations >= 1 && request.iterations <= 100000 &&
             request.batchSize >= 1 && request.batchSize <= 5000000 &&
-            request.particles >= 2 && request.particles <= 10000 &&
             request.evaluations >= 1 && request.evaluations <= 5000000 &&
             request.trials >= 1 && request.trials <= 100;
     }
@@ -256,9 +248,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         PlayerPrefs.SetInt("SimulationLab.Iterations", request.iterations);
         PlayerPrefs.SetInt("SimulationLab.BatchSize", request.batchSize);
         // Random Search uses one candidate per iteration, so this maps exactly to evaluations per trial.
-        PlayerPrefs.SetInt("SimulationLab.PsoParticles", request.particles);
-        PlayerPrefs.SetInt("SimulationLab.PsoIterations", request.iterations);
-        PlayerPrefs.SetInt("SimulationLab.PsoTrials", request.trials);
         PlayerPrefs.SetInt("SimulationLab.RandomSearchEvaluationsPerTrial", Mathf.Max(1, request.evaluations));
         PlayerPrefs.SetInt("SimulationLab.RandomSearchTrials", request.trials);
         PlayerPrefs.Save();
@@ -276,7 +265,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public int items;
         public int iterations;
         public int batchSize;
-        public int particles;
         public int evaluations;
         public int trials;
         public string selectedMethod;
@@ -436,8 +424,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 string scenePath;
                 if (_isOptimizationComparison)
                 {
-                    string optimizationFolder = mode.algorithm == "Particle swarm (PSO)" ? PsoSceneFolder : RandomSearchSceneFolder;
-                    scenePath = optimizationFolder + mode.sceneName + ".unity";
+                    scenePath = RandomSearchSceneFolder + mode.sceneName + ".unity";
                 }
                 else
                 {

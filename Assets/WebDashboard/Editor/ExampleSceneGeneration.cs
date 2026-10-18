@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 public static class ExampleSceneGeneration
 {
     private const string SimpleIterationSceneFolder = "Assets/Examples/SimpleIteration/Scenes";
-    private const string PsoSceneFolder = "Assets/Examples/PSOSimulation/Scenes";
+    private const string LegacyPsoSceneFolder = "Assets/Examples/PSOSimulation/Scenes";
     private const string RandomSearchSceneFolder = "Assets/Examples/RandomSearchOptimization/Scenes";
     private const string BenchmarkScenePath = SimpleIterationSceneFolder + "/SimpleIteration_Benchmark.unity";
     private const string OptimizationScenePath = "Assets/WebDashboard/Scenes/Optimization_Benchmark.unity";
@@ -61,8 +61,7 @@ public static class ExampleSceneGeneration
             newScenes.Add(new EditorBuildSettingsScene(path, true));
         }
 
-        // PSO and Random Search are workloads; make one scene per workload and method.
-        newScenes.Add(new EditorBuildSettingsScene(PsoSceneFolder + "/PSO_Simulation.unity", true));
+        // Random Search is the sole optimization workload; make one scene per processing method.
         newScenes.Add(new EditorBuildSettingsScene(RandomSearchSceneFolder + "/RandomSearch_Optimization.unity", true));
         string[] optimizationScenes = CreateOptimizationWorkloadScenes();
         for (int i = 0; i < optimizationScenes.Length; i++)
@@ -90,7 +89,8 @@ public static class ExampleSceneGeneration
     private static bool IsGeneratedExampleScene(string path)
     {
         return path.StartsWith(SimpleIterationSceneFolder + "/") ||
-            path.StartsWith(PsoSceneFolder + "/") ||
+            // Strip obsolete PSO scenes from Build Settings when regenerating.
+            path.StartsWith(LegacyPsoSceneFolder + "/") ||
             path.StartsWith(RandomSearchSceneFolder + "/") ||
             path == OptimizationScenePath ||
             path == AllExamplesScenePath;
@@ -185,40 +185,30 @@ public static class ExampleSceneGeneration
 
     private static string[] CreateOptimizationWorkloadScenes()
     {
-        string[] algorithms = { "PSO", "RandomSearch" };
         string[] methods = { "SingleThreaded", "CSharpAsync", "CSharpParallel", "UnityJobs", "UnityJobsBurst" };
-        string[] paths = new string[algorithms.Length * methods.Length];
-        int pathIndex = 0;
-
-        for (int algorithm = 0; algorithm < algorithms.Length; algorithm++)
+        string[] paths = new string[methods.Length];
+        for (int method = 0; method < methods.Length; method++)
         {
-            for (int method = 0; method < methods.Length; method++)
-            {
-                string sceneName = algorithms[algorithm] + "_" + methods[method];
-                string sceneFolder = algorithm == 0 ? PsoSceneFolder : RandomSearchSceneFolder;
-                string path = sceneFolder + "/" + sceneName + ".unity";
-                NewSceneMode sceneMode = Application.isBatchMode ? NewSceneMode.Single : NewSceneMode.Additive;
-                Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, sceneMode);
-                scene.name = sceneName;
-                GameObject runnerObject = new GameObject("Batch Example");
-                Component example = algorithm == 0
-                    ? (Component)runnerObject.AddComponent<PSOProcessingExample>()
-                    : runnerObject.AddComponent<RandomSearchProcessingExample>();
-                SerializedObject settings = new SerializedObject(example);
-                settings.FindProperty("_algorithm").intValue = algorithm;
-                settings.FindProperty("_processingMethod").intValue = method;
-                settings.FindProperty("_particleCount").intValue = 64;
-                settings.FindProperty("_iterations").intValue = 99;
-                settings.FindProperty("_trialCount").intValue = 5;
-                settings.FindProperty("_randomSeed").intValue = 2468;
-                settings.ApplyModifiedPropertiesWithoutUndo();
+            string sceneName = "RandomSearch_" + methods[method];
+            string path = RandomSearchSceneFolder + "/" + sceneName + ".unity";
+            NewSceneMode sceneMode = Application.isBatchMode ? NewSceneMode.Single : NewSceneMode.Additive;
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, sceneMode);
+            scene.name = sceneName;
+            GameObject runnerObject = new GameObject("Batch Example");
+            RandomSearchProcessingExample example = runnerObject.AddComponent<RandomSearchProcessingExample>();
+            SerializedObject settings = new SerializedObject(example);
+            settings.FindProperty("_processingMethod").intValue = method;
+            settings.FindProperty("_particleCount").intValue = 1;
+            settings.FindProperty("_iterations").intValue = 6399;
+            settings.FindProperty("_trialCount").intValue = 5;
+            settings.FindProperty("_randomSeed").intValue = 2468;
+            settings.ApplyModifiedPropertiesWithoutUndo();
 
-                if (!EditorSceneManager.SaveScene(scene, path))
-                    throw new System.Exception("Could not save optimization workload scene: " + path);
-                if (sceneMode == NewSceneMode.Additive)
-                    EditorSceneManager.CloseScene(scene, true);
-                paths[pathIndex++] = path;
-            }
+            if (!EditorSceneManager.SaveScene(scene, path))
+                throw new System.Exception("Could not save optimization workload scene: " + path);
+            if (sceneMode == NewSceneMode.Additive)
+                EditorSceneManager.CloseScene(scene, true);
+            paths[method] = path;
         }
         return paths;
     }

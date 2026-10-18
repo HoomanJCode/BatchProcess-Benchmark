@@ -2,7 +2,7 @@ using Stopwatch = System.Diagnostics.Stopwatch;
 using UnityEngine;
 
 /// <summary>
-/// Tries random points to minimize the same two-dimensional Sphere function as PSO.
+/// Tries random points to minimize the two-dimensional Sphere function.
 /// It is a simple baseline for comparing search quality and calculation time.
 /// </summary>
 public sealed class BatchRandomSearchExample : MonoBehaviour
@@ -37,7 +37,7 @@ public sealed class BatchRandomSearchExample : MonoBehaviour
 
         for (int trial = 0; trial < _trialCount; trial++)
         {
-            // Use the same repeatable seeds as the PSO example.
+            // A fixed seed keeps each trial repeatable.
             Random.InitState(_randomSeed + trial);
             float trialBestScore = float.MaxValue;
             float trialBestX = 0f;

@@ -1,6 +1,6 @@
 # Random Search optimization
 
-Random Search generates candidate points `(x, y)` and keeps the best one found. It minimizes the same 2D Sphere function as PSO:
+Random Search generates candidate points `(x, y)` and keeps the best one found. It minimizes the 2D Sphere function:
 
 ```text
 score = x² + y²
@@ -14,4 +14,4 @@ best x = 0, best y = 0, best score = 0
 - Work: **O(E)** objective evaluations for `E` candidates; storage is **O(1)** for the current best result plus reusable input buffers.
 - Resources: none are required; candidates and input arrays are created by the example.
 
-Open `Assets/WebDashboard/Scenes/Optimization_Benchmark.unity` to run Random Search and PSO through five Unity methods each. Select the **Random Search** tab to compare its processing runtimes. The algorithms are workloads here; the table compares processing methods, not algorithm quality.
+Open `Assets/WebDashboard/Scenes/Optimization_Benchmark.unity` to compare Random Search across five Unity processing methods.

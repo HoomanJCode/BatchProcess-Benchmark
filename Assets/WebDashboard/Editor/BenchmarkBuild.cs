@@ -36,21 +36,18 @@ public static class GravityBenchmarkBuild
         BuildWindowsPlayer(scenes);
     }
 
-    /// <summary>Builds a player that compares five processing methods for both optimization workloads.</summary>
+    /// <summary>Builds a player that compares Random Search across five processing methods.</summary>
     public static void BuildOptimizationPlayer()
     {
         // Generate the same comparison and example scenes used by the local dashboard.
         ExampleSceneGeneration.Build();
 
         string[] methods = { "SingleThreaded", "CSharpAsync", "CSharpParallel", "UnityJobs", "UnityJobsBurst" };
-        string[] scenes = new string[11];
+        string[] scenes = new string[6];
         scenes[0] = "Assets/WebDashboard/Scenes/Optimization_Benchmark.unity";
-        int sceneIndex = 1;
-        for (int algorithm = 0; algorithm < 2; algorithm++)
-            for (int method = 0; method < methods.Length; method++)
-                scenes[sceneIndex++] = "Assets/Examples/" +
-                    (algorithm == 0 ? "PSOSimulation/Scenes/PSO_" : "RandomSearchOptimization/Scenes/RandomSearch_") +
-                    methods[method] + ".unity";
+        for (int method = 0; method < methods.Length; method++)
+            scenes[method + 1] = "Assets/Examples/RandomSearchOptimization/Scenes/RandomSearch_" +
+                methods[method] + ".unity";
         BuildWindowsPlayer(scenes, "OptimizationBenchmark.exe");
     }
 

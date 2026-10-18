@@ -1,18 +1,17 @@
 # Unity Processing and Simulation Examples
 
-This Unity project presents five workloads: Gravity 2D, Gravity 3D, Simple Iteration, PSO, and Random Search. Each workload compares Unity/C# processing methods in the local dashboard.
+This Unity project presents four workloads: Gravity 2D, Gravity 3D, Simple Iteration, and Random Search. Each workload compares Unity/C# processing methods in the local dashboard.
 
-## The five examples
+## The four examples
 
 1. **Gravity simulation (2D)** — circle sprites and Unity 2D physics. Read [`GravitySimulation/2D/README.md`](Assets/Examples/GravitySimulation/2D/README.md).
 2. **Gravity simulation (3D)** — sphere meshes and Unity 3D physics. Read [`GravitySimulation/3D/README.md`](Assets/Examples/GravitySimulation/3D/README.md).
 3. **Simple iteration** — the beginner-friendly batch calculation. Read [`SimpleIteration/README.md`](Assets/Examples/SimpleIteration/README.md).
-4. **PSO simulation** — Particle Swarm Optimization. Read [`PSOSimulation/README.md`](Assets/Examples/PSOSimulation/README.md).
-5. **Random Search optimization** — candidate sampling with a best-so-far result. Read [`RandomSearchOptimization/README.md`](Assets/Examples/RandomSearchOptimization/README.md).
+4. **Random Search optimization** — candidate sampling with a best-so-far result. Read [`RandomSearchOptimization/README.md`](Assets/Examples/RandomSearchOptimization/README.md).
 
 ## Local real-time dashboard
 
-To fill every dashboard tab in one run, open `Assets/WebDashboard/Scenes/All_Examples_Benchmark.unity` and press **Play**. It runs Gravity 2D, Gravity 3D, Simple Iteration, PSO, and Random Search one after another. Unity serves the page locally at [http://127.0.0.1:8765/](http://127.0.0.1:8765/), and the browser saves each finished example on this PC. You can still run an individual `Gravity_Benchmark`, `SimpleIteration_Benchmark`, or `Optimization_Benchmark` scene when you only want that workload.
+To fill every dashboard tab in one run, open `Assets/WebDashboard/Scenes/All_Examples_Benchmark.unity` and press **Play**. It runs Gravity 2D, Gravity 3D, Simple Iteration, and Random Search one after another. Unity serves the page locally at [http://127.0.0.1:8765/](http://127.0.0.1:8765/), and the browser saves each finished example on this PC. You can still run an individual `Gravity_Benchmark`, `SimpleIteration_Benchmark`, or `Optimization_Benchmark` scene when you only want that workload.
 
 Dashboard assets and its README are under [`Assets/WebDashboard`](Assets/WebDashboard/README.md).
 
@@ -95,7 +94,6 @@ Assets/
 │   │   ├── 3D/                  Scenes, scripts, resources, editor tools, and docs
 │   │   └── Editor/              Shared gravity comparison-scene tools
 │   ├── SimpleIteration/         Scenes, scripts, resources, editor tools, and docs
-│   ├── PSOSimulation/           Scenes, scripts, resources, editor tools, and docs
 │   └── RandomSearchOptimization/ Scenes, scripts, resources, editor tools, and docs
 └── WebDashboard/                Local dashboard page, runner, scenes, editor tools, docs
 ```
