@@ -58,8 +58,16 @@ public sealed class BatchCSharpAsyncExample : MonoBehaviour
                 }
             });
         }
-        await Task.WhenAll(tasks);
-        _computeMilliseconds = (float)((Stopwatch.GetTimestamp() - computeStartedAt) * 1000d / Stopwatch.Frequency);
+        Task allTasks = Task.WhenAll(tasks);
+        Task<long> computeFinishedAt = allTasks.ContinueWith(
+            completed => Stopwatch.GetTimestamp(),
+            System.Threading.CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+        await allTasks;
+        // Capture the compute end on the completing worker; the async Start continuation resumes
+        // on Unity's main thread and may otherwise add up to a frame of idle time to this metric.
+        _computeMilliseconds = (float)((await computeFinishedAt - computeStartedAt) * 1000d / Stopwatch.Frequency);
 
         double sum = 0d;
         for (int i = 0; i < _values.Length; i++)
