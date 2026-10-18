@@ -1,10 +1,10 @@
-using System.Threading;
+using System.Threading.Tasks;
 using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Serialization;
 
 /// <summary>
-/// Beginner example: C# parallel workers: persistent C# threads calculate different target bodies at the same time.
+/// Beginner example: Parallel.For calculates gravity for different target bodies at the same time.
 /// The setup and gravity formula are kept in this file so this strategy can be read on its own.
 /// </summary>
 public sealed class Gravity3DCSharpParallelGravityExample : MonoBehaviour
@@ -23,10 +23,6 @@ public sealed class Gravity3DCSharpParallelGravityExample : MonoBehaviour
     private float[] _masses; // Mass of each body, used as the gravity source strength.
     private Vector3[] _accelerations; // Results from the most recent gravity calculation.
     private readonly ProfilerMarker _gravityMarker = new ProfilerMarker("GravitySimulation.CSharpParallel");
-    private AutoResetEvent[] _workerSignals;
-    private Thread[] _workers;
-    private CountdownEvent _workersDone;
-    private volatile bool _stopWorkers;
     #endregion
 
     #region Example implementation
@@ -122,19 +118,6 @@ public sealed class Gravity3DCSharpParallelGravityExample : MonoBehaviour
             }
         }
 
-        // Start workers once. They wait for work and reuse the arrays on every physics step.
-        int workerCount = Mathf.Clamp(SystemInfo.processorCount - 1, 1, _ballCount);
-        _workerSignals = new AutoResetEvent[workerCount];
-        _workers = new Thread[workerCount];
-        _workersDone = new CountdownEvent(workerCount);
-        for (int workerIndex = 0; workerIndex < workerCount; workerIndex++)
-        {
-            _workerSignals[workerIndex] = new AutoResetEvent(false);
-            _workers[workerIndex] = new Thread(ParallelWorkerLoop);
-            _workers[workerIndex].IsBackground = true;
-            _workers[workerIndex].Name = "Gravity worker " + workerIndex;
-            _workers[workerIndex].Start(workerIndex);
-        }
     }
     // Unity calls FixedUpdate once per physics step.
     private void FixedUpdate()
@@ -155,38 +138,8 @@ public sealed class Gravity3DCSharpParallelGravityExample : MonoBehaviour
 
         using (_gravityMarker.Auto())
         {
-            // Signal the existing workers and wait for their assigned body ranges.
-            _workersDone.Reset(_workers.Length);
-            for (int workerIndex = 0; workerIndex < _workers.Length; workerIndex++)
-                _workerSignals[workerIndex].Set();
-            _workersDone.Wait();
-        }
-        // AddForce applies the calculated acceleration; Unity integrates motion and resolves collisions.
-        for (int i = 0; i < _ballCount; i++)
-        {
-            if (_is2D)
-                _bodies2D[i].AddForce(
-                    new Vector2(_accelerations[i].x, _accelerations[i].y) * _bodies2D[i].mass,
-                    ForceMode2D.Force);
-            else
-                _bodies3D[i].AddForce(_accelerations[i], ForceMode.Acceleration);
-        }
-    }
-
-    // Each worker repeatedly calculates its own range without creating a delegate or task per step.
-    private void ParallelWorkerLoop(object workerIndexValue)
-    {
-        int workerIndex = (int)workerIndexValue;
-        int firstBody = workerIndex * _ballCount / _workers.Length;
-        int afterLastBody = (workerIndex + 1) * _ballCount / _workers.Length;
-
-        while (true)
-        {
-            _workerSignals[workerIndex].WaitOne();
-            if (_stopWorkers)
-                return;
-
-            for (int i = firstBody; i < afterLastBody; i++)
+            // Calculate each target body's acceleration in parallel.
+            Parallel.For(0, _ballCount, i =>
             {
                 // GRAVITY FORMULA (one source body j acting on target body i):
                 // force_ij = G * mass_i * mass_j * offset / |offset|^3
@@ -209,27 +162,19 @@ public sealed class Gravity3DCSharpParallelGravityExample : MonoBehaviour
                         inverseDistance * inverseDistance * inverseDistance);
                 }
                 _accelerations[i] = acceleration;
-            }
-
-            _workersDone.Signal();
+            });
         }
-    }
-
-    private void OnDestroy()
-    {
-        // Stop and join the reusable workers before Unity unloads this scene.
-        if (_workers == null)
-            return;
-
-        _stopWorkers = true;
-        for (int workerIndex = 0; workerIndex < _workers.Length; workerIndex++)
-            _workerSignals[workerIndex].Set();
-        for (int workerIndex = 0; workerIndex < _workers.Length; workerIndex++)
+        // AddForce applies the calculated acceleration; Unity integrates motion and resolves collisions.
+        for (int i = 0; i < _ballCount; i++)
         {
-            _workers[workerIndex].Join();
-            _workerSignals[workerIndex].Dispose();
+            if (_is2D)
+                _bodies2D[i].AddForce(
+                    new Vector2(_accelerations[i].x, _accelerations[i].y) * _bodies2D[i].mass,
+                    ForceMode2D.Force);
+            else
+                _bodies3D[i].AddForce(_accelerations[i], ForceMode.Acceleration);
         }
-        _workersDone.Dispose();
     }
+
     #endregion
 }
