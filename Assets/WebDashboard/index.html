@@ -82,9 +82,7 @@
     .method-checkboxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 8px; }
     .method-option { display: flex; min-height: 38px; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); font-size: 11px; font-weight: 600; cursor: pointer; }
     .method-option:has(input:checked) { border-color: #84a976; background: #edf6e9; }
-    .method-option:has(input:disabled) { color: var(--muted); cursor: default; }
     .method-option input { width: 15px; height: 15px; margin: 0; accent-color: var(--green); }
-    .method-option input:disabled { opacity: .65; }
     .method-hint { display: block; margin-top: 7px; color: var(--muted); font-size: 10px; font-weight: 400; line-height: 1.5; }
     .settings-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
     .settings-actions p { margin: 0; color: var(--muted); font-size: 11px; }
@@ -182,7 +180,7 @@
       <fieldset class="method-setting">
         <legend>Processing methods</legend>
         <div id="run-methods" class="method-checkboxes"></div>
-        <span class="method-hint">Choose one or more methods to rerun only those. Select “All methods” to compare the complete set.</span>
+        <span class="method-hint">All methods are checked by default. Uncheck any methods you want to skip, and leave at least one checked.</span>
       </fieldset>
       <div data-settings="gravity">
         <div class="setting-grid" data-gravity-settings="2D">
@@ -263,7 +261,6 @@
     let savedComparisons = loadSavedComparisons();
     let lastSavedCompletion = '';
     const inputSettingsKey = 'simulation-lab-run-settings-v1';
-    const methodSettingsKey = 'simulation-lab-method-settings-v2';
     const processingMethods = {
       gravity: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'], ['unity-parallel', 'C# parallel'],
@@ -279,7 +276,7 @@
         ['unity-jobs', 'Unity Jobs'], ['unity-burst', 'Unity Jobs + Burst']
       ]
     };
-    let selectedMethodByWorkload = loadSelectedMethods();
+    let selectedMethodByWorkload = {};
     let runRequestPending = false;
     let unityConnected = false;
 
@@ -304,26 +301,19 @@
       }
     }
 
-    function loadSelectedMethods() {
-      try { return JSON.parse(localStorage.getItem(methodSettingsKey) || '{}'); }
-      catch (error) { return {}; }
-    }
-
     function getMethodSelection(workload) {
+      const availableMethods = processingMethods[workload] || [];
       const saved = selectedMethodByWorkload[workload];
-      if (saved === undefined || saved === null || saved === '') return { all: true, methods: [] };
-      if (typeof saved === 'string') return { all: false, methods: [saved] };
-      if (Array.isArray(saved)) return saved.length ? { all: false, methods: saved.slice() } : { all: true, methods: [] };
-      return {
-        all: saved.all !== false,
-        methods: Array.isArray(saved.methods) ? saved.methods.slice() : []
-      };
+      if (!Array.isArray(saved)) return availableMethods.map(method => method[0]);
+      return saved.filter(id => availableMethods.some(method => method[0] === id));
     }
 
     function hasSelectedMethods(state) {
-      return Array.isArray(state.selectedMethods)
-        ? state.selectedMethods.length > 0
-        : Boolean(state.selectedMethod);
+      if (!Array.isArray(state.selectedMethods) || state.selectedMethods.length === 0)
+        return Boolean(state.selectedMethod);
+      const workload = state.workload === 'optimization' ? 'randomSearch' : state.workload;
+      const allMethodCount = (processingMethods[workload] || []).length;
+      return allMethodCount > 0 && state.selectedMethods.length < allMethodCount;
     }
 
     function saveCompletedComparison(state) {
@@ -474,19 +464,9 @@
       const workload = selectedComparisonWorkload;
       const methodPicker = document.getElementById('run-methods');
       const methods = processingMethods[workload] || [];
-      const selection = getMethodSelection(workload);
-      selection.methods = selection.methods.filter(id => methods.some(method => method[0] === id));
-      selectedMethodByWorkload[workload] = selection;
+      const selectedMethods = getMethodSelection(workload);
+      selectedMethodByWorkload[workload] = selectedMethods;
       methodPicker.replaceChildren();
-
-      const allOption = document.createElement('label');
-      allOption.className = 'method-option';
-      const allCheckbox = document.createElement('input');
-      allCheckbox.type = 'checkbox';
-      allCheckbox.id = 'run-all-methods';
-      allCheckbox.checked = selection.all;
-      allOption.append(allCheckbox, document.createTextNode('All methods'));
-      methodPicker.append(allOption);
 
       methods.forEach(method => {
         const option = document.createElement('label');
@@ -494,8 +474,7 @@
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.dataset.methodId = method[0];
-        checkbox.checked = !selection.all && selection.methods.includes(method[0]);
-        checkbox.disabled = selection.all;
+        checkbox.checked = selectedMethods.includes(method[0]);
         option.append(checkbox, document.createTextNode(method[1]));
         methodPicker.append(option);
       });
@@ -516,23 +495,24 @@
     }
 
     function updateRunAction() {
-      const selection = getMethodSelection(selectedComparisonWorkload);
-      const selectedMethods = selection.all ? [] : selection.methods;
-      const validSelection = selection.all || selectedMethods.length > 0;
+      const selectedMethods = getMethodSelection(selectedComparisonWorkload);
+      const allMethodCount = (processingMethods[selectedComparisonWorkload] || []).length;
+      const allSelected = allMethodCount > 0 && selectedMethods.length === allMethodCount;
+      const validSelection = selectedMethods.length > 0;
       const button = document.getElementById('run-selected-button');
       const canRun = unityConnected && !runRequestPending && lastState && (lastState.status === 'complete' || lastState.status === 'error');
       button.disabled = !canRun || !validSelection;
       button.textContent = !validSelection
         ? 'Select methods to run'
         : (canRun
-          ? (selection.all ? 'Run all methods' : (selectedMethods.length === 1 ? 'Run ' + methodsName(selectedMethods[0]) : 'Run ' + selectedMethods.length + ' methods'))
+          ? (allSelected ? 'Run all methods' : (selectedMethods.length === 1 ? 'Run ' + methodsName(selectedMethods[0]) : 'Run ' + selectedMethods.length + ' methods'))
           : (unityConnected ? 'Unity comparison is running' : 'Waiting for Unity'));
       document.getElementById('settings-status').textContent = runRequestPending
         ? 'Unity received the request and is preparing the comparison.'
         : (!validSelection
-          ? 'Choose one or more processing methods, or select All methods.'
+          ? 'Check at least one processing method to run.'
           : (canRun
-            ? (selection.all
+            ? (allSelected
               ? 'Unity is ready. This run will replace the latest results for this example.'
               : 'Unity is ready. ' + selectedMethods.length + ' selected method' + (selectedMethods.length === 1 ? '' : 's') + ' will rerun; other saved timings stay available when workload settings match.')
             : (unityConnected ? 'Wait for the current comparison to finish.' : 'Start the benchmark scene in Unity and wait for its current comparison to finish.')));
@@ -547,7 +527,6 @@
       const values = {};
       document.querySelectorAll('[data-settings] input').forEach(input => { values[input.id] = input.value; });
       try { localStorage.setItem(inputSettingsKey, JSON.stringify(values)); } catch (error) { }
-      try { localStorage.setItem(methodSettingsKey, JSON.stringify(selectedMethodByWorkload)); } catch (error) { }
     }
 
     function restoreRunSettings() {
@@ -586,8 +565,7 @@
         evaluations: readSetting('random-evaluations', 100000),
         trials: readSetting('random-trials', 5)
       };
-      const methodSelection = getMethodSelection(workload);
-      request.selectedMethods = methodSelection.all ? [] : methodSelection.methods.slice();
+      request.selectedMethods = getMethodSelection(workload);
       if (workload !== 'gravity')
         request.runs = readSetting(workload === 'batch' ? 'batch-runs' : 'random-runs', 20);
       saveRunSettings();
@@ -996,23 +974,10 @@
     }));
     document.getElementById('run-selected-button').addEventListener('click', runSelectedComparison);
     document.getElementById('run-methods').addEventListener('change', event => {
-      const selection = getMethodSelection(selectedComparisonWorkload);
-      if (event.target.id === 'run-all-methods') {
-        selection.all = event.target.checked;
-        if (selection.all) selection.methods = [];
-        document.querySelectorAll('#run-methods [data-method-id]').forEach(input => {
-          input.disabled = selection.all;
-          if (selection.all) input.checked = false;
-        });
-      } else if (event.target.dataset.methodId) {
-        selection.all = false;
-        selection.methods = Array.from(document.querySelectorAll('#run-methods [data-method-id]:checked'))
+      if (!event.target.dataset.methodId) return;
+      selectedMethodByWorkload[selectedComparisonWorkload] =
+        Array.from(document.querySelectorAll('#run-methods [data-method-id]:checked'))
           .map(input => input.dataset.methodId);
-        document.getElementById('run-all-methods').checked = false;
-      } else {
-        return;
-      }
-      selectedMethodByWorkload[selectedComparisonWorkload] = selection;
       saveRunSettings();
       updateRunAction();
     });
