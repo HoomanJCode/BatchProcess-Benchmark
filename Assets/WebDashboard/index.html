@@ -258,6 +258,7 @@
     let lastComparisonKey = null;
     let comparisonSelectionWasManual = false;
     const overviewStorageKey = 'simulation-lab-latest-comparisons-v3';
+    const methodSelectionStoragePrefix = 'simulation-lab-method-selection-v1-';
     let savedComparisons = loadSavedComparisons();
     let lastSavedCompletion = '';
     try { localStorage.removeItem('simulation-lab-run-settings-v1'); } catch (error) { }
@@ -276,7 +277,7 @@
         ['unity-jobs', 'Unity Jobs'], ['unity-burst', 'Unity Jobs + Burst']
       ]
     };
-    let selectedMethodByWorkload = {};
+    let selectedMethodByWorkload = loadMethodSelections();
     let runRequestPending = false;
     let unityConnected = false;
 
@@ -308,59 +309,38 @@
       return saved.filter(id => availableMethods.some(method => method[0] === id));
     }
 
-    function hasSelectedMethods(state) {
-      if (!Array.isArray(state.selectedMethods) || state.selectedMethods.length === 0)
-        return Boolean(state.selectedMethod);
-      const workload = state.workload === 'optimization' ? 'randomSearch' : state.workload;
-      const allMethodCount = (processingMethods[workload] || []).length;
-      return allMethodCount > 0 && state.selectedMethods.length < allMethodCount;
+    function loadMethodSelections() {
+      const selections = {};
+      Object.keys(processingMethods).forEach(workload => {
+        try {
+          const saved = JSON.parse(localStorage.getItem(methodSelectionStoragePrefix + workload) || 'null');
+          if (Array.isArray(saved))
+            selections[workload] = saved.filter(id => processingMethods[workload].some(method => method[0] === id));
+        } catch (error) { }
+      });
+      return selections;
+    }
+
+    function saveMethodSelection(workload, selection) {
+      const availableMethods = processingMethods[workload] || [];
+      selectedMethodByWorkload[workload] = Array.from(new Set(selection.filter(id =>
+        availableMethods.some(method => method[0] === id))));
+      try {
+        localStorage.setItem(methodSelectionStoragePrefix + workload, JSON.stringify(selectedMethodByWorkload[workload]));
+      } catch (error) { }
     }
 
     function saveCompletedComparison(state) {
       if (state.status !== 'complete' || !state.results || !state.results.length) return;
       const completionId = state.workload + '-' + state.dimension + '-' + state.updatedUtc;
       const key = state.workload === 'gravity' ? 'gravity-' + (state.dimension || '3D') : state.workload;
-      const hasMethodSubset = hasSelectedMethods(state);
-      if (completionId === lastSavedCompletion) {
-        if (hasMethodSubset && savedComparisons[key]) state.results = savedComparisons[key].results;
-        return;
-      }
+      if (completionId === lastSavedCompletion) return;
       lastSavedCompletion = completionId;
-      let savedResults = state.results;
-      if (hasMethodSubset && savedComparisons[key] && savedComparisons[key].results) {
-        const previousResults = savedComparisons[key].results;
-        const updatedAlgorithms = state.results.map(result => result.algorithm || '');
-        const oldResultsForUpdatedAlgorithms = previousResults.filter(previous =>
-          updatedAlgorithms.includes(previous.algorithm || ''));
-        const settingsMatch = oldResultsForUpdatedAlgorithms.every(previous => state.results.some(current =>
-          (current.algorithm || '') === (previous.algorithm || '') &&
-          current.balls === previous.balls && current.workItems === previous.workItems &&
-          current.iterations === previous.iterations && current.batchSize === previous.batchSize &&
-          current.evaluationCount === previous.evaluationCount && current.particleCount === previous.particleCount));
-        // Keep other methods only when their saved timings used the same workload settings.
-        savedResults = settingsMatch
-          ? previousResults.slice()
-          : previousResults.filter(previous => !updatedAlgorithms.includes(previous.algorithm || ''));
-        state.results.forEach(current => {
-          const existingIndex = savedResults.findIndex(previous =>
-            previous.algorithm === current.algorithm && previous.strategy === current.strategy);
-          if (existingIndex >= 0) savedResults[existingIndex] = current;
-          else savedResults.push(current);
-        });
-      }
-      // Keep the just-finished live state aligned with the merged comparison shown below.
-      if (hasMethodSubset) state.results = savedResults;
       savedComparisons[key] = {
         status: 'complete',
         workload: state.workload,
         dimension: state.dimension || '',
-        results: hasMethodSubset
-          ? savedResults
-          : (state.workload === 'optimization'
-          ? (savedComparisons[key] && savedComparisons[key].results || []).filter(previous =>
-              previous.algorithm !== 'Particle swarm (PSO)' &&
-              !state.results.some(current => current.algorithm === previous.algorithm)).concat(state.results)
-          : state.results),
+        results: state.results,
         measurementSeconds: state.measurementSeconds || 0,
         batchRunsPerStrategy: state.batchRunsPerStrategy || 0,
         completedUtc: state.updatedUtc || new Date().toISOString()
@@ -514,7 +494,7 @@
           : (canRun
             ? (allSelected
               ? 'Unity is ready. This run will replace the latest results for this example.'
-              : 'Unity is ready. ' + selectedMethods.length + ' selected method' + (selectedMethods.length === 1 ? '' : 's') + ' will rerun; other saved timings stay available when workload settings match.')
+              : 'Unity is ready. Only the ' + selectedMethods.length + ' selected method' + (selectedMethods.length === 1 ? '' : 's') + ' will run and appear in the latest results.')
             : (unityConnected ? 'Wait for the current comparison to finish.' : 'Start the benchmark scene in Unity and wait for its current comparison to finish.')));
     }
 
@@ -957,10 +937,36 @@
     document.getElementById('run-selected-button').addEventListener('click', runSelectedComparison);
     document.getElementById('run-methods').addEventListener('change', event => {
       if (!event.target.dataset.methodId) return;
-      selectedMethodByWorkload[selectedComparisonWorkload] =
+      saveMethodSelection(selectedComparisonWorkload,
         Array.from(document.querySelectorAll('#run-methods [data-method-id]:checked'))
-          .map(input => input.dataset.methodId);
+          .map(input => input.dataset.methodId));
       updateRunAction();
+    });
+    window.addEventListener('storage', event => {
+      if (event.key && event.key.startsWith(methodSelectionStoragePrefix)) {
+        const workload = event.key.slice(methodSelectionStoragePrefix.length);
+        if (processingMethods[workload]) {
+          try {
+            const saved = JSON.parse(event.newValue || 'null');
+            if (Array.isArray(saved))
+              selectedMethodByWorkload[workload] = saved.filter(id => processingMethods[workload].some(method => method[0] === id));
+            else
+              delete selectedMethodByWorkload[workload];
+          } catch (error) {
+            delete selectedMethodByWorkload[workload];
+          }
+          if (selectedComparisonWorkload === workload) renderRunSettings();
+        }
+      }
+      if (event.key === overviewStorageKey) {
+        try {
+          savedComparisons = event.newValue ? JSON.parse(event.newValue) : {};
+        } catch (error) {
+          savedComparisons = {};
+        }
+        renderOverview(lastState);
+        renderComparisonSelection();
+      }
     });
     window.addEventListener('resize', () => { if (lastState) drawTimeline(lastState); });
     renderOverview(null);

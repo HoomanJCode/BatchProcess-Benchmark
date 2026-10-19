@@ -303,6 +303,9 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     private static bool IsValidSelectedMethods(DashboardRunRequest request)
     {
         string[] methods = GetSelectedMethods(request);
+        if (methods.Length == 0)
+            return false;
+
         HashSet<string> seen = new HashSet<string>();
         for (int i = 0; i < methods.Length; i++)
         {
