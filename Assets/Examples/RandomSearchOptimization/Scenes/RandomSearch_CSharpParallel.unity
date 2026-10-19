@@ -150,7 +150,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: GravitySimulation.Example.RandomSearchOptimization::RandomSearchProcessingExample
   _processingMethod: 2
   _particleCount: 1
-  _iterations: 6399
+  _iterations: 99999
   _trialCount: 5
   _randomSeed: 2468
   _evaluationCount: 0

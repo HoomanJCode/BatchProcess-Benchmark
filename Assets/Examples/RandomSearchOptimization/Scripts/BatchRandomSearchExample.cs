@@ -8,7 +8,7 @@ using UnityEngine;
 public sealed class BatchRandomSearchExample : MonoBehaviour
 {
     #region Settings and reusable data
-    [SerializeField, Min(1)] private int _evaluationBudgetPerTrial = 6400;
+    [SerializeField, Min(1)] private int _evaluationBudgetPerTrial = 100000;
     [SerializeField, Min(1)] private int _trialCount = 5;
     [SerializeField] private int _randomSeed = 2468;
     [SerializeField] private int _evaluationCount;

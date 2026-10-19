@@ -199,7 +199,7 @@ public static class ExampleSceneGeneration
             SerializedObject settings = new SerializedObject(example);
             settings.FindProperty("_processingMethod").intValue = method;
             settings.FindProperty("_particleCount").intValue = 1;
-            settings.FindProperty("_iterations").intValue = 6399;
+            settings.FindProperty("_iterations").intValue = 99999;
             settings.FindProperty("_trialCount").intValue = 5;
             settings.FindProperty("_randomSeed").intValue = 2468;
             settings.ApplyModifiedPropertiesWithoutUndo();

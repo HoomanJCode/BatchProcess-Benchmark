@@ -12,7 +12,7 @@ public sealed class RandomSearchProcessingExample : MonoBehaviour
 {
     [SerializeField, Range(0, 4)] private int _processingMethod; // Methods follow the dashboard order.
     [SerializeField, Min(1)] private int _particleCount = 1; // Kept as one candidate per iteration for result reporting.
-    [SerializeField, Min(0)] private int _iterations = 6399;
+    [SerializeField, Min(0)] private int _iterations = 99999;
     [SerializeField, Min(1)] private int _trialCount = 5;
     [SerializeField] private int _randomSeed = 2468;
     [SerializeField] private int _evaluationCount;

@@ -240,7 +240,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 13be3436b6fe40b39aeddb46450311bb, type: 3}
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::BatchRandomSearchExample
-  _evaluationBudgetPerTrial: 6400
+  _evaluationBudgetPerTrial: 100000
   _trialCount: 5
   _randomSeed: 2468
   _evaluationCount: 0

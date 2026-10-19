@@ -199,7 +199,7 @@
         <label>Measured runs<input type="number" id="batch-runs" min="1" max="20" value="20"></label>
       </div>
       <div class="setting-grid" data-settings="randomSearch" hidden>
-        <label>Evaluations per trial<input type="number" id="random-evaluations" min="1" max="5000000" value="6400"></label>
+        <label>Evaluations per trial<input type="number" id="random-evaluations" min="1" max="5000000" value="100000"></label>
         <label>Trials per method<input type="number" id="random-trials" min="1" max="100" value="5"></label>
         <label>Measured runs<input type="number" id="random-runs" min="1" max="20" value="20"></label>
       </div>
@@ -501,6 +501,8 @@
     function restoreRunSettings() {
       try {
         const values = JSON.parse(localStorage.getItem(inputSettingsKey) || '{}');
+        if (Number(values['batch-items']) === 6000) values['batch-items'] = 100000;
+        if (Number(values['random-evaluations']) === 6400) values['random-evaluations'] = 100000;
         document.querySelectorAll('[data-settings] input').forEach(input => {
           if (values[input.id] !== undefined) input.value = values[input.id];
         });
@@ -529,7 +531,7 @@
         items: readSetting('batch-items', 100000),
         iterations: workload === 'batch' ? readSetting('batch-iterations', 100) : 99,
         batchSize: readSetting('batch-size', 1000),
-        evaluations: readSetting('random-evaluations', 6400),
+        evaluations: readSetting('random-evaluations', 100000),
         trials: readSetting('random-trials', 5)
       };
       request.selectedMethod = document.getElementById('run-method').value;
