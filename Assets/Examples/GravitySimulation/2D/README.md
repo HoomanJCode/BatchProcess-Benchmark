@@ -3,7 +3,6 @@
 This example uses Unity's 2D scene and physics components. The balls are circle sprites with `Rigidbody2D` and `CircleCollider2D`; they move in the XY plane.
 
 - Teaching scenes: `Scenes/Gravity_*.unity`
-- Equal-size profiling scenes: `Scenes/Benchmark/`
 - Strategy scripts: `Scripts/`
 - Sprite resource: `Resources/GravityBall.png`
 - Dimension-specific scene menu: **Tools → Gravity 2D → Regenerate Scenes**
@@ -19,4 +18,4 @@ The work per physics step is **O(N²)** for `N` balls. Positions, masses, and ac
 
 The C# async strategy splits target balls into a bounded set of `Task.Run` worker chunks and waits for them before applying forces. Its profiler marker covers task creation, scheduling, and completion. Each worker checks every source ball sequentially. The C# parallel strategy uses `Parallel.For` over target balls; its inner source-ball loop is sequential. Both strategies keep Unity physics reads and force application on the main thread. The async gravity calculation still waits inside `FixedUpdate`, so its calculation is parallel but does not leave the physics step running asynchronously.
 
-Use `Scenes/Gravity_Benchmark.unity` to run the five Unity processing methods. Results appear in the 2D dashboard tab.
+The array-only processing benchmark is a separate example at `../../GravitySimulationBenchmark/2D/`.

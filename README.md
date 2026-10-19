@@ -11,7 +11,7 @@ This Unity project presents four workloads: Gravity 2D, Gravity 3D, Simple Itera
 
 ## Local real-time dashboard
 
-To fill every dashboard tab in one run, open `Assets/WebDashboard/Scenes/All_Examples_Benchmark.unity` and press **Play**. It runs Gravity 2D, Gravity 3D, Simple Iteration, and Random Search one after another. Unity serves the page locally at [http://127.0.0.1:8765/](http://127.0.0.1:8765/), and the browser saves each finished example on this PC. You can still run an individual `Gravity_Benchmark`, `SimpleIteration_Benchmark`, or `Optimization_Benchmark` scene when you only want that workload.
+To fill every dashboard tab in one run, open `Assets/WebDashboard/Scenes/All_Examples_Benchmark.unity` and press **Play**. It runs Gravity 2D, Gravity 3D, Simple Iteration, and Random Search one after another. Unity serves the page locally at [http://127.0.0.1:8765/](http://127.0.0.1:8765/), and the browser saves each finished example on this PC. For an individual gravity run, use `Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Gravity_Benchmark.unity` or the matching 3D scene.
 
 Dashboard assets and its README are under [`Assets/WebDashboard`](Assets/WebDashboard/README.md).
 

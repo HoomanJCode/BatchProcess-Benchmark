@@ -159,7 +159,7 @@
 
     <div class="section-head"><div><h2>All comparison examples</h2><p>Run All Examples Benchmark to fill every tab; this page keeps the latest completed results in this browser.</p></div><span class="pill">4 EXAMPLES</span></div>
     <section class="overview-grid" aria-label="Overview of every comparison example">
-      <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare five Unity methods in dedicated 2D and 3D workloads.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene and press Play.</p><p class="overview-settings" id="gravity-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
+      <article class="panel overview-card"><h3>Gravity simulation</h3><p>Compare five Unity methods in dedicated 2D and 3D workloads.</p><strong id="gravity-overview-title">No completed run yet</strong><p id="gravity-overview-detail">Open the 2D or 3D Gravity_Benchmark scene in GravitySimulationBenchmark and press Play.</p><p class="overview-settings" id="gravity-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="gravity-overview-results" class="overview-strategies">No results saved.</div></details></article>
       <article class="panel overview-card"><h3>Simple iteration</h3><p>Run the same beginner-friendly calculation through five Unity methods.</p><strong id="batch-overview-title">No completed run yet</strong><p id="batch-overview-detail">Open SimpleIteration_Benchmark in Unity and press Play.</p><p class="overview-settings" id="batch-overview-settings">Settings: waiting for results</p><details><summary>Show strategy results</summary><div id="batch-overview-results" class="overview-strategies">No results saved.</div></details></article>
       <article class="panel overview-card"><h3>Random Search</h3><p>Compare Random Search across five Unity methods with the same search workload.</p><strong id="random-overview-title">No completed run yet</strong><p id="random-overview-detail">Open Optimization_Benchmark in Unity and press Play.</p><p class="overview-settings" id="random-overview-settings">Settings: waiting for results</p><details><summary>Show method runtimes</summary><div id="random-overview-results" class="overview-strategies">No results saved.</div></details></article>
     </section>
@@ -645,7 +645,7 @@
       const gravityDuration = (current && current.measurementSeconds) || (comparison2D && comparison2D.measurementSeconds) || (comparison3D && comparison3D.measurementSeconds);
       document.getElementById('gravity-overview-settings').textContent = 'Balls: 2D ' + (balls2D || '—') + ' · 3D ' + (balls3D || '—') + (gravityDuration ? ' · ' + gravityDuration + 's per method' : '');
       if (!saved2D && !saved3D && !isRunning) {
-        detail.textContent = 'Open the 2D or 3D Gravity_Benchmark scene and press Play.';
+        detail.textContent = 'Open the 2D or 3D Gravity_Benchmark scene in GravitySimulationBenchmark and press Play.';
         return;
       }
       const describeWinner = comparison => {

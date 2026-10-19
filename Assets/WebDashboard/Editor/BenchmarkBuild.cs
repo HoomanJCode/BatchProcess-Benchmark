@@ -21,18 +21,18 @@ public static class GravityBenchmarkBuild
 
         string[] scenes =
         {
-            "Assets/Examples/GravitySimulation/2D/Scenes/Gravity_Benchmark.unity",
-            "Assets/Examples/GravitySimulation/3D/Scenes/Gravity_Benchmark.unity",
-            "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_SingleThreaded.unity",
-            "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_CSharpAsync.unity",
-            "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_CSharpParallel.unity",
-            "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_UnityJobs.unity",
-            "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity",
-            "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_SingleThreaded.unity",
-            "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_CSharpAsync.unity",
-            "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_CSharpParallel.unity",
-            "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_UnityJobs.unity",
-            "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity"
+            "Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Gravity_Benchmark.unity",
+            "Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Gravity_Benchmark.unity",
+            "Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Benchmark/Gravity_SingleThreaded.unity",
+            "Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Benchmark/Gravity_CSharpAsync.unity",
+            "Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Benchmark/Gravity_CSharpParallel.unity",
+            "Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Benchmark/Gravity_UnityJobs.unity",
+            "Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity",
+            "Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Benchmark/Gravity_SingleThreaded.unity",
+            "Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Benchmark/Gravity_CSharpAsync.unity",
+            "Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Benchmark/Gravity_CSharpParallel.unity",
+            "Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Benchmark/Gravity_UnityJobs.unity",
+            "Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity"
         };
         BuildWindowsPlayer(scenes);
     }

@@ -6,6 +6,12 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Gravity_Benchmark.unity
+    guid: 0ffcf863d1efbf940a91fc3c46267551
+  - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Gravity_Benchmark.unity
+    guid: 90ec4c0c19fd36e4e96023f07fa364c1
+  - enabled: 1
     path: Assets/Examples/GravitySimulation/2D/Scenes/Gravity_SingleThreaded.unity
     guid: b377d29b0c605a9408d1770e4bb274a1
   - enabled: 1
@@ -75,43 +81,37 @@ EditorBuildSettings:
     path: Assets/WebDashboard/Scenes/Optimization_Benchmark.unity
     guid: 7dea564a9a312cc4aac483600a52924e
   - enabled: 1
-    path: Assets/Examples/GravitySimulation/2D/Scenes/Gravity_Benchmark.unity
-    guid: 0ffcf863d1efbf940a91fc3c46267551
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/3D/Scenes/Gravity_Benchmark.unity
-    guid: 90ec4c0c19fd36e4e96023f07fa364c1
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_SingleThreaded.unity
-    guid: 2d92386f9382dba448ca0ac7a94bb666
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_SingleThreaded.unity
-    guid: 70842ae51e76dd047bc544d9a00f77d3
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_CSharpAsync.unity
-    guid: 8de2bc9d53852c84e85cae1229f23393
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_CSharpAsync.unity
-    guid: b2fd3619cf9dd0643aa587f57d3469c2
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_CSharpParallel.unity
-    guid: 24d6b247325673048bcdcad975feabb4
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_CSharpParallel.unity
-    guid: b2e7fc8f3a1c8384587d7d446f5dafd6
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_UnityJobs.unity
-    guid: 7847c70f607dedc478186fd8b5ea4998
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_UnityJobs.unity
-    guid: 5b202305216185547959a79a6805a7bd
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity
-    guid: 92fb61741aaf6524991a0353937733c2
-  - enabled: 1
-    path: Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity
-    guid: 57cc1df3c8e19ac49867bb6f470b84b0
-  - enabled: 1
     path: Assets/WebDashboard/Scenes/All_Examples_Benchmark.unity
     guid: 8dc33bf217364ab458111a7e6048bb45
+  - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Benchmark/Gravity_SingleThreaded.unity
+    guid: b093c1007a07d4f4cb1a71ba86a6fcee
+  - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Benchmark/Gravity_SingleThreaded.unity
+    guid: cccce456d99e1ce48b11cb4b87c26e8b
+  - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Benchmark/Gravity_CSharpAsync.unity
+    guid: c67bf0b082f543c4887c79198513654d
+  - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Benchmark/Gravity_CSharpAsync.unity
+    guid: 7789395a8328850478b6c38231a101ee
+  - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Benchmark/Gravity_CSharpParallel.unity
+    guid: 9824c19e855564f43a83ccba6c0faab7
+  - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Benchmark/Gravity_CSharpParallel.unity
+    guid: 42737930a14fccc4cb517287327c1837
+  - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Benchmark/Gravity_UnityJobs.unity
+    guid: a854b6d0245351c40a71375cd8178144
+  - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Benchmark/Gravity_UnityJobs.unity
+    guid: 40066a292fa16a9498dd4107ae8166a6
+  - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity
+    guid: ee60d3c4670034e44b4b51cced49b7cc
+  - enabled: 1
+    path: Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Benchmark/Gravity_UnityJobsBurst.unity
+    guid: 9ece31f082a20464dbe974b44c01c0a8
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

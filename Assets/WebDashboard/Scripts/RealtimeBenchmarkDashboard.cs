@@ -35,8 +35,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     // Collect one summed value for the current frame, even if a marker runs more than once.
     private const ProfilerRecorderOptions FrameRecorderOptions =
         ProfilerRecorderOptions.SumAllSamplesInFrame | ProfilerRecorderOptions.WrapAroundWhenCapacityReached;
-    private const string TwoDBenchmarkSceneFolder = "Assets/Examples/GravitySimulation/2D/Scenes/Benchmark/";
-    private const string ThreeDBenchmarkSceneFolder = "Assets/Examples/GravitySimulation/3D/Scenes/Benchmark/";
+    private const string TwoDBenchmarkSceneFolder = "Assets/Examples/GravitySimulationBenchmark/2D/Scenes/Benchmark/";
+    private const string ThreeDBenchmarkSceneFolder = "Assets/Examples/GravitySimulationBenchmark/3D/Scenes/Benchmark/";
     private const string SimpleIterationSceneFolder = "Assets/Examples/SimpleIteration/Scenes/";
     private const string RandomSearchSceneFolder = "Assets/Examples/RandomSearchOptimization/Scenes/";
 
