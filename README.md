@@ -106,7 +106,11 @@ Assets/
 │   ├── GravitySimulation/
 │   │   ├── 2D/                  Scenes, scripts, resources, editor tools, and docs
 │   │   ├── 3D/                  Scenes, scripts, resources, editor tools, and docs
-│   │   └── Editor/              Shared gravity comparison-scene tools
+│   ├── GravitySimulationBenchmark/
+│   │   ├── 2D/                  Benchmark scenes, method scripts, and docs
+│   │   ├── 3D/                  Benchmark scenes, method scripts, and docs
+│   │   ├── Scripts/             Shared calculation strategies
+│   │   └── Editor/              Benchmark scene generation
 │   ├── SimpleIteration/         Scenes, scripts, resources, editor tools, and docs
 │   └── RandomSearchOptimization/ Scenes, scripts, resources, editor tools, and docs
 └── WebDashboard/                Local dashboard page, runner, scenes, editor tools, docs
