@@ -43,7 +43,7 @@ public sealed class Gravity2DUnityJobsBurstGravityExample : MonoBehaviour
         _masses = new float[_ballCount];
         _accelerations = new Vector3[_ballCount];
         // Resources lets every 2D ball reuse one circle sprite asset.
-        Sprite ballSprite = Resources.Load<Sprite>("GravityBall");
+        Sprite ballSprite = BenchmarkRunSettings.IsCalculationOnlyGravityBenchmark ? null : Resources.Load<Sprite>("GravityBall");
         // Jobs read NativeArrays, so allocate native input and output buffers once.
         _nativePositions = new NativeArray<Vector3>(_ballCount, Allocator.Persistent);
         _nativeMasses = new NativeArray<float>(_ballCount, Allocator.Persistent);
@@ -90,9 +90,12 @@ public sealed class Gravity2DUnityJobsBurstGravityExample : MonoBehaviour
                 ball.transform.position = position;
                 ball.transform.localScale = Vector3.one * ballDiameter;
 
-                SpriteRenderer spriteRenderer = ball.AddComponent<SpriteRenderer>();
-                spriteRenderer.sprite = ballSprite;
-                spriteRenderer.color = ballColor;
+                if (!BenchmarkRunSettings.IsCalculationOnlyGravityBenchmark)
+                {
+                    SpriteRenderer spriteRenderer = ball.AddComponent<SpriteRenderer>();
+                    spriteRenderer.sprite = ballSprite;
+                    spriteRenderer.color = ballColor;
+                }
 
                 CircleCollider2D circle = ball.AddComponent<CircleCollider2D>();
                 circle.radius = 0.5f;
@@ -110,11 +113,20 @@ public sealed class Gravity2DUnityJobsBurstGravityExample : MonoBehaviour
             else
             {
                 // The 3D scene uses a lit sphere mesh with Unity's 3D physics components.
-                GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                GameObject sphere;
+                if (BenchmarkRunSettings.IsCalculationOnlyGravityBenchmark)
+                {
+                    sphere = new GameObject();
+                    sphere.AddComponent<SphereCollider>();
+                }
+                else
+                {
+                    sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                    BenchmarkRunSettings.SetSharedBallColor(sphere.GetComponent<Renderer>(), ballColor);
+                }
                 sphere.name = "Gravity Ball " + i.ToString("D3");
                 sphere.transform.position = position;
                 sphere.transform.localScale = Vector3.one * ballDiameter;
-                BenchmarkRunSettings.SetSharedBallColor(sphere.GetComponent<Renderer>(), ballColor);
 
                 Rigidbody body = sphere.AddComponent<Rigidbody>();
                 body.mass = mass;
