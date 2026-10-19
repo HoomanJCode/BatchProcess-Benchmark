@@ -13,6 +13,11 @@ param(
     [int]$WarmupSeconds = 2,
     [ValidateRange(1, 3600)]
     [int]$MeasurementSeconds = 8,
+    [ValidateRange(1024, 65535)]
+    [int]$DashboardPort = 8765,
+    [ValidateRange(30, 3600)]
+    [int]$TimeoutSeconds = 900,
+    [switch]$NoOpenDashboard,
     [string]$OutputPath
 )
 
@@ -45,10 +50,61 @@ if (-not (Test-Path -LiteralPath $playerPath)) {
 }
 
 Write-Host "Running $Dimension gravity benchmark without a graphics window..."
-$playerArguments = "-batchmode -nographics -logFile `"$playerLog`" -gravity-benchmark-headless -gravity-benchmark-dimension $Dimension -gravity-benchmark-balls $BallCount -gravity-benchmark-warmup-seconds $WarmupSeconds -gravity-benchmark-measurement-seconds $MeasurementSeconds -gravity-benchmark-output `"$OutputPath`""
-$playerProcess = Start-Process -FilePath $playerPath -ArgumentList $playerArguments -Wait -PassThru
-if ($playerProcess.ExitCode -ne 0) {
-    throw "Headless benchmark failed with exit code $($playerProcess.ExitCode). See $playerLog"
+$playerArguments = "-batchmode -nographics -logFile `"$playerLog`" -gravity-benchmark-headless -gravity-benchmark-host-dashboard -gravity-benchmark-dimension $Dimension -gravity-benchmark-balls $BallCount -gravity-benchmark-port $DashboardPort -gravity-benchmark-warmup-seconds $WarmupSeconds -gravity-benchmark-measurement-seconds $MeasurementSeconds -gravity-benchmark-output `"$OutputPath`""
+$runStartedUtc = [DateTime]::UtcNow
+$playerProcess = Start-Process -FilePath $playerPath -ArgumentList $playerArguments -PassThru
+$deadlineUtc = $runStartedUtc.AddSeconds($TimeoutSeconds)
+$report = $null
+
+while ([DateTime]::UtcNow -lt $deadlineUtc) {
+    $playerProcess.Refresh()
+
+    if (Test-Path -LiteralPath $OutputPath) {
+        $reportFile = Get-Item -LiteralPath $OutputPath
+        if ($reportFile.LastWriteTimeUtc -ge $runStartedUtc) {
+            try {
+                $candidate = Get-Content -LiteralPath $OutputPath -Raw | ConvertFrom-Json
+                if ($candidate.status -eq "complete" -or $candidate.status -eq "error") {
+                    $report = $candidate
+                    break
+                }
+            } catch {
+                # The player may still be writing the report; retry until it is valid JSON.
+            }
+        }
+    }
+
+    if ($playerProcess.HasExited) {
+        throw "Headless benchmark player exited before writing a complete report. See $playerLog"
+    }
+    Start-Sleep -Milliseconds 250
+}
+
+if ($null -eq $report) {
+    $playerProcess.Refresh()
+    if (-not $playerProcess.HasExited) {
+        Stop-Process -Id $playerProcess.Id -Force
+    }
+    throw "Headless benchmark did not finish within $TimeoutSeconds seconds. See $playerLog"
+}
+if ($report.status -ne "complete") {
+    throw "Headless benchmark reported status '$($report.status)': $($report.phase). See $playerLog"
+}
+
+$dashboardUrl = "http://127.0.0.1:$DashboardPort/"
+try {
+    $null = Invoke-WebRequest -Uri $dashboardUrl -UseBasicParsing -TimeoutSec 5
+    $dashboardState = Invoke-RestMethod -Uri "$dashboardUrl`state" -TimeoutSec 5
+    if ($dashboardState.status -ne "complete") {
+        throw "Dashboard state is '$($dashboardState.status)' instead of 'complete'."
+    }
+} catch {
+    throw "Benchmark results were written to $OutputPath, but the web panel did not start at $dashboardUrl. See $playerLog. $($_.Exception.Message)"
 }
 
 Write-Host "JSON report: $OutputPath"
+Write-Host "Web panel: $dashboardUrl"
+Write-Host "Headless dashboard host PID: $($playerProcess.Id)"
+if (-not $NoOpenDashboard) {
+    Start-Process $dashboardUrl
+}

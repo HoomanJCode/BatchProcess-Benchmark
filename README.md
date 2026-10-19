@@ -31,7 +31,7 @@ Close the Unity Editor before using a headless helper. Use the Unity Editor exec
   -UnityEditorPath "C:\Program Files\Unity\Hub\Editor\6000.5.1f1\Editor\Unity.exe"
 ```
 
-Reports are saved under `Build/Headless/`. The dashboard build can be used for live presentation; headless reports are for command-line profiling.
+The gravity helper starts a local web panel at `http://127.0.0.1:8765/` after the comparison and keeps the headless player running to serve it. The panel displays the completed results and can launch another comparison. Use `-DashboardPort 8766` to choose another port or `-NoOpenDashboard` to keep the page from opening automatically. When finished, stop the `GravityBenchmark.exe` process in Task Manager. Reports are saved under `Build/Headless/`.
 
 ### Example gravity benchmark result
 

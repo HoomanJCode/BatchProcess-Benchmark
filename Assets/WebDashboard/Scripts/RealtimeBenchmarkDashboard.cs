@@ -83,6 +83,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     private float _sampleTimer;
     private bool _hasStarted;
     private bool _headlessMode;
+    private bool _hostDashboardInHeadlessMode;
     private bool _allExamplesFinished;
     private string _headlessOutputPath;
     private bool _acceptDashboardCommands;
@@ -100,6 +101,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         // The runner must survive while each example scene is loaded in turn.
         DontDestroyOnLoad(gameObject);
         _headlessMode = HasCommandLineArgument("-gravity-benchmark-headless");
+        _hostDashboardInHeadlessMode = _headlessMode &&
+            HasCommandLineArgument("-gravity-benchmark-host-dashboard");
         if (_headlessMode)
         {
             string dimension = GetCommandLineValue("-gravity-benchmark-dimension");
@@ -124,6 +127,12 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             if (int.TryParse(warmup, out parsedWarmup) && parsedWarmup >= 0)
                 _warmupSeconds = parsedWarmup;
 
+            string dashboardPort = GetCommandLineValue("-gravity-benchmark-port");
+            int parsedDashboardPort;
+            if (int.TryParse(dashboardPort, out parsedDashboardPort) &&
+                parsedDashboardPort >= 1024 && parsedDashboardPort <= 65535)
+                _dashboardPort = parsedDashboardPort;
+
             _headlessOutputPath = GetCommandLineValue("-gravity-benchmark-output");
             if (string.IsNullOrEmpty(_headlessOutputPath))
             {
@@ -142,7 +151,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _state.phase = _headlessMode ? "Starting headless profiler run" : "Starting local profiler stream";
         _state.measurementSeconds = _measurementSeconds;
         _state.warmupSeconds = _warmupSeconds;
-        if (!_headlessMode)
+        if (!_headlessMode || _hostDashboardInHeadlessMode)
         {
             string dashboardHtmlPath = Path.GetFullPath(Path.Combine(
                 Application.dataPath, "WebDashboard", "index.html"));
@@ -171,7 +180,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     // The editor stays in Play mode after a comparison so the local page can start another run.
     private void Update()
     {
-        if (_headlessMode || _dashboardServer == null || !_acceptDashboardCommands)
+        if (_dashboardServer == null || !_acceptDashboardCommands)
             return;
 
         string requestJson;
@@ -601,7 +610,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         if (_headlessMode)
             Debug.Log("Headless comparison finished with " + _results.Count + " results.");
         FinishHeadlessRun(0);
-        _acceptDashboardCommands = !_headlessMode && !_isAllExamplesComparison;
+        _acceptDashboardCommands = _dashboardServer != null && _dashboardServer.IsRunning && !_isAllExamplesComparison;
     }
 
     private bool TryReadBatchValues(MonoBehaviour example, out float computeMs, out float wallMs,
@@ -664,7 +673,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _state.dashboardMessage = scenePath;
         PublishState();
         FinishHeadlessRun(exitCode);
-        _acceptDashboardCommands = !_headlessMode;
+        _acceptDashboardCommands = _dashboardServer != null && _dashboardServer.IsRunning;
     }
 
     private void LateUpdate()
@@ -765,7 +774,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 _state.dashboardMessage = scenePath;
                 PublishState();
                 FinishHeadlessRun(2);
-                _acceptDashboardCommands = !_headlessMode;
+                _acceptDashboardCommands = _dashboardServer != null && _dashboardServer.IsRunning;
                 yield break;
             }
 
@@ -777,7 +786,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 _state.dashboardMessage = scenePath;
                 PublishState();
                 FinishHeadlessRun(3);
-                _acceptDashboardCommands = !_headlessMode;
+                _acceptDashboardCommands = _dashboardServer != null && _dashboardServer.IsRunning;
                 yield break;
             }
             yield return load;
@@ -835,7 +844,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         PublishState();
         _requestedMethod = "";
         FinishHeadlessRun(0);
-        _acceptDashboardCommands = !_headlessMode && !_isAllExamplesComparison;
+        _acceptDashboardCommands = _dashboardServer != null && _dashboardServer.IsRunning && !_isAllExamplesComparison;
     }
 
     // A standalone player in batch mode writes a report instead of publishing dashboard updates.
@@ -867,8 +876,12 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             exitCode = 4;
         }
 
-        // Application.Quit ends a standalone player and leaves the Unity Editor alone.
-        if (!Application.isEditor && (!_isAllExamplesComparison || _allExamplesFinished || exitCode != 0))
+        // Keep a headless standalone player alive after its report is saved so it can keep
+        // serving the local dashboard and accept another run request from the browser.
+        bool hostingDashboard = _hostDashboardInHeadlessMode &&
+            _dashboardServer != null && _dashboardServer.IsRunning;
+        if (!Application.isEditor && !hostingDashboard &&
+            (!_isAllExamplesComparison || _allExamplesFinished || exitCode != 0))
             Application.Quit(exitCode);
     }
 

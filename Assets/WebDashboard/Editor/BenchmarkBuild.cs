@@ -106,6 +106,15 @@ public static class GravityBenchmarkBuild
         if (report.summary.result != BuildResult.Succeeded)
             throw new BuildFailedException("Headless benchmark build failed: " + report.summary.result);
 
+        // The standalone player also hosts the local dashboard, so bundle the single-file page
+        // beside its data directory. Its styles and scripts are inline in index.html.
+        string dashboardSource = Path.Combine(projectRoot, "Assets", "WebDashboard", "index.html");
+        string playerDataDirectory = Path.Combine(outputDirectory,
+            Path.GetFileNameWithoutExtension(fileName) + "_Data");
+        string dashboardDirectory = Path.Combine(playerDataDirectory, "WebDashboard");
+        Directory.CreateDirectory(dashboardDirectory);
+        File.Copy(dashboardSource, Path.Combine(dashboardDirectory, "index.html"), true);
+
         Debug.Log("Headless gravity benchmark built at " + options.locationPathName);
     }
 }
