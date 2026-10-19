@@ -351,7 +351,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 89eac6476f48012438907a39d9548f67, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GravityBenchmark3DUnityJobsExample
+  m_EditorClassIdentifier: GravitySimulation.Example.GravitySimulationBenchmark::GravityBenchmark3DUnityJobsExample
   _ballCount: 128
   _is2D: 0
   _gravity: 1.15
