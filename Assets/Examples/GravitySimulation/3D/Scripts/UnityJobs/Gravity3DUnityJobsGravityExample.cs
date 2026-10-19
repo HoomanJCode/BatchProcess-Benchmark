@@ -43,6 +43,8 @@ public sealed class Gravity3DUnityJobsGravityExample : MonoBehaviour
         _accelerations = new Vector3[_ballCount];
         // Resources lets every 2D ball reuse one circle sprite asset.
         Sprite ballSprite = Resources.Load<Sprite>("GravityBall");
+        // All 3D spheres share this editable material asset; 2D balls use their 2D collider settings.
+        PhysicsMaterial ballPhysicsMaterial = Resources.Load<PhysicsMaterial>("GravityBallPhysicsMaterial");
         // Jobs read NativeArrays, so allocate native input and output buffers once.
         _nativePositions = new NativeArray<Vector3>(_ballCount, Allocator.Persistent);
         _nativeMasses = new NativeArray<float>(_ballCount, Allocator.Persistent);
@@ -110,6 +112,8 @@ public sealed class Gravity3DUnityJobsGravityExample : MonoBehaviour
             {
                 // The 3D scene uses a lit sphere mesh with Unity's 3D physics components.
                 GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                if (ballPhysicsMaterial != null)
+                    sphere.GetComponent<SphereCollider>().sharedMaterial = ballPhysicsMaterial;
                 BenchmarkRunSettings.SetSharedBallColor(sphere.GetComponent<Renderer>(), ballColor);
                 sphere.name = "Gravity Ball " + i.ToString("D3");
                 sphere.transform.position = position;

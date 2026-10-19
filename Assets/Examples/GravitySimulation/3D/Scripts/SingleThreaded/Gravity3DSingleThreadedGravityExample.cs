@@ -39,6 +39,8 @@ public sealed class Gravity3DSingleThreadedGravityExample : MonoBehaviour
         _accelerations = new Vector3[_ballCount];
         // Resources lets every 2D ball reuse one circle sprite asset.
         Sprite ballSprite = Resources.Load<Sprite>("GravityBall");
+        // All 3D spheres share this editable material asset; 2D balls use their 2D collider settings.
+        PhysicsMaterial ballPhysicsMaterial = Resources.Load<PhysicsMaterial>("GravityBallPhysicsMaterial");
         // A fixed seed and repeatable placement make comparisons start with the same bodies.
         uint randomState = 0xC0FFEEu;
         for (int i = 0; i < _ballCount; i++)
@@ -102,6 +104,8 @@ public sealed class Gravity3DSingleThreadedGravityExample : MonoBehaviour
             {
                 // The 3D scene uses a lit sphere mesh with Unity's 3D physics components.
                 GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                if (ballPhysicsMaterial != null)
+                    sphere.GetComponent<SphereCollider>().sharedMaterial = ballPhysicsMaterial;
                 BenchmarkRunSettings.SetSharedBallColor(sphere.GetComponent<Renderer>(), ballColor);
                 sphere.name = "Gravity Ball " + i.ToString("D3");
                 sphere.transform.position = position;

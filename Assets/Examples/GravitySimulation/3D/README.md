@@ -4,6 +4,7 @@ This example uses Unity's 3D scene and physics components. Each ball is a sphere
 
 - Teaching scenes: `Scenes/Gravity_*.unity`
 - Strategy scripts: `Scripts/`
+- Ball collisions use the shared [`Resources/GravityBallPhysicsMaterial.physicMaterial`](Resources/GravityBallPhysicsMaterial.physicMaterial) asset. Edit its friction and bounciness values to tune the 3D balls.
 - Dimension-specific scene menu: **Tools → Gravity 3D → Regenerate Scenes**
 
 Every strategy script is self-contained. The force uses softened Newtonian gravity:
