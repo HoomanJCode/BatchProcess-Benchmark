@@ -260,7 +260,7 @@
     const overviewStorageKey = 'simulation-lab-latest-comparisons-v3';
     let savedComparisons = loadSavedComparisons();
     let lastSavedCompletion = '';
-    const inputSettingsKey = 'simulation-lab-run-settings-v1';
+    try { localStorage.removeItem('simulation-lab-run-settings-v1'); } catch (error) { }
     const processingMethods = {
       gravity: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'], ['unity-parallel', 'C# parallel'],
@@ -523,23 +523,6 @@
       return method ? method[1] : 'method';
     }
 
-    function saveRunSettings() {
-      const values = {};
-      document.querySelectorAll('[data-settings] input').forEach(input => { values[input.id] = input.value; });
-      try { localStorage.setItem(inputSettingsKey, JSON.stringify(values)); } catch (error) { }
-    }
-
-    function restoreRunSettings() {
-      try {
-        const values = JSON.parse(localStorage.getItem(inputSettingsKey) || '{}');
-        if (Number(values['batch-items']) === 6000) values['batch-items'] = 100000;
-        if (Number(values['random-evaluations']) === 6400) values['random-evaluations'] = 100000;
-        document.querySelectorAll('[data-settings] input').forEach(input => {
-          if (values[input.id] !== undefined) input.value = values[input.id];
-        });
-      } catch (error) { }
-    }
-
     function readSetting(id, fallback) {
       const input = document.getElementById(id);
       const minimum = Number(input.min || 1);
@@ -568,7 +551,6 @@
       request.selectedMethods = getMethodSelection(workload);
       if (workload !== 'gravity')
         request.runs = readSetting(workload === 'batch' ? 'batch-runs' : 'random-runs', 20);
-      saveRunSettings();
       const button = document.getElementById('run-selected-button');
       const status = document.getElementById('settings-status');
       runRequestPending = true;
@@ -978,12 +960,9 @@
       selectedMethodByWorkload[selectedComparisonWorkload] =
         Array.from(document.querySelectorAll('#run-methods [data-method-id]:checked'))
           .map(input => input.dataset.methodId);
-      saveRunSettings();
       updateRunAction();
     });
-    document.querySelectorAll('[data-settings] input').forEach(input => input.addEventListener('change', saveRunSettings));
     window.addEventListener('resize', () => { if (lastState) drawTimeline(lastState); });
-    restoreRunSettings();
     renderOverview(null);
     renderComparisonSelection();
     poll();

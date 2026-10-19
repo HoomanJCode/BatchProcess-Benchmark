@@ -91,14 +91,12 @@ flowchart TD
 | Operating system | Windows 11 Home, build 26300, 64-bit |
 | Unity | 6000.5.1f1; Standalone Windows x64 Development build |
 | Power | AC connected; Balanced power plan; battery status reported charging (2) |
-| Environment variables | `PROCESSOR_ARCHITECTURE=AMD64`; `NUMBER_OF_PROCESSORS=12` |
-| Benchmark-specific environment variables | None; settings are passed as command-line arguments |
 | Player flags | `-batchmode -nographics`; headless mode sets VSync to 0 and targets 60 FPS |
 | Workload flags | `-gravity-benchmark-dimension 2D`; warm-up `2` seconds; measurement `8` seconds |
 
 The reports and a PowerShell rerun script are in `%USERPROFILE%\Desktop\GravitySimulation-Headless\`. From PowerShell, run `& "$env:USERPROFILE\Desktop\GravitySimulation-Headless\Run-Benchmark.ps1"`; the JSON and CSV reports are written beside the player. For the source-project helper, close the Unity Editor first and run `Tools/Run-HeadlessGravityBenchmark.ps1` with the installed Editor path and `-Dimension 2D`.
 
-These figures describe one local run, not a general ranking. CPU power limits, background work, and hardware can change timings. The exact machine snapshot and run arguments are also saved in `benchmark-environment.txt` beside the Desktop player.
+These figures describe one local run, not a general ranking. CPU power limits, background work, and hardware can change timings.
 
 ## Folder layout
 
