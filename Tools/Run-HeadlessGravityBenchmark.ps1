@@ -6,6 +6,9 @@ param(
     [ValidateSet("2D", "3D")]
     [string]$Dimension,
 
+    [ValidateRange(1, 2000)]
+    [int]$BallCount = 128,
+
     [ValidateRange(0, 3600)]
     [int]$WarmupSeconds = 2,
     [ValidateRange(1, 3600)]
@@ -42,7 +45,7 @@ if (-not (Test-Path -LiteralPath $playerPath)) {
 }
 
 Write-Host "Running $Dimension gravity benchmark without a graphics window..."
-$playerArguments = "-batchmode -nographics -logFile `"$playerLog`" -gravity-benchmark-headless -gravity-benchmark-dimension $Dimension -gravity-benchmark-warmup-seconds $WarmupSeconds -gravity-benchmark-measurement-seconds $MeasurementSeconds -gravity-benchmark-output `"$OutputPath`""
+$playerArguments = "-batchmode -nographics -logFile `"$playerLog`" -gravity-benchmark-headless -gravity-benchmark-dimension $Dimension -gravity-benchmark-balls $BallCount -gravity-benchmark-warmup-seconds $WarmupSeconds -gravity-benchmark-measurement-seconds $MeasurementSeconds -gravity-benchmark-output `"$OutputPath`""
 $playerProcess = Start-Process -FilePath $playerPath -ArgumentList $playerArguments -Wait -PassThru
 if ($playerProcess.ExitCode -ne 0) {
     throw "Headless benchmark failed with exit code $($playerProcess.ExitCode). See $playerLog"

@@ -106,6 +106,14 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             if (!string.IsNullOrEmpty(dimension))
                 _is2D = string.Equals(dimension, "2D", StringComparison.OrdinalIgnoreCase);
 
+            string balls = GetCommandLineValue("-gravity-benchmark-balls");
+            int parsedBalls;
+            if (int.TryParse(balls, out parsedBalls) && parsedBalls > 0 && parsedBalls <= 2000)
+            {
+                PlayerPrefs.SetInt("SimulationLab.Balls", parsedBalls);
+                PlayerPrefs.Save();
+            }
+
             string measurement = GetCommandLineValue("-gravity-benchmark-measurement-seconds");
             int parsedMeasurement;
             if (int.TryParse(measurement, out parsedMeasurement) && parsedMeasurement > 0)
@@ -773,6 +781,15 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 yield break;
             }
             yield return load;
+
+            if (_headlessMode)
+            {
+                // This run compares the gravity calculation methods, not Unity's collision solver.
+                // Keep FixedUpdate active so each method still computes and applies its forces, but
+                // freeze physics integration so crowded 500-body scenes cannot dominate or stall it.
+                Physics.simulationMode = SimulationMode.Script;
+                Physics2D.simulationMode = SimulationMode2D.Script;
+            }
 
             // Give Awake and the physics system time to create and settle the balls.
             yield return new WaitForSecondsRealtime(0.5f);
