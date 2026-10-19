@@ -349,12 +349,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1042927275}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7b2ad5b7b856f3b4094893e977ffc876, type: 3}
+  m_Script: {fileID: 11500000, guid: 96ce2f7bd458b5644b956998967c5fda, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GravityCalculationBenchmarkExample
+  m_EditorClassIdentifier: Assembly-CSharp::GravityBenchmarkUnityJobsExample
   _ballCount: 128
   _is2D: 0
-  _method: 3
   _gravity: 1.15
   _softening: 0.2
   _gravityScale: 1

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -43,8 +44,18 @@ public static class GravityBenchmarkSceneGeneration
             benchmarkScenes.Add(new EditorBuildSettingsScene(threeDCopy, true));
         }
 
-        CreateScene(TwoDPath, "Gravity Benchmark (2D)", true);
-        CreateScene(ThreeDPath, "Gravity Benchmark (3D)", false);
+        // Unity cannot create additive scenes while the active scene is an unsaved untitled scene.
+        // The method scenes can still be refreshed safely; the launcher scenes already exist in
+        // the project and will be rebuilt the next time this menu is run from a saved scene.
+        if (!string.IsNullOrEmpty(SceneManager.GetActiveScene().path))
+        {
+            CreateScene(TwoDPath, "Gravity Benchmark (2D)", true);
+            CreateScene(ThreeDPath, "Gravity Benchmark (3D)", false);
+        }
+        else
+        {
+            Debug.LogWarning("Refreshed gravity method benchmark scenes. Skipped launcher scene generation because the active scene is untitled.");
+        }
 
         // Preserve the project's other scenes while adding the two comparison launchers.
         List<EditorBuildSettingsScene> scenes = EditorBuildSettings.scenes
@@ -83,8 +94,8 @@ public static class GravityBenchmarkSceneGeneration
         Scene copy = EditorSceneManager.OpenScene(destinationPath, OpenSceneMode.Additive);
         string sceneName = Path.GetFileNameWithoutExtension(destinationPath);
         string methodName = sceneName.Substring("Gravity_".Length);
-        int methodIndex = System.Array.IndexOf(ExampleScenes, methodName);
-        if (methodIndex < 0)
+        Type benchmarkComponentType = GetBenchmarkComponentType(methodName);
+        if (benchmarkComponentType == null)
             throw new System.Exception("Unknown gravity benchmark method scene: " + destinationPath);
 
         bool is2D = destinationPath.StartsWith(TwoDBenchmarkFolder);
@@ -103,12 +114,11 @@ public static class GravityBenchmarkSceneGeneration
 
                 GameObject exampleObject = behaviour.gameObject;
                 UnityEngine.Object.DestroyImmediate(behaviour, true);
-                GravityCalculationBenchmarkExample benchmarkExample =
-                    exampleObject.AddComponent<GravityCalculationBenchmarkExample>();
+                GravityBenchmarkExampleBase benchmarkExample =
+                    exampleObject.AddComponent(benchmarkComponentType) as GravityBenchmarkExampleBase;
                 SerializedObject serializedBenchmark = new SerializedObject(benchmarkExample);
                 serializedBenchmark.FindProperty("_ballCount").intValue = ComparisonBallCount;
                 serializedBenchmark.FindProperty("_is2D").boolValue = is2D;
-                serializedBenchmark.FindProperty("_method").enumValueIndex = methodIndex;
                 serializedBenchmark.ApplyModifiedPropertiesWithoutUndo();
                 replacedExample = true;
                 break;
@@ -123,6 +133,19 @@ public static class GravityBenchmarkSceneGeneration
         EditorSceneManager.MarkSceneDirty(copy);
         EditorSceneManager.SaveScene(copy, destinationPath);
         EditorSceneManager.CloseScene(copy, true);
+    }
+
+    private static Type GetBenchmarkComponentType(string methodName)
+    {
+        switch (methodName)
+        {
+            case "SingleThreaded": return typeof(GravityBenchmarkSingleThreadedExample);
+            case "CSharpAsync": return typeof(GravityBenchmarkCSharpAsyncExample);
+            case "CSharpParallel": return typeof(GravityBenchmarkCSharpParallelExample);
+            case "UnityJobs": return typeof(GravityBenchmarkUnityJobsExample);
+            case "UnityJobsBurst": return typeof(GravityBenchmarkUnityJobsBurstExample);
+            default: return null;
+        }
     }
 
     private static void CreateScene(string path, string sceneName, bool is2D)
