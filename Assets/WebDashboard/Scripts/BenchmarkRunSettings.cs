@@ -6,6 +6,8 @@ using UnityEngine;
 /// </summary>
 public sealed class BenchmarkRunSettings : MonoBehaviour
 {
+    private static MaterialPropertyBlock _sharedBallProperties;
+
     [Header("Gravity simulation")]
     [SerializeField, Min(1)] private int _gravityBallCount = 128;
 
@@ -19,6 +21,7 @@ public sealed class BenchmarkRunSettings : MonoBehaviour
     [SerializeField, Min(1)] private int _randomSearchTrials = 5;
 
     public static BenchmarkRunSettings Active { get; private set; }
+    public static bool IsCalculationOnlyGravityBenchmark { get; private set; }
 
     public int GravityBallCount { get { return Mathf.Max(1, _gravityBallCount); } }
     public int SimpleIterationItemCount { get { return Mathf.Max(1, _simpleIterationItemCount); } }
@@ -72,11 +75,32 @@ public sealed class BenchmarkRunSettings : MonoBehaviour
     private static void ResetStatics()
     {
         Active = null;
+        IsCalculationOnlyGravityBenchmark = false;
+        _sharedBallProperties = null;
     }
 
     public void SetGravityBallCount(int count)
     {
         _gravityBallCount = Mathf.Max(1, count);
+    }
+
+    public static void SetCalculationOnlyGravityBenchmark(bool enabled)
+    {
+        IsCalculationOnlyGravityBenchmark = enabled;
+    }
+
+    public static void SetSharedBallColor(Renderer renderer, Color color)
+    {
+        if (renderer == null)
+            return;
+
+        if (_sharedBallProperties == null)
+            _sharedBallProperties = new MaterialPropertyBlock();
+
+        _sharedBallProperties.Clear();
+        _sharedBallProperties.SetColor("_Color", color);
+        _sharedBallProperties.SetColor("_BaseColor", color);
+        renderer.SetPropertyBlock(_sharedBallProperties);
     }
 
     public void SetSimpleIteration(int itemCount, int iterations, int batchSize)

@@ -113,7 +113,7 @@ public sealed class Gravity2DUnityJobsGravityExample : MonoBehaviour
                 sphere.name = "Gravity Ball " + i.ToString("D3");
                 sphere.transform.position = position;
                 sphere.transform.localScale = Vector3.one * ballDiameter;
-                sphere.GetComponent<Renderer>().material.color = ballColor;
+                BenchmarkRunSettings.SetSharedBallColor(sphere.GetComponent<Renderer>(), ballColor);
 
                 Rigidbody body = sphere.AddComponent<Rigidbody>();
                 body.mass = mass;
@@ -167,6 +167,8 @@ public sealed class Gravity2DUnityJobsGravityExample : MonoBehaviour
                 _accelerations[i] = _nativeAccelerations[i];
         }
         // AddForce leaves integration and collision resolution to Unity's physics engine.
+        if (BenchmarkRunSettings.IsCalculationOnlyGravityBenchmark)
+            return;
         for (int i = 0; i < _ballCount; i++)
         {
             if (_is2D)

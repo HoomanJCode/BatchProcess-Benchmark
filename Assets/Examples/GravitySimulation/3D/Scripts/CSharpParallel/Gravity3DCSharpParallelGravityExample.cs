@@ -106,7 +106,7 @@ public sealed class Gravity3DCSharpParallelGravityExample : MonoBehaviour
                 sphere.name = "Gravity Ball " + i.ToString("D3");
                 sphere.transform.position = position;
                 sphere.transform.localScale = Vector3.one * ballDiameter;
-                sphere.GetComponent<Renderer>().material.color = ballColor;
+                BenchmarkRunSettings.SetSharedBallColor(sphere.GetComponent<Renderer>(), ballColor);
 
                 Rigidbody body = sphere.AddComponent<Rigidbody>();
                 body.mass = mass;
@@ -165,6 +165,8 @@ public sealed class Gravity3DCSharpParallelGravityExample : MonoBehaviour
             });
         }
         // AddForce applies the calculated acceleration; Unity integrates motion and resolves collisions.
+        if (BenchmarkRunSettings.IsCalculationOnlyGravityBenchmark)
+            return;
         for (int i = 0; i < _ballCount; i++)
         {
             if (_is2D)
