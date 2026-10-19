@@ -50,7 +50,7 @@
     progress::-webkit-progress-bar { background: #e4eaf0; border-radius: 20px; }
     progress::-webkit-progress-value { background: linear-gradient(90deg, #8ac879, var(--green)); border-radius: 20px; transition: width .25s ease; }
     progress::-moz-progress-bar { background: var(--green); border-radius: 20px; }
-    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 17px; }
+    .metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 17px; }
     .metric { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #f7f9fc; }
     .metric span { display: block; color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
     .metric strong { display: block; margin-top: 8px; font-size: clamp(20px, 3vw, 27px); font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
@@ -101,9 +101,6 @@
     .legend i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--green); }
     .legend .cyan { background: var(--cyan); }
     .legend .amber { background: var(--amber); }
-    .metric-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 0 0 152px; width: 152px; box-sizing: border-box; padding: 3px; gap: 3px; border: 1px solid var(--line); border-radius: 9px; background: #f2f5f8; }
-    .metric-switch button { width: 100%; min-height: 34px; padding: 6px 3px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 10px; white-space: nowrap; cursor: pointer; }
-    .metric-switch button[aria-pressed="true"] { background: #e3f0dd; color: var(--green); }
     .bars { display: grid; gap: 14px; margin-top: 23px; }
     .bar-row { display: grid; grid-template-columns: minmax(82px, 115px) 1fr 63px; gap: 10px; align-items: center; font-size: 10px; }
     .bar-label { color: #33465a; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -126,8 +123,8 @@
     .project-link { color: var(--cyan); text-decoration: none; }
     .project-link:hover { text-decoration: underline; }
     footer { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); margin-top: 28px; padding-top: 17px; color: var(--muted); font-size: 10px; }
-    @media (max-width: 860px) { .hero, .chart-grid { grid-template-columns: 1fr; } .overview-grid, .how { grid-template-columns: 1fr; } }
-    @media (max-width: 520px) { header { align-items: flex-start; flex-direction: column; } .run-top { flex-direction: column; } .section-head { align-items: flex-start; flex-direction: column; } .bar-row { grid-template-columns: 90px 1fr 54px; } .insights-grid { grid-template-columns: 1fr; } .settings-actions { align-items: flex-start; flex-direction: column; } footer { flex-direction: column; } }
+    @media (max-width: 860px) { .hero, .chart-grid { grid-template-columns: 1fr; } .overview-grid, .how { grid-template-columns: 1fr; } .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 520px) { header { align-items: flex-start; flex-direction: column; } .run-top { flex-direction: column; } .section-head { align-items: flex-start; flex-direction: column; } .bar-row { grid-template-columns: 90px 1fr 54px; } .insights-grid, .metric-grid { grid-template-columns: 1fr; } .settings-actions { align-items: flex-start; flex-direction: column; } footer { flex-direction: column; } }
   </style>
 </head>
 <body>
@@ -153,7 +150,6 @@
         <div class="metric"><span id="profile-label">Current work marker</span><strong id="profile-ms">—</strong><em id="profile-hint">milliseconds / sample</em></div>
         <div class="metric"><span id="main-label">Main thread</span><strong id="main-ms">—</strong><em id="main-hint">CPU time per frame</em></div>
         <div class="metric"><span id="frame-label">Frame time</span><strong id="frame-ms">—</strong><em id="frame-hint">elapsed milliseconds</em></div>
-        <div class="metric"><span id="p95-label">Recent P95 marker</span><strong id="p95-ms">—</strong><em id="p95-hint">rolling samples</em></div>
       </article>
     </section>
 
@@ -220,7 +216,6 @@
       </article>
       <article class="panel chart-panel">
         <div class="chart-title"><div><h3>Compare completed runs</h3><p id="comparison-caption">Complete a pass to fill the chart.</p></div>
-          <div class="metric-switch" role="group" aria-label="Comparison metric"><button type="button" data-metric="averageProfileMs" aria-pressed="true">Compute avg</button><button type="button" data-metric="p95FrameMs" aria-pressed="false">Frame P95</button></div>
         </div>
         <div id="bars" class="bars"><div class="empty">Run the comparison scene.<br>Each strategy appears here when its pass finishes.</div></div>
         <p class="note" id="comparison-verdict" hidden></p>
@@ -229,7 +224,7 @@
 
     <div class="section-head"><div><h2 id="results-title">Selected comparison results</h2><p id="results-description">Each pass uses the configured warm-up and measurement duration.</p></div></div>
     <section class="panel chart-panel table-wrap">
-      <table><thead><tr><th>Strategy</th><th id="count-heading">Balls</th><th id="iterations-heading" hidden>Iterations</th><th id="batch-size-heading" hidden>Batch size</th><th id="average-heading">Compute avg</th><th id="p95-heading">Compute P95</th><th id="solution-x-heading" hidden>Best X</th><th id="solution-y-heading" hidden>Best Y</th><th id="frame-average-heading">Frame avg</th><th id="frame-p95-heading">Frame P95</th><th id="samples-heading">Samples</th></tr></thead><tbody id="results"><tr><td colspan="11" class="empty">No completed runs yet.</td></tr></tbody></table>
+      <table><thead><tr><th>Strategy</th><th id="count-heading">Balls</th><th id="iterations-heading" hidden>Iterations</th><th id="batch-size-heading" hidden>Batch size</th><th id="average-heading">Compute avg</th><th id="solution-x-heading" hidden>Best X</th><th id="solution-y-heading" hidden>Best Y</th><th id="frame-average-heading">Frame avg</th><th id="samples-heading">Samples</th></tr></thead><tbody id="results"><tr><td colspan="9" class="empty">No completed runs yet.</td></tr></tbody></table>
       <p class="note" id="results-note">Gravity calculation samples show average time per physics step. If Unity runs multiple physics steps in one rendered frame, their summed marker time is divided by the marker call count. Frame times include physics and Editor overhead; the Editor may throttle frames while it runs behind the dashboard browser. Use a standalone Development Build for reliable frame comparisons.</p>
     </section>
 
@@ -248,7 +243,7 @@
     const connection = document.getElementById('connection');
     const timeline = document.getElementById('timeline');
     const ctx = timeline.getContext('2d');
-    let selectedMetric = 'averageProfileMs';
+    const selectedMetric = 'averageProfileMs';
     let lastWorkload = null;
     let lastState = null;
     let selectedComparisonWorkload = 'gravity';
@@ -283,18 +278,18 @@
     function loadSavedComparisons() {
       try {
         const saved = JSON.parse(localStorage.getItem(overviewStorageKey) || '{}');
-        let removedLegacyResults = false;
+        let changedSavedResults = false;
         Object.keys(saved).forEach(key => {
           if (saved[key] && saved[key].results) {
             const originalCount = saved[key].results.length;
             saved[key].results = saved[key].results.filter(result =>
               result.markerName !== 'Python' && result.algorithm !== 'Particle swarm (PSO)');
-            removedLegacyResults = removedLegacyResults || saved[key].results.length !== originalCount;
+            changedSavedResults = changedSavedResults || saved[key].results.length !== originalCount;
           }
           if (saved[key] && saved[key].results && saved[key].results.length)
             saved[key].status = 'complete';
         });
-        if (removedLegacyResults) localStorage.setItem(overviewStorageKey, JSON.stringify(saved));
+        if (changedSavedResults) localStorage.setItem(overviewStorageKey, JSON.stringify(saved));
         return saved;
       } catch (error) {
         return {};
@@ -427,20 +422,12 @@
       const state = getSelectedComparison();
       const comparisonKey = selectedComparisonWorkload + (selectedComparisonWorkload === 'gravity' ? '-' + selectedGravityDimension : '');
       if (comparisonKey !== lastComparisonKey) {
-        selectedMetric = 'averageProfileMs';
         lastComparisonKey = comparisonKey;
       }
       const isBatch = selectedComparisonWorkload === 'batch';
       const isOptimization = isOptimizationSelection();
-      const isWorkComparison = isBatch || isOptimization;
       const selectedAlgorithm = getSelectedAlgorithm();
-      document.querySelectorAll('[data-metric]').forEach(button => {
-        button.setAttribute('aria-pressed', String(button.dataset.metric === selectedMetric));
-      });
-      document.querySelector('[data-metric="averageProfileMs"]').textContent = 'Compute avg';
       const selectedResults = getResultsForSelection(state);
-      document.querySelector('[data-metric="p95FrameMs"]').textContent = isWorkComparison ? 'Wall P95' : 'Frame P95';
-      document.querySelector('[data-metric="p95FrameMs"]').hidden = false;
       document.getElementById('results-title').textContent = isOptimization ? selectedAlgorithm + ' processing methods' :
         (isBatch ? 'Simple iteration methods' : selectedGravityDimension + ' gravity processing methods');
       document.getElementById('results-description').textContent = state && state.status === 'complete'
@@ -568,9 +555,7 @@
       document.getElementById('marker-pill').hidden = isComplete;
       if (!isComplete) return;
 
-      const metricName = selectedMetric === 'averageProfileMs'
-        ? 'Compute average'
-        : (state.workload === 'gravity' ? 'Frame P95' : 'Wall P95');
+      const metricName = 'Compute average';
       const sorted = results.slice().sort((a, b) =>
         (Number(a[selectedMetric]) || 0) - (Number(b[selectedMetric]) || 0));
       const fastest = sorted[0];
@@ -604,14 +589,12 @@
       document.getElementById('solution-x-heading').hidden = true;
       document.getElementById('solution-y-heading').hidden = true;
       document.getElementById('average-heading').textContent = 'Compute avg';
-      document.getElementById('p95-heading').textContent = 'Compute P95';
       document.getElementById('frame-average-heading').textContent = isOptimization || isBatch ? 'Wall avg' : 'Frame avg';
-      document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : 'Frame P95';
       document.getElementById('samples-heading').textContent = isOptimization || isBatch ? 'Measured runs' : 'Samples';
       document.getElementById('results-note').textContent = isOptimization
           ? 'This example compares the same deterministic workload across five Unity methods. Compare compute and wall time within this example. Lower times are better.'
         : (isBatch
-          ? 'All Unity methods use the same item count, iteration count, and batch size. Runtime percentiles use measured runs; more runs make P95 more stable.'
+          ? 'All Unity methods use the same item count, iteration count, and batch size. The table reports average calculation and wall time across measured runs.'
           : 'Gravity timing is averaged per physics step; marker time is divided by the number of calls when Unity runs multiple steps in one rendered frame. Frame times include physics and Editor overhead, and the Editor may throttle while it runs behind the dashboard browser. Use a standalone Development Build for reliable frame comparisons.');
     }
 
@@ -692,8 +675,7 @@
       container.innerHTML = results.map(result => {
         const strategyName = displayStrategyName(result.strategy);
         const label = isOptimization ? (escapeText(result.algorithm) + ' · ' + escapeText(strategyName)) : escapeText(strategyName);
-      const metric = formatMs(result.averageProfileMs) + ' · ' + (isOptimization || (comparison.workload === 'batch') ? 'wall P95 ' : 'frame P95 ') + formatMs(result.p95FrameMs);
-        return '<div class="overview-strategy"><span>' + label + '</span><span>' + metric + '</span></div>';
+        return '<div class="overview-strategy"><span>' + label + '</span><span>' + formatMs(result.averageProfileMs) + ' average</span></div>';
       }).join('');
     }
 
@@ -736,7 +718,7 @@
       }
       container.innerHTML = savedLists.map(item => '<div><strong>' + item[0] + '</strong>' +
         item[1].results.map(result => '<div class="overview-strategy"><span>' + escapeText(displayStrategyName(result.strategy)) +
-          '</span><span>' + formatMs(result.averageProfileMs) + ' · frame P95 ' + formatMs(result.p95FrameMs) + '</span></div>').join('') +
+          '</span><span>' + formatMs(result.averageProfileMs) + ' average</span></div>').join('') +
         '</div>').join('');
     }
 
@@ -759,13 +741,10 @@
         lastGravityDimension = state.dimension;
       }
       if (lastWorkload !== state.workload) {
-        selectedMetric = 'averageProfileMs';
         lastWorkload = state.workload;
         if (!comparisonSelectionWasManual) {
           selectedComparisonWorkload = state.workload === 'optimization' ? 'randomSearch' : state.workload;
         }
-        document.querySelectorAll('[data-metric]').forEach(button =>
-          button.setAttribute('aria-pressed', String(button.dataset.metric === selectedMetric)));
       }
       lastState = state;
       if (runRequestPending && (state.status === 'starting' || state.status === 'running'))
@@ -790,7 +769,6 @@
       document.getElementById('profile-ms').textContent = formatMs(state.profileMs);
       document.getElementById('main-ms').textContent = formatMs(isBatch || isOptimization ? state.averageProfileMs : state.mainThreadMs);
       document.getElementById('frame-ms').textContent = formatMs(state.frameMs);
-      document.getElementById('p95-ms').textContent = formatMs(state.p95ProfileMs);
       document.getElementById('balls-pill').textContent = isOptimization
         ? (state.evaluationCount || 0).toLocaleString() + ' evaluations · ' + (state.trialCount || 5) + ' trials'
         : (isBatch ? 'Items: ' : 'Balls: ') + (state.ballCount || '—');
@@ -804,25 +782,18 @@
       document.getElementById('main-hint').textContent = isOptimization || isBatch ? 'average across completed runs' : 'CPU time per frame';
       document.getElementById('frame-label').textContent = isWorkComparison ? 'Latest wall time' : 'Frame time';
       document.getElementById('frame-hint').textContent = isOptimization || isBatch ? 'includes scheduling or yielded frames' : 'elapsed milliseconds';
-      document.getElementById('p95-label').textContent = 'Recent compute P95';
-      document.getElementById('p95-hint').textContent = isOptimization || isBatch ? 'across completed runs' : 'rolling samples';
       document.getElementById('legend-profile').textContent = isWorkComparison ? 'Calculation time' : 'Gravity marker';
       document.getElementById('legend-main').textContent = isWorkComparison ? 'Unused' : 'Main thread';
       document.getElementById('legend-frame').textContent = isWorkComparison ? 'Wall time' : 'Frame time';
       document.getElementById('timeline-title').textContent = isOptimization ? getSelectedAlgorithm() + ' processing-time runs' : (isBatch ? 'Batch calculation and wall time' : 'Frame and CPU timeline');
       document.getElementById('timeline-subtitle').textContent = isWorkComparison ? 'Completed runs · milliseconds' : 'Recent samples · milliseconds';
-      document.querySelector('[data-metric="averageProfileMs"]').textContent = 'Compute avg';
-      document.querySelector('[data-metric="p95FrameMs"]').textContent = isBatch || isOptimization ? 'Wall P95' : 'Frame P95';
-      document.querySelector('[data-metric="p95FrameMs"]').hidden = false;
       document.getElementById('count-heading').textContent = isOptimization ? 'Evaluations' : (isBatch ? 'Items' : 'Balls');
       document.getElementById('iterations-heading').hidden = !isBatch;
       document.getElementById('batch-size-heading').hidden = !isBatch;
       document.getElementById('solution-x-heading').hidden = true;
       document.getElementById('solution-y-heading').hidden = true;
       document.getElementById('average-heading').textContent = 'Compute avg';
-      document.getElementById('p95-heading').textContent = 'Compute P95';
       document.getElementById('frame-average-heading').textContent = isOptimization || isBatch ? 'Wall avg' : 'Frame avg';
-      document.getElementById('frame-p95-heading').textContent = isOptimization || isBatch ? 'Wall P95' : 'Frame P95';
       document.getElementById('samples-heading').textContent = isOptimization || isBatch ? 'Measured runs' : 'Samples';
       document.getElementById('results-note').textContent = isOptimization
         ? 'This example compares the same deterministic workload across five Unity methods. This table shows ' + getSelectedAlgorithm() + ' only; it does not compare optimization quality.'
@@ -884,7 +855,7 @@
       const body = document.getElementById('results');
       const bars = document.getElementById('bars');
       if (!results.length) {
-        body.innerHTML = '<tr><td colspan="11" class="empty">No completed runs yet.</td></tr>';
+        body.innerHTML = '<tr><td colspan="9" class="empty">No completed runs yet.</td></tr>';
         bars.innerHTML = '<div class="empty">Run the comparison scene.<br>Each strategy appears here when its pass finishes.</div>';
         document.getElementById('comparison-caption').textContent = 'Complete a pass to fill the chart.';
         document.getElementById('comparison-verdict').hidden = true;
@@ -896,10 +867,9 @@
         (isBatch ? '<td>' + result.iterations + '</td>' : '<td hidden></td>') +
         (isBatch ? '<td>' + Number(result.batchSize || 0).toLocaleString() + '</td>' : '<td hidden></td>') +
         '<td>' + formatMs(result.averageProfileMs) + '</td>' +
-        '<td>' + formatMs(result.p95ProfileMs) + '</td>' +
         '<td hidden></td><td hidden></td>' +
         '<td>' + formatMs(result.averageFrameMs) + '</td>' +
-        '<td>' + formatMs(result.p95FrameMs) + '</td><td>' + result.sampleCount + '</td></tr>').join('');
+        '<td>' + result.sampleCount + '</td></tr>').join('');
       const values = results.map(result => Number(result[selectedMetric]) || 0);
       const maximum = Math.max(...values);
       const positiveValues = values.filter(value => value > 0);
@@ -915,11 +885,11 @@
         const valueText = formatMs(value);
         return '<div class="bar-row"><span class="bar-label" title="' + escapeText(strategyName) + '">' + escapeText(strategyName) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + width + '%"></div></div><span class="bar-value">' + valueText + '</span></div>';
       }).join('');
-      document.getElementById('comparison-caption').textContent = selectedMetric === 'averageProfileMs'
-        ? (isOptimization ? getSelectedAlgorithm() + ' · average processing runtime; shorter bars are faster.' : (isBatch
+      document.getElementById('comparison-caption').textContent = isOptimization
+        ? getSelectedAlgorithm() + ' · average processing runtime; shorter bars are faster.'
+        : (isBatch
           ? 'Average calculation time across repeated runs; shorter bars are faster.'
-          : 'Average calculation time per gravity physics step. Shorter bars are faster.'))
-        : (isBatch || isOptimization ? '95th percentile wall time; shorter bars are faster.' : '95th percentile frame time; shorter bars are faster.');
+          : 'Average calculation time per gravity physics step. Shorter bars are faster.');
       document.getElementById('comparison-caption').textContent += ' Log scale; values show actual milliseconds.';
 
       const verdict = document.getElementById('comparison-verdict');
@@ -946,16 +916,6 @@
       }
     }
 
-    document.querySelectorAll('[data-metric]').forEach(button => button.addEventListener('click', () => {
-      selectedMetric = button.dataset.metric;
-      document.querySelectorAll('[data-metric]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-      const state = getSelectedComparison();
-      if (state) {
-        const results = getResultsForSelection(state);
-        drawResults(results, state);
-        renderSelectedInsights(state, results);
-      }
-    }));
     document.querySelectorAll('[data-comparison-workload]').forEach(button => button.addEventListener('click', () => {
       selectedComparisonWorkload = button.dataset.comparisonWorkload;
       comparisonSelectionWasManual = true;

@@ -554,7 +554,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 _state.mainThreadMs = 0f;
                 _state.frameMs = wallMs;
                 _state.averageProfileMs = Average(computeSamples);
-                _state.p95ProfileMs = Percentile(computeSamples, 0.95f);
                 _state.ballCount = itemCount;
                 _state.batchSize = batchSize;
                 _state.evaluationCount = evaluationCount;
@@ -587,10 +586,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 bestY = bestY,
                 sampleCount = computeSamples.Count,
                 averageProfileMs = Average(computeSamples),
-                medianProfileMs = Percentile(computeSamples, 0.50f),
-                p95ProfileMs = Percentile(computeSamples, 0.95f),
-                averageFrameMs = Average(wallSamples),
-                p95FrameMs = Percentile(wallSamples, 0.95f)
+                medianProfileMs = Median(computeSamples),
+                averageFrameMs = Average(wallSamples)
             };
             _results.Add(result);
             _state.results = _results.ToArray();
@@ -889,7 +886,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     private string BuildCsvReport()
     {
         StringBuilder csv = new StringBuilder();
-        csv.AppendLine("workload,dimension,algorithm,strategy,marker,balls,work_items,iterations,evaluation_count,best_score,mean_best_score,best_x,best_y,samples,warmup_seconds,measurement_seconds,average_profile_ms,median_profile_ms,p95_profile_ms,average_frame_ms,p95_frame_ms");
+        csv.AppendLine("workload,dimension,algorithm,strategy,marker,balls,work_items,iterations,evaluation_count,best_score,mean_best_score,best_x,best_y,samples,warmup_seconds,measurement_seconds,average_profile_ms,median_profile_ms,average_frame_ms");
         for (int i = 0; i < _results.Count; i++)
         {
             BenchmarkResult result = _results[i];
@@ -908,9 +905,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
                 .Append(_warmupSeconds).Append(',').Append(_measurementSeconds).Append(',')
                 .Append(result.averageProfileMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
                 .Append(result.medianProfileMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
-                .Append(result.p95ProfileMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
-                .Append(result.averageFrameMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture)).Append(',')
-                .AppendLine(result.p95FrameMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+                .AppendLine(result.averageFrameMs.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
         }
         return csv.ToString();
     }
@@ -952,10 +947,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             balls = _state.ballCount,
             sampleCount = _profileSamplesMs.Count,
             averageProfileMs = Average(_profileSamplesMs),
-            medianProfileMs = Percentile(_profileSamplesMs, 0.50f),
-            p95ProfileMs = Percentile(_profileSamplesMs, 0.95f),
-            averageFrameMs = Average(_frameSamplesMs),
-            p95FrameMs = Percentile(_frameSamplesMs, 0.95f)
+            medianProfileMs = Median(_profileSamplesMs),
+            averageFrameMs = Average(_frameSamplesMs)
         };
     }
 
@@ -967,12 +960,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         for (int i = start; i < _profileSamplesMs.Count; i++)
             total += _profileSamplesMs[i];
         _state.averageProfileMs = count == 0 ? 0f : (float)(total / count);
-        // The dashboard's rolling percentile is intentionally omitted in headless measurements.
-        if (!_headlessMode)
-        {
-            List<float> recent = _profileSamplesMs.GetRange(start, count);
-            _state.p95ProfileMs = Percentile(recent, 0.95f);
-        }
     }
 
     private void AddChartPoint(float profileMs, float mainThreadMs, float frameMs)
@@ -1026,14 +1013,16 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         return (float)(total / values.Count);
     }
 
-    private static float Percentile(List<float> values, float percentile)
+    private static float Median(List<float> values)
     {
         if (values == null || values.Count == 0)
             return 0f;
         float[] sorted = values.ToArray();
         Array.Sort(sorted);
-        int index = Mathf.Clamp(Mathf.CeilToInt(percentile * sorted.Length) - 1, 0, sorted.Length - 1);
-        return sorted[index];
+        int middle = sorted.Length / 2;
+        return sorted.Length % 2 == 0
+            ? (sorted[middle - 1] + sorted[middle]) * 0.5f
+            : sorted[middle];
     }
 
     private void PublishState()
@@ -1075,7 +1064,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public float progress;
         public float profileMs;
         public float averageProfileMs;
-        public float p95ProfileMs;
         public float mainThreadMs;
         public float frameMs;
         public int ballCount;
@@ -1116,9 +1104,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public int sampleCount;
         public float averageProfileMs;
         public float medianProfileMs;
-        public float p95ProfileMs;
         public float averageFrameMs;
-        public float p95FrameMs;
     }
 
     private sealed class ComparisonMode

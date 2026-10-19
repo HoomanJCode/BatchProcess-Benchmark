@@ -39,13 +39,13 @@ The gravity helper starts a local web panel at `http://127.0.0.1:8765/` after th
 
 A Windows standalone Development Player compared all five Unity gravity strategies with **500 balls**, a **2-second warm-up**, and **8 seconds of measurement per strategy** on October 19, 2026. This headless benchmark freezes Unity physics integration while leaving each strategy's `FixedUpdate` gravity calculation active. That holds the same deterministic starting positions across methods and prevents collision solving from dominating the algorithm comparison.
 
-| Unity gravity strategy | Compute average (ms/step) | Compute P95 (ms/step) | Profiler samples |
-| --- | ---: | ---: | ---: |
-| Single threaded | 13.329 | 14.075 | 400 |
-| C# async | 2.495 | 3.888 | 400 |
-| C# parallel | 2.408 | 2.783 | 401 |
-| Unity Jobs | 2.669 | 3.328 | 400 |
-| Unity Jobs + Burst | 0.553 | 0.883 | 400 |
+| Unity gravity strategy | Compute average (ms/step) | Profiler samples |
+| --- | ---: | ---: |
+| Single threaded | 13.329 | 400 |
+| C# async | 2.495 | 400 |
+| C# parallel | 2.408 | 401 |
+| Unity Jobs | 2.669 | 400 |
+| Unity Jobs + Burst | 0.553 | 400 |
 
 At 500 balls, each physics step computes **500 × 499 = 249,500 directed source-target interactions**. The player targets 60 FPS, and its frame times were about 16.67 ms for every method, so frame timing is not a useful ranking in this isolated headless run. The table ranks the measured gravity-calculation marker only.
 
@@ -53,16 +53,16 @@ At 500 balls, each physics step computes **500 × 499 = 249,500 directed source-
 
 Historical 2D measurements below are from a Windows headless player run on **October 17, 2026**, with the laptop connected to AC power. The scene simulated 128 bodies and computed softened Newtonian attraction from every other body. Unity ran a 2-second warm-up and collected profiler samples for 8 seconds per strategy. Unity coroutine has since been removed; its row is retained only as a historical result. The C# async result predates the change to one `Task.Run` per target body; rerun the benchmark to measure the current methods.
 
-| Unity gravity strategy | 2D average (ms/step) | 2D P95 (ms/step) |
-| --- | ---: | ---: |
-| Single threaded | 1.18 | 1.28 |
-| C# async | 1.20 | 1.33 |
-| C# parallel | 0.52 | 0.58 |
-| Unity Jobs | 0.64 | 0.69 |
-| Unity coroutine (historical) | 1.35 | 1.74 |
-| Unity Jobs + Burst | 0.12 | 0.14 |
+| Unity gravity strategy | 2D average (ms/step) |
+| --- | ---: |
+| Single threaded | 1.18 |
+| C# async | 1.20 |
+| C# parallel | 0.52 |
+| Unity Jobs | 0.64 |
+| Unity coroutine (historical) | 1.35 |
+| Unity Jobs + Burst | 0.12 |
 
-The timing is the average and 95th-percentile cost of one complete gravity calculation, measured with the Unity Profiler marker for each strategy. Both runs use the same deterministic starting layout for each method. In the latest 500-ball run, physics integration is paused; the historical 128-ball run integrated motion and resolved collisions. These tables report Unity methods only.
+The timing is the average cost of one complete gravity calculation, measured with the Unity Profiler marker for each strategy. Both runs use the same deterministic starting layout for each method. In the latest 500-ball run, physics integration is paused; the historical 128-ball run integrated motion and resolved collisions. These tables report Unity methods only.
 
 For the historical `N = 128` run, each target checked `N - 1` source bodies: `128 × 127 = 16,256` directed source-target evaluations per 2D physics step. The latest `N = 500` run performs `500 × 499 = 249,500`. Both use quadratic work and linear storage.
 
