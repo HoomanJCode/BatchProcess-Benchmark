@@ -89,7 +89,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     private bool _acceptDashboardCommands;
     private BenchmarkRunSettings _runSettings;
     private string _requestedAlgorithm = "";
-    private string _requestedMethod = "";
+    private readonly List<string> _requestedMethods = new List<string>();
 
     private void Start()
     {
@@ -208,7 +208,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _state.warmupSeconds = _warmupSeconds;
         _state.measurementSeconds = _measurementSeconds;
         _state.batchRunsPerStrategy = _batchRunsPerStrategy;
-        _state.selectedMethod = request.selectedMethod ?? "";
+        _state.selectedMethods = GetSelectedMethods(request);
         _state.completed = 0;
         _state.total = 0;
         _state.progress = 0f;
@@ -225,7 +225,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _isBatchComparison = request.workload == "batch";
         _isOptimizationComparison = request.workload == "randomSearch";
         _requestedAlgorithm = request.workload == "randomSearch" ? "Random search" : "";
-        _requestedMethod = request.selectedMethod ?? "";
+        _requestedMethods.Clear();
+        _requestedMethods.AddRange(GetSelectedMethods(request));
         _state.workload = request.workload == "randomSearch" ? "optimization" : request.workload;
         _state.dimension = request.workload == "gravity" ? request.dimension :
             (request.workload == "batch" ? "Batch processing" : "Optimization");
@@ -246,7 +247,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             request.workload == "randomSearch";
         bool validDimension = request.dimension == "2D" || request.dimension == "3D";
         return validWorkload && (request.workload != "gravity" || validDimension) &&
-            IsValidSelectedMethod(request.workload, request.selectedMethod) &&
+            IsValidSelectedMethods(request) &&
             request.balls >= 1 && request.balls <= 2000 &&
             request.measurementSeconds >= 1 && request.measurementSeconds <= 60 &&
             request.warmupSeconds >= 0 && request.warmupSeconds <= 30 &&
@@ -285,19 +286,33 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public int batchSize;
         public int evaluations;
         public int trials;
+        public string[] selectedMethods;
+        // Accept requests from an older open dashboard tab during a Unity hot reload.
         public string selectedMethod;
     }
 
-    private static bool IsValidSelectedMethod(string workload, string method)
+    private static string[] GetSelectedMethods(DashboardRunRequest request)
     {
-        if (string.IsNullOrEmpty(method))
-            return true;
+        if (request.selectedMethods != null && request.selectedMethods.Length > 0)
+            return request.selectedMethods;
+        if (!string.IsNullOrEmpty(request.selectedMethod))
+            return new[] { request.selectedMethod };
+        return new string[0];
+    }
 
-        if (method == "unity-single" || method == "unity-async" || method == "unity-parallel" ||
-            method == "unity-jobs" || method == "unity-burst")
-            return true;
-
-        return false;
+    private static bool IsValidSelectedMethods(DashboardRunRequest request)
+    {
+        string[] methods = GetSelectedMethods(request);
+        HashSet<string> seen = new HashSet<string>();
+        for (int i = 0; i < methods.Length; i++)
+        {
+            string method = methods[i];
+            bool validMethod = method == "unity-single" || method == "unity-async" || method == "unity-parallel" ||
+                method == "unity-jobs" || method == "unity-burst";
+            if (!validMethod || !seen.Add(method))
+                return false;
+        }
+        return true;
     }
 
     private static string GetUnityMethodId(string displayName)
@@ -322,7 +337,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             if (_isOptimizationComparison && !string.IsNullOrEmpty(_requestedAlgorithm) &&
                 mode.algorithm != _requestedAlgorithm)
                 continue;
-            if (!string.IsNullOrEmpty(_requestedMethod) && GetUnityMethodId(mode.displayName) != _requestedMethod)
+            if (_requestedMethods.Count > 0 && !_requestedMethods.Contains(GetUnityMethodId(mode.displayName)))
                 continue;
             selected.Add(mode);
         }
@@ -596,7 +611,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         }
 
         _state.status = "complete";
-        _state.phase = string.IsNullOrEmpty(_requestedMethod) ? "Unity methods measured" : "Unity method measured";
+        _state.phase = _requestedMethods.Count == 0 ? "Unity methods measured" : "Selected Unity methods measured";
         _state.progress = 1f;
         _state.activeExample = "Complete";
         _state.completed = _results.Count;
@@ -604,7 +619,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _state.results = _results.ToArray();
         PublishState();
         _requestedAlgorithm = "";
-        _requestedMethod = "";
+        _requestedMethods.Clear();
         if (_headlessMode)
             Debug.Log("Headless comparison finished with " + _results.Count + " results.");
         FinishHeadlessRun(0);
@@ -835,12 +850,12 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         }
 
         _state.status = "complete";
-        _state.phase = string.IsNullOrEmpty(_requestedMethod) ? "Unity methods measured" : "Unity method measured";
+        _state.phase = _requestedMethods.Count == 0 ? "Unity methods measured" : "Selected Unity methods measured";
         _state.progress = 1f;
         _state.activeExample = "Complete";
         _state.results = _results.ToArray();
         PublishState();
-        _requestedMethod = "";
+        _requestedMethods.Clear();
         FinishHeadlessRun(0);
         _acceptDashboardCommands = _dashboardServer != null && _dashboardServer.IsRunning && !_isAllExamplesComparison;
     }
@@ -1070,7 +1085,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         public int batchSize;
         public int evaluationCount;
         public int trialCount;
-        public string selectedMethod = "";
+        public string[] selectedMethods = new string[0];
         public float bestScore;
         public float averageBestScore;
         public float bestX;
