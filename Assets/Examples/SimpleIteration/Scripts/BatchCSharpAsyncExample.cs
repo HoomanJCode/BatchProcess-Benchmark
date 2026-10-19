@@ -22,9 +22,9 @@ public sealed class BatchCSharpAsyncExample : MonoBehaviour
     private async void Start()
     {
         // Dashboard settings are applied before the workload arrays are allocated.
-        _itemCount = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.Items", _itemCount));
-        _iterations = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.Iterations", _iterations));
-        _batchSize = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.BatchSize", _batchSize));
+        _itemCount = BenchmarkRunSettings.GetSimpleIterationItemCount(_itemCount);
+        _iterations = BenchmarkRunSettings.GetSimpleIterationIterations(_iterations);
+        _batchSize = BenchmarkRunSettings.GetSimpleIterationBatchSize(_batchSize);
         _values = new float[_itemCount];
         for (int i = 0; i < _values.Length; i++)
             _values[i] = ((i * 104729L) % 1000003L) / 1000003f;

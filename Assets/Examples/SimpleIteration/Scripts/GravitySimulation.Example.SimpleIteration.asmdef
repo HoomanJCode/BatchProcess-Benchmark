@@ -2,7 +2,8 @@
   "name": "GravitySimulation.Example.SimpleIteration",
   "references": [
     "Unity.Burst",
-    "Unity.Collections"
+    "Unity.Collections",
+    "GravitySimulation.WebDashboard"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

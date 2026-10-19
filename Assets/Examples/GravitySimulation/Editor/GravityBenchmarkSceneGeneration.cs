@@ -109,6 +109,7 @@ public static class GravityBenchmarkSceneGeneration
 
         GameObject runnerObject = new GameObject("Gravity Benchmark Runner");
         RealtimeBenchmarkDashboard runner = runnerObject.AddComponent<RealtimeBenchmarkDashboard>();
+        new GameObject("Benchmark Run Settings").AddComponent<BenchmarkRunSettings>();
         SerializedObject settings = new SerializedObject(runner);
         settings.FindProperty("_is2D").boolValue = is2D;
         settings.FindProperty("_warmupSeconds").intValue = 2;

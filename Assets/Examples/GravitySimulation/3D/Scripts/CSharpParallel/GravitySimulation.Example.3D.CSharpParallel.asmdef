@@ -1,6 +1,8 @@
 {
   "name": "GravitySimulation.Example.3D.CSharpParallel",
-  "references": [],
+  "references": [
+    "GravitySimulation.WebDashboard"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

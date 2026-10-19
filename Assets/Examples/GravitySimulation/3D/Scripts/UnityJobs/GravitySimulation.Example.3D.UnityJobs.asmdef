@@ -1,7 +1,8 @@
 {
   "name": "GravitySimulation.Example.3D.UnityJobs",
   "references": [
-    "Unity.Collections"
+    "Unity.Collections",
+    "GravitySimulation.WebDashboard"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

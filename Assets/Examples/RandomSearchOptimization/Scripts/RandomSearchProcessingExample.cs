@@ -27,9 +27,9 @@ public sealed class RandomSearchProcessingExample : MonoBehaviour
     private void Start()
     {
         _particleCount = 1;
-        _iterations = Mathf.Max(0, PlayerPrefs.GetInt(
-            "SimulationLab.RandomSearchEvaluationsPerTrial", _iterations + 1) - 1);
-        _trialCount = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.RandomSearchTrials", _trialCount));
+        _iterations = Mathf.Max(0,
+            BenchmarkRunSettings.GetRandomSearchEvaluationsPerTrial(_iterations + 1) - 1);
+        _trialCount = BenchmarkRunSettings.GetRandomSearchTrials(_trialCount);
         RunSelectedMethod();
     }
 

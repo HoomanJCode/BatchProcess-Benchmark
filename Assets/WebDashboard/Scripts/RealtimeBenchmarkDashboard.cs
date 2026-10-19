@@ -87,6 +87,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     private bool _allExamplesFinished;
     private string _headlessOutputPath;
     private bool _acceptDashboardCommands;
+    private BenchmarkRunSettings _runSettings;
     private string _requestedAlgorithm = "";
     private string _requestedMethod = "";
 
@@ -100,6 +101,13 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         Application.targetFrameRate = 60;
         // The runner must survive while each example scene is loaded in turn.
         DontDestroyOnLoad(gameObject);
+        _runSettings = BenchmarkRunSettings.Active;
+        if (_runSettings == null)
+        {
+            GameObject settingsObject = new GameObject("Benchmark Run Settings");
+            _runSettings = settingsObject.AddComponent<BenchmarkRunSettings>();
+        }
+        DontDestroyOnLoad(_runSettings.gameObject);
         _headlessMode = HasCommandLineArgument("-gravity-benchmark-headless");
         _hostDashboardInHeadlessMode = _headlessMode &&
             HasCommandLineArgument("-gravity-benchmark-host-dashboard");
@@ -112,10 +120,7 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             string balls = GetCommandLineValue("-gravity-benchmark-balls");
             int parsedBalls;
             if (int.TryParse(balls, out parsedBalls) && parsedBalls > 0 && parsedBalls <= 2000)
-            {
-                PlayerPrefs.SetInt("SimulationLab.Balls", parsedBalls);
-                PlayerPrefs.Save();
-            }
+                _runSettings.SetGravityBallCount(parsedBalls);
 
             string measurement = GetCommandLineValue("-gravity-benchmark-measurement-seconds");
             int parsedMeasurement;
@@ -142,15 +147,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             }
             _headlessOutputPath = Path.GetFullPath(_headlessOutputPath);
         }
-        else if (!_isBatchComparison && !_isOptimizationComparison)
-        {
-            // The comparison scenes serialize their normal starting count (128).
-            // Discard a previous dashboard/benchmark override when a new Play session
-            // begins; browser reruns apply their requested count after this startup.
-            PlayerPrefs.DeleteKey("SimulationLab.Balls");
-            PlayerPrefs.Save();
-        }
-
         _state.workload = _isOptimizationComparison ? "optimization" : (_isBatchComparison ? "batch" : "gravity");
         _state.dimension = _isOptimizationComparison ? "Optimization" : (_isBatchComparison ? "Batch processing" : (_is2D ? "2D" : "3D"));
         _batchRunsPerStrategy = Mathf.Max(1, _batchRunsPerStrategy);
@@ -267,15 +263,12 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         _measurementSeconds = request.measurementSeconds;
         _warmupSeconds = request.warmupSeconds;
         _batchRunsPerStrategy = request.runs;
-        // Every strategy scene reads these shared values before it allocates or starts work.
-        PlayerPrefs.SetInt("SimulationLab.Balls", request.balls);
-        PlayerPrefs.SetInt("SimulationLab.Items", request.items);
-        PlayerPrefs.SetInt("SimulationLab.Iterations", request.iterations);
-        PlayerPrefs.SetInt("SimulationLab.BatchSize", request.batchSize);
-        // Random Search uses one candidate per iteration, so this maps exactly to evaluations per trial.
-        PlayerPrefs.SetInt("SimulationLab.RandomSearchEvaluationsPerTrial", Mathf.Max(1, request.evaluations));
-        PlayerPrefs.SetInt("SimulationLab.RandomSearchTrials", request.trials);
-        PlayerPrefs.Save();
+        if (request.workload == "gravity")
+            _runSettings.SetGravityBallCount(request.balls);
+        else if (request.workload == "batch")
+            _runSettings.SetSimpleIteration(request.items, request.iterations, request.batchSize);
+        else
+            _runSettings.SetRandomSearch(request.evaluations, request.trials);
     }
 
     [Serializable]

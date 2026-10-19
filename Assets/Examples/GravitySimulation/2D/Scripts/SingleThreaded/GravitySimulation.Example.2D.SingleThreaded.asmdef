@@ -1,6 +1,8 @@
 {
   "name": "GravitySimulation.Example.2D.SingleThreaded",
-  "references": [],
+  "references": [
+    "GravitySimulation.WebDashboard"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

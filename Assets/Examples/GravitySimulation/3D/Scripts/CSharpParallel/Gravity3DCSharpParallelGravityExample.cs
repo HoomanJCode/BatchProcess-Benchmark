@@ -32,7 +32,7 @@ public sealed class Gravity3DCSharpParallelGravityExample : MonoBehaviour
     {
         // Arrays keep each body's position, mass, and calculated gravity easy to find.
         // Read the local dashboard value before creating the balls and their reusable arrays.
-        _ballCount = Mathf.Max(1, PlayerPrefs.GetInt("SimulationLab.Balls", _ballCount));
+        _ballCount = BenchmarkRunSettings.GetGravityBallCount(_ballCount);
         _bodies3D = new Rigidbody[_ballCount];
         _bodies2D = new Rigidbody2D[_ballCount];
         _positions = new Vector3[_ballCount];

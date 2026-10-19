@@ -105,6 +105,7 @@ public static class ExampleSceneGeneration
 
         GameObject runnerObject = new GameObject("Batch Benchmark Runner");
         RealtimeBenchmarkDashboard runner = runnerObject.AddComponent<RealtimeBenchmarkDashboard>();
+        new GameObject("Benchmark Run Settings").AddComponent<BenchmarkRunSettings>();
         SerializedObject settings = new SerializedObject(runner);
         settings.FindProperty("_isBatchComparison").boolValue = true;
         settings.FindProperty("_batchRunsPerStrategy").intValue = 20;
@@ -127,6 +128,7 @@ public static class ExampleSceneGeneration
 
         GameObject runnerObject = new GameObject("Optimization Benchmark Runner");
         RealtimeBenchmarkDashboard runner = runnerObject.AddComponent<RealtimeBenchmarkDashboard>();
+        new GameObject("Benchmark Run Settings").AddComponent<BenchmarkRunSettings>();
         SerializedObject settings = new SerializedObject(runner);
         settings.FindProperty("_isOptimizationComparison").boolValue = true;
         settings.FindProperty("_isBatchComparison").boolValue = false;
@@ -169,6 +171,7 @@ public static class ExampleSceneGeneration
 
         GameObject runnerObject = new GameObject("All Examples Benchmark Runner");
         RealtimeBenchmarkDashboard runner = runnerObject.AddComponent<RealtimeBenchmarkDashboard>();
+        new GameObject("Benchmark Run Settings").AddComponent<BenchmarkRunSettings>();
         SerializedObject settings = new SerializedObject(runner);
         settings.FindProperty("_isAllExamplesComparison").boolValue = true;
         settings.FindProperty("_batchRunsPerStrategy").intValue = 20;

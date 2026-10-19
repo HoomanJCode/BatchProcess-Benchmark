@@ -2,7 +2,8 @@
   "name": "GravitySimulation.Example.3D.UnityJobsBurst",
   "references": [
     "Unity.Burst",
-    "Unity.Collections"
+    "Unity.Collections",
+    "GravitySimulation.WebDashboard"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
