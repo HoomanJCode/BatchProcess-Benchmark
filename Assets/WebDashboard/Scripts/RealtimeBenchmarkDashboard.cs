@@ -109,8 +109,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
         }
         DontDestroyOnLoad(_runSettings.gameObject);
         _headlessMode = HasCommandLineArgument("-gravity-benchmark-headless");
-        // Headless gravity runs measure acceleration calculation only; physics integration is paused.
-        BenchmarkRunSettings.SetCalculationOnlyGravityBenchmark(_headlessMode);
         _hostDashboardInHeadlessMode = _headlessMode &&
             HasCommandLineArgument("-gravity-benchmark-host-dashboard");
         if (_headlessMode)
@@ -808,9 +806,8 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
 
             if (_headlessMode)
             {
-                // This run compares the gravity calculation methods, not Unity's collision solver.
-                // Keep FixedUpdate active for gravity calculations, but freeze integration and skip
-                // force application so crowded scenes measure calculation without physics overhead.
+                // The dedicated benchmark component has no physics objects; keep both physics
+                // engines paused so unrelated scene components cannot affect calculation timings.
                 Physics.simulationMode = SimulationMode.Script;
                 Physics2D.simulationMode = SimulationMode2D.Script;
             }
@@ -867,8 +864,6 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
     {
         if (!_headlessMode)
             return;
-
-        BenchmarkRunSettings.SetCalculationOnlyGravityBenchmark(false);
 
         try
         {

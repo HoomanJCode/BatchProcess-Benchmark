@@ -16,8 +16,9 @@ public static class GravityBenchmarkBuild
     /// <summary>Builds both gravity dimensions so one headless player can compare either one.</summary>
     public static void BuildGravityPlayer()
     {
-        // Use the generated benchmark scenes already in the project; the gravity
-        // scene generator creates additive scenes and cannot run in batch mode.
+        // Generate the array-only method scenes before building the standalone player.
+        GravityBenchmarkSceneGeneration.Build();
+
         string[] scenes =
         {
             "Assets/Examples/GravitySimulation/2D/Scenes/Gravity_Benchmark.unity",

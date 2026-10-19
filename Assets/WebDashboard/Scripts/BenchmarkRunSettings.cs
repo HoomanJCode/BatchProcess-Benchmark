@@ -21,8 +21,6 @@ public sealed class BenchmarkRunSettings : MonoBehaviour
     [SerializeField, Min(1)] private int _randomSearchTrials = 5;
 
     public static BenchmarkRunSettings Active { get; private set; }
-    public static bool IsCalculationOnlyGravityBenchmark { get; private set; }
-
     public int GravityBallCount { get { return Mathf.Max(1, _gravityBallCount); } }
     public int SimpleIterationItemCount { get { return Mathf.Max(1, _simpleIterationItemCount); } }
     public int SimpleIterationIterations { get { return Mathf.Max(1, _simpleIterationIterations); } }
@@ -75,18 +73,12 @@ public sealed class BenchmarkRunSettings : MonoBehaviour
     private static void ResetStatics()
     {
         Active = null;
-        IsCalculationOnlyGravityBenchmark = false;
         _sharedBallProperties = null;
     }
 
     public void SetGravityBallCount(int count)
     {
         _gravityBallCount = Mathf.Max(1, count);
-    }
-
-    public static void SetCalculationOnlyGravityBenchmark(bool enabled)
-    {
-        IsCalculationOnlyGravityBenchmark = enabled;
     }
 
     public static void SetSharedBallColor(Renderer renderer, Color color)

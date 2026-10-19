@@ -43,7 +43,7 @@ public sealed class Gravity3DUnityJobsBurstGravityExample : MonoBehaviour
         _masses = new float[_ballCount];
         _accelerations = new Vector3[_ballCount];
         // Resources lets every 2D ball reuse one circle sprite asset.
-        Sprite ballSprite = BenchmarkRunSettings.IsCalculationOnlyGravityBenchmark ? null : Resources.Load<Sprite>("GravityBall");
+        Sprite ballSprite = Resources.Load<Sprite>("GravityBall");
         // Jobs read NativeArrays, so allocate native input and output buffers once.
         _nativePositions = new NativeArray<Vector3>(_ballCount, Allocator.Persistent);
         _nativeMasses = new NativeArray<float>(_ballCount, Allocator.Persistent);
@@ -90,12 +90,9 @@ public sealed class Gravity3DUnityJobsBurstGravityExample : MonoBehaviour
                 ball.transform.position = position;
                 ball.transform.localScale = Vector3.one * ballDiameter;
 
-                if (!BenchmarkRunSettings.IsCalculationOnlyGravityBenchmark)
-                {
-                    SpriteRenderer spriteRenderer = ball.AddComponent<SpriteRenderer>();
-                    spriteRenderer.sprite = ballSprite;
-                    spriteRenderer.color = ballColor;
-                }
+                SpriteRenderer spriteRenderer = ball.AddComponent<SpriteRenderer>();
+                spriteRenderer.sprite = ballSprite;
+                spriteRenderer.color = ballColor;
 
                 CircleCollider2D circle = ball.AddComponent<CircleCollider2D>();
                 circle.radius = 0.5f;
@@ -113,17 +110,8 @@ public sealed class Gravity3DUnityJobsBurstGravityExample : MonoBehaviour
             else
             {
                 // The 3D scene uses a lit sphere mesh with Unity's 3D physics components.
-                GameObject sphere;
-                if (BenchmarkRunSettings.IsCalculationOnlyGravityBenchmark)
-                {
-                    sphere = new GameObject();
-                    sphere.AddComponent<SphereCollider>();
-                }
-                else
-                {
-                    sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                    BenchmarkRunSettings.SetSharedBallColor(sphere.GetComponent<Renderer>(), ballColor);
-                }
+                GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                BenchmarkRunSettings.SetSharedBallColor(sphere.GetComponent<Renderer>(), ballColor);
                 sphere.name = "Gravity Ball " + i.ToString("D3");
                 sphere.transform.position = position;
                 sphere.transform.localScale = Vector3.one * ballDiameter;
@@ -180,8 +168,6 @@ public sealed class Gravity3DUnityJobsBurstGravityExample : MonoBehaviour
                 _accelerations[i] = _nativeAccelerations[i];
         }
         // AddForce leaves integration and collision resolution to Unity's physics engine.
-        if (BenchmarkRunSettings.IsCalculationOnlyGravityBenchmark)
-            return;
         for (int i = 0; i < _ballCount; i++)
         {
             if (_is2D)

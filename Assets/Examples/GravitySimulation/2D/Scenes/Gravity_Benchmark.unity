@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &1141965478
+--- !u!1 &816171897
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,58 +127,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1141965480}
-  - component: {fileID: 1141965479}
-  m_Layer: 0
-  m_Name: Gravity Benchmark Runner
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1141965479
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1141965478}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4850cb64afa3d384caaf89e351572280, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::RealtimeBenchmarkDashboard
-  _warmupSeconds: 2
-  _measurementSeconds: 8
-  _dashboardPort: 8765
-  _is2D: 1
---- !u!4 &1141965480
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1141965478}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-
-
---- !u!1 &900010011
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 900010012}
-  - component: {fileID: 900010013}
+  - component: {fileID: 816171899}
+  - component: {fileID: 816171898}
   m_Layer: 0
   m_Name: Benchmark Run Settings
   m_TagString: Untagged
@@ -186,13 +136,31 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &900010012
+--- !u!114 &816171898
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 816171897}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9bc9ba0460794c14b83b2d855e7918fe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GravitySimulation.WebDashboard::BenchmarkRunSettings
+  _gravityBallCount: 128
+  _simpleIterationItemCount: 100000
+  _simpleIterationIterations: 100
+  _simpleIterationBatchSize: 1000
+  _randomSearchEvaluationsPerTrial: 100000
+  _randomSearchTrials: 5
+--- !u!4 &816171899
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 900010011}
+  m_GameObject: {fileID: 816171897}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -201,27 +169,62 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &900010013
+--- !u!1 &1977867780
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1977867782}
+  - component: {fileID: 1977867781}
+  m_Layer: 0
+  m_Name: Gravity Benchmark Runner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1977867781
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 900010011}
+  m_GameObject: {fileID: 1977867780}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9bc9ba0460794c14b83b2d855e7918fe, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: GravitySimulation.WebDashboard::BenchmarkRunSettings
-  _gravityBallCount: 128
-  _simpleIterationItemCount: 100000
-  _simpleIterationIterations: 100
-  _simpleIterationBatchSize: 1000
-  _randomSearchEvaluationsPerTrial: 100000
-  _randomSearchTrials: 5
+  m_Script: {fileID: 11500000, guid: 4850cb64afa3d384caaf89e351572280, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GravitySimulation.WebDashboard::RealtimeBenchmarkDashboard
+  _warmupSeconds: 2
+  _measurementSeconds: 8
+  _dashboardPort: 8765
+  _is2D: 1
+  _isBatchComparison: 0
+  _isOptimizationComparison: 0
+  _isAllExamplesComparison: 0
+  _batchRunsPerStrategy: 20
+  _openDashboardInBrowser: 1
+--- !u!4 &1977867782
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1977867780}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1141965480}
-  - {fileID: 900010012}
+  - {fileID: 1977867782}
+  - {fileID: 816171899}

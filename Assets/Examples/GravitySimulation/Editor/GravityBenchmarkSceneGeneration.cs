@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -74,12 +75,20 @@ public static class GravityBenchmarkSceneGeneration
 
     private static void CreateBenchmarkCopy(string sourcePath, string destinationPath)
     {
-        // Rebuild only these generated copies; the user's source scenes are untouched.
+        // Benchmark copies use a separate array-only driver; the user's visual scenes remain untouched.
         AssetDatabase.DeleteAsset(destinationPath);
         if (!AssetDatabase.CopyAsset(sourcePath, destinationPath))
             throw new System.Exception("Could not copy gravity example for benchmark: " + sourcePath);
 
         Scene copy = EditorSceneManager.OpenScene(destinationPath, OpenSceneMode.Additive);
+        string sceneName = Path.GetFileNameWithoutExtension(destinationPath);
+        string methodName = sceneName.Substring("Gravity_".Length);
+        int methodIndex = System.Array.IndexOf(ExampleScenes, methodName);
+        if (methodIndex < 0)
+            throw new System.Exception("Unknown gravity benchmark method scene: " + destinationPath);
+
+        bool is2D = destinationPath.StartsWith(TwoDBenchmarkFolder);
+        bool replacedExample = false;
         foreach (GameObject root in copy.GetRootGameObjects())
         {
             MonoBehaviour[] behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
@@ -91,10 +100,25 @@ public static class GravityBenchmarkSceneGeneration
                 SerializedProperty ballCount = serializedBehaviour.FindProperty("_ballCount");
                 if (ballCount == null)
                     continue;
-                ballCount.intValue = ComparisonBallCount;
-                serializedBehaviour.ApplyModifiedPropertiesWithoutUndo();
+
+                GameObject exampleObject = behaviour.gameObject;
+                UnityEngine.Object.DestroyImmediate(behaviour, true);
+                GravityCalculationBenchmarkExample benchmarkExample =
+                    exampleObject.AddComponent<GravityCalculationBenchmarkExample>();
+                SerializedObject serializedBenchmark = new SerializedObject(benchmarkExample);
+                serializedBenchmark.FindProperty("_ballCount").intValue = ComparisonBallCount;
+                serializedBenchmark.FindProperty("_is2D").boolValue = is2D;
+                serializedBenchmark.FindProperty("_method").enumValueIndex = methodIndex;
+                serializedBenchmark.ApplyModifiedPropertiesWithoutUndo();
+                replacedExample = true;
+                break;
             }
+            if (replacedExample)
+                break;
         }
+
+        if (!replacedExample)
+            throw new System.Exception("Could not find gravity example component in " + destinationPath);
 
         EditorSceneManager.MarkSceneDirty(copy);
         EditorSceneManager.SaveScene(copy, destinationPath);
@@ -103,6 +127,10 @@ public static class GravityBenchmarkSceneGeneration
 
     private static void CreateScene(string path, string sceneName, bool is2D)
     {
+        Scene openScene = EditorSceneManager.GetSceneByPath(path);
+        if (openScene.IsValid() && openScene.isLoaded)
+            return;
+
         // Additive scene creation leaves the user's currently open scene untouched.
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
         scene.name = sceneName;
