@@ -258,10 +258,19 @@
     let lastComparisonKey = null;
     let comparisonSelectionWasManual = false;
     const overviewStorageKey = 'simulation-lab-latest-comparisons-v3';
-    const methodSelectionStoragePrefix = 'simulation-lab-method-selection-v1-';
+    const panelSettingInputIds = [
+      'gravity-2d-balls', 'gravity-2d-seconds', 'gravity-2d-warmup',
+      'gravity-3d-balls', 'gravity-3d-seconds', 'gravity-3d-warmup',
+      'batch-items', 'batch-iterations', 'batch-size', 'batch-runs',
+      'random-evaluations', 'random-trials', 'random-runs'
+    ];
     let savedComparisons = loadSavedComparisons();
     let lastSavedCompletion = '';
-    try { localStorage.removeItem('simulation-lab-run-settings-v1'); } catch (error) { }
+    try {
+      localStorage.removeItem('simulation-lab-run-settings-v1');
+      ['gravity', 'batch', 'randomSearch'].forEach(workload =>
+        localStorage.removeItem('simulation-lab-method-selection-v1-' + workload));
+    } catch (error) { }
     const processingMethods = {
       gravity: [
         ['unity-single', 'Single threaded'], ['unity-async', 'C# async'], ['unity-parallel', 'C# parallel'],
@@ -277,9 +286,12 @@
         ['unity-jobs', 'Unity Jobs'], ['unity-burst', 'Unity Jobs + Burst']
       ]
     };
-    let selectedMethodByWorkload = loadMethodSelections();
+    let selectedMethodByWorkload = {};
     let runRequestPending = false;
     let unityConnected = false;
+    const panelSyncChannel = typeof BroadcastChannel === 'function'
+      ? new BroadcastChannel('simulation-lab-panel-sync-v1')
+      : null;
 
     function loadSavedComparisons() {
       try {
@@ -309,25 +321,81 @@
       return saved.filter(id => availableMethods.some(method => method[0] === id));
     }
 
-    function loadMethodSelections() {
-      const selections = {};
-      Object.keys(processingMethods).forEach(workload => {
-        try {
-          const saved = JSON.parse(localStorage.getItem(methodSelectionStoragePrefix + workload) || 'null');
-          if (Array.isArray(saved))
-            selections[workload] = saved.filter(id => processingMethods[workload].some(method => method[0] === id));
-        } catch (error) { }
-      });
-      return selections;
-    }
-
     function saveMethodSelection(workload, selection) {
       const availableMethods = processingMethods[workload] || [];
       selectedMethodByWorkload[workload] = Array.from(new Set(selection.filter(id =>
         availableMethods.some(method => method[0] === id))));
-      try {
-        localStorage.setItem(methodSelectionStoragePrefix + workload, JSON.stringify(selectedMethodByWorkload[workload]));
-      } catch (error) { }
+    }
+
+    function applyPanelSettings(settings) {
+      if (!settings || typeof settings !== 'object') return;
+      if (['gravity', 'batch', 'randomSearch'].includes(settings.workload))
+        selectedComparisonWorkload = settings.workload;
+      if (['2D', '3D'].includes(settings.dimension))
+        selectedGravityDimension = settings.dimension;
+      if (settings.values && typeof settings.values === 'object') {
+        panelSettingInputIds.forEach(id => {
+          if (Object.prototype.hasOwnProperty.call(settings.values, id)) {
+            const input = document.getElementById(id);
+            if (input) input.value = String(settings.values[id]);
+          }
+        });
+      }
+      if (settings.methods && typeof settings.methods === 'object') {
+        Object.keys(processingMethods).forEach(workload => {
+          if (!Array.isArray(settings.methods[workload])) return;
+          const allowed = processingMethods[workload].map(method => method[0]);
+          selectedMethodByWorkload[workload] = Array.from(new Set(settings.methods[workload]
+            .filter(id => allowed.includes(id))));
+        });
+      }
+      comparisonSelectionWasManual = true;
+    }
+
+    function getPanelSettings() {
+      const values = {};
+      panelSettingInputIds.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) values[id] = input.value;
+      });
+      const methods = {};
+      Object.keys(processingMethods).forEach(workload => {
+        methods[workload] = getMethodSelection(workload);
+      });
+      return {
+        workload: selectedComparisonWorkload,
+        dimension: selectedGravityDimension,
+        values: values,
+        methods: methods
+      };
+    }
+
+    function broadcastPanelSettings(type) {
+      if (!panelSyncChannel) return;
+      panelSyncChannel.postMessage({ type: type || 'settings', settings: getPanelSettings() });
+    }
+
+    if (panelSyncChannel) {
+      panelSyncChannel.addEventListener('message', event => {
+        const message = event.data;
+        if (!message || typeof message !== 'object') return;
+        if (message.type === 'hello') {
+          broadcastPanelSettings('state');
+          return;
+        }
+        if (message.type !== 'state' && message.type !== 'settings') return;
+        applyPanelSettings(message.settings);
+        renderComparisonSelection();
+      });
+    }
+
+    function savePanelSettings() {
+      broadcastPanelSettings();
+    }
+
+    function requestPanelSettings() {
+      if (panelSyncChannel)
+        panelSyncChannel.postMessage({ type: 'hello' });
     }
 
     function saveCompletedComparison(state) {
@@ -471,6 +539,8 @@
         : (workload === 'batch'
           ? 'Set the shared item count, iterations, and batch size. Every processing method uses the same workload.'
           : 'Set the number of candidate evaluations per trial. Every processing method receives the same search budget.');
+      document.getElementById('settings-description').textContent +=
+        ' Settings sync across open tabs and are not saved between panel sessions.';
       updateRunAction();
     }
 
@@ -927,13 +997,19 @@
       comparisonSelectionWasManual = true;
       if (selectedComparisonWorkload === 'gravity' && lastState && lastState.workload === 'gravity')
         selectedGravityDimension = lastState.dimension;
+      savePanelSettings();
       renderComparisonSelection();
     }));
     document.querySelectorAll('[data-gravity-dimension]').forEach(button => button.addEventListener('click', () => {
       selectedGravityDimension = button.dataset.gravityDimension;
       comparisonSelectionWasManual = true;
+      savePanelSettings();
       renderComparisonSelection();
     }));
+    panelSettingInputIds.forEach(id => {
+      const input = document.getElementById(id);
+      if (input) input.addEventListener('input', savePanelSettings);
+    });
     document.getElementById('run-selected-button').addEventListener('click', runSelectedComparison);
     document.getElementById('run-methods').addEventListener('change', event => {
       if (!event.target.dataset.methodId) return;
@@ -941,23 +1017,9 @@
         Array.from(document.querySelectorAll('#run-methods [data-method-id]:checked'))
           .map(input => input.dataset.methodId));
       updateRunAction();
+      broadcastPanelSettings();
     });
     window.addEventListener('storage', event => {
-      if (event.key && event.key.startsWith(methodSelectionStoragePrefix)) {
-        const workload = event.key.slice(methodSelectionStoragePrefix.length);
-        if (processingMethods[workload]) {
-          try {
-            const saved = JSON.parse(event.newValue || 'null');
-            if (Array.isArray(saved))
-              selectedMethodByWorkload[workload] = saved.filter(id => processingMethods[workload].some(method => method[0] === id));
-            else
-              delete selectedMethodByWorkload[workload];
-          } catch (error) {
-            delete selectedMethodByWorkload[workload];
-          }
-          if (selectedComparisonWorkload === workload) renderRunSettings();
-        }
-      }
       if (event.key === overviewStorageKey) {
         try {
           savedComparisons = event.newValue ? JSON.parse(event.newValue) : {};
@@ -971,6 +1033,7 @@
     window.addEventListener('resize', () => { if (lastState) drawTimeline(lastState); });
     renderOverview(null);
     renderComparisonSelection();
+    requestPanelSettings();
     poll();
     window.setInterval(poll, 200);
   </script>
