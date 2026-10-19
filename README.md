@@ -35,6 +35,20 @@ Reports are saved under `Build/Headless/`. The dashboard build can be used for l
 
 ### Example gravity benchmark result
 
+#### Latest dashboard run: 3D, 500 balls
+
+The local dashboard shows a completed 3D comparison of all five Unity strategies using **500 balls**, a **2-second warm-up**, and **8 seconds per strategy**. The dashboard shows 500 balls, not 5,000, so the values below are documented as a 500-ball run. This was measured in Unity Editor Play Mode on October 19, 2026.
+
+| Unity gravity strategy | Compute average (ms/step) | Compute P95 (ms/step) | Frame average (ms) | Frame P95 (ms) | Profiler samples |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Single threaded | 13.49 | 13.49 | 235.00 | 235.00 | 2 |
+| C# async | 3.42 | 4.40 | 911.88 | 183.16 | 319 |
+| C# parallel | 3.44 | 4.63 | 904.73 | 145.24 | 312 |
+| Unity Jobs | 2.98 | 3.75 | 505.62 | 36.86 | 353 |
+| Unity Jobs + Burst | 0.657 | 0.830 | 459.58 | 23.72 | 390 |
+
+The single-threaded result has only two profiler samples, so it is not a reliable timing estimate. The large frame averages and their mismatch with frame P95 also show substantial Editor stalls/outliers. Treat this run as an observed dashboard result, not a clean performance ranking; use the standalone Development Build instructions below for more reliable frame comparisons. The dashboard result table reports compute timings per physics step and frame timings separately.
+
 These are historical measurements from a Windows headless player run on **October 17, 2026**, with the laptop connected to AC power. Each 2D and 3D scene simulated 128 bodies and computed softened Newtonian attraction from every other body. Unity ran a 2-second warm-up and collected profiler samples for 8 seconds per strategy. Unity coroutine has since been removed from the benchmark; its row is retained only as a historical result. The C# async result predates the change to one `Task.Run` per target body; rerun the benchmark to measure the current methods.
 
 | Unity gravity strategy | 2D average (ms/step) | 2D P95 (ms/step) | 3D average (ms/step) | 3D P95 (ms/step) |
