@@ -142,6 +142,14 @@ public sealed class RealtimeBenchmarkDashboard : MonoBehaviour
             }
             _headlessOutputPath = Path.GetFullPath(_headlessOutputPath);
         }
+        else if (!_isBatchComparison && !_isOptimizationComparison)
+        {
+            // The comparison scenes serialize their normal starting count (128).
+            // Discard a previous dashboard/benchmark override when a new Play session
+            // begins; browser reruns apply their requested count after this startup.
+            PlayerPrefs.DeleteKey("SimulationLab.Balls");
+            PlayerPrefs.Save();
+        }
 
         _state.workload = _isOptimizationComparison ? "optimization" : (_isBatchComparison ? "batch" : "gravity");
         _state.dimension = _isOptimizationComparison ? "Optimization" : (_isBatchComparison ? "Batch processing" : (_is2D ? "2D" : "3D"));
