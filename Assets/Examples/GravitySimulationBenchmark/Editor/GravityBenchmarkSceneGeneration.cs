@@ -122,8 +122,8 @@ public static class GravityBenchmarkSceneGeneration
 
                 GameObject exampleObject = behaviour.gameObject;
                 UnityEngine.Object.DestroyImmediate(behaviour, true);
-                GravityBenchmarkExampleBase benchmarkExample =
-                    exampleObject.AddComponent(benchmarkComponentType) as GravityBenchmarkExampleBase;
+                MonoBehaviour benchmarkExample =
+                    exampleObject.AddComponent(benchmarkComponentType) as MonoBehaviour;
                 SerializedObject serializedBenchmark = new SerializedObject(benchmarkExample);
                 serializedBenchmark.FindProperty("_ballCount").intValue = ComparisonBallCount;
                 serializedBenchmark.FindProperty("_is2D").boolValue = is2D;
