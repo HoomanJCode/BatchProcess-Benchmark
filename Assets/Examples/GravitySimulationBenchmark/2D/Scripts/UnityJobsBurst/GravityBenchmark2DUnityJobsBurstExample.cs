@@ -104,7 +104,7 @@ public sealed class GravityBenchmark2DUnityJobsBurstExample : MonoBehaviour
                 acceleration += offset * (Gravity * Masses[other] *
                     inverseDistance * inverseDistance * inverseDistance);
             }
-            Accelerations[target] = acceleration;
+            Accelerations[target] = acceleration / Mathf.Max(1, Positions.Length - 1);
         }
     }
 }

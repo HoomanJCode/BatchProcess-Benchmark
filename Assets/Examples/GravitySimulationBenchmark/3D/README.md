@@ -5,4 +5,4 @@
 - Dimension-specific components: `Scripts/`
 - Shared calculation and strategy code: `../Scripts/`
 
-The benchmark uses the same 3D softened gravity calculation as the visual example. It measures array calculations without per-ball GameObjects or Unity physics components.
+The benchmark uses the same 3D softened gravity calculation as the visual example and averages each target over the other `N - 1` balls. It measures array calculations without per-ball GameObjects or Unity physics components.

@@ -67,15 +67,15 @@ The timing is the average cost of one complete gravity calculation, measured wit
 For the historical `N = 128` run, each target checked `N - 1` source bodies: `128 × 127 = 16,256` directed source-target evaluations per 2D physics step. The latest `N = 500` run performs `500 × 499 = 249,500`. Both use quadratic work and linear storage.
 
 ```text
-a_i += G * m_j * (x_j - x_i) / (|x_j - x_i|² + softening²)^(3/2)
+a_i = Σ[j ≠ i] G * m_j * (x_j - x_i) / (|x_j - x_i|² + softening²)^(3/2) / max(1, N - 1)
 ```
 
 ```mermaid
 flowchart TD
     A[500 bodies: positions and masses] --> B[Choose target body i]
     B --> C[Visit every other source body j]
-    C --> D[Accumulate softened Newtonian acceleration]
-    D --> E[Apply force; headless comparison keeps positions fixed]
+    C --> D[Sum other-ball contributions; divide by N - 1]
+    D --> E[Apply average acceleration; headless comparison keeps positions fixed]
     E --> F[Next physics step]
     F --> B
     C --> G[500 x 499 = 249,500 interactions per step]

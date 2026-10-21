@@ -72,7 +72,7 @@ public sealed class GravityBenchmark3DCSharpParallelExample : MonoBehaviour
                     acceleration += offset * (_gravity * _gravityScale * _masses[other] *
                         inverseDistance * inverseDistance * inverseDistance);
                 }
-                _accelerations[target] = acceleration;
+                _accelerations[target] = acceleration / Mathf.Max(1, _ballCount - 1);
             });
         }
     }

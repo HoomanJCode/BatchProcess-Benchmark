@@ -159,7 +159,7 @@ public sealed class Gravity2DSingleThreadedGravityExample : MonoBehaviour
                     acceleration += offset * (_gravity * _gravityScale * _masses[other] *
                         inverseDistance * inverseDistance * inverseDistance);
                 }
-                _accelerations[i] = acceleration;
+                _accelerations[i] = acceleration / Mathf.Max(1, _ballCount - 1);
             }
         }
         // AddForce applies the calculated acceleration; Unity integrates motion and resolves collisions.

@@ -221,7 +221,7 @@ public sealed class Gravity3DUnityJobsGravityExample : MonoBehaviour
                 acceleration += offset * (Gravity * Masses[other] *
                     inverseDistance * inverseDistance * inverseDistance);
             }
-            Accelerations[index] = acceleration;
+            Accelerations[index] = acceleration / Mathf.Max(1, Positions.Length - 1);
         }
     }
     #endregion

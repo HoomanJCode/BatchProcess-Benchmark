@@ -7,11 +7,11 @@ This example uses Unity's 2D scene and physics components. The balls are circle 
 - Sprite resource: `Resources/GravityBall.png`
 - Dimension-specific scene menu: **Tools → Gravity 2D → Regenerate Scenes**
 
-Every strategy script is self-contained. The force uses softened Newtonian gravity:
+Every strategy script is self-contained. Each ball skips itself, sums contributions from the other `N - 1` balls, then averages those contributions:
 
 ```text
 r_ij = position_j - position_i
-acceleration_i += G * mass_j * r_ij / (|r_ij|² + softening²)^(3/2)
+averageAcceleration_i = Σ[j ≠ i] G * mass_j * r_ij / (|r_ij|² + softening²)^(3/2) / max(1, N - 1)
 ```
 
 The work per physics step is **O(N²)** for `N` balls. Positions, masses, and acceleration buffers use **O(N)** memory. The 2D scripts use `Rigidbody2D.AddForce` and set the z component of each direction to zero.

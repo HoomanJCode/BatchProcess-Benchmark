@@ -7,11 +7,11 @@ This example uses Unity's 3D scene and physics components. Each ball is a sphere
 - Ball collisions use the shared [`Resources/GravityBallPhysicsMaterial.physicMaterial`](Resources/GravityBallPhysicsMaterial.physicMaterial) asset. Edit its friction and bounciness values to tune the 3D balls.
 - Dimension-specific scene menu: **Tools → Gravity 3D → Regenerate Scenes**
 
-Every strategy script is self-contained. The force uses softened Newtonian gravity:
+Every strategy script is self-contained. Each ball skips itself, sums contributions from the other `N - 1` balls, then averages those contributions:
 
 ```text
 r_ij = position_j - position_i
-acceleration_i += G * mass_j * r_ij / (|r_ij|² + softening²)^(3/2)
+averageAcceleration_i = Σ[j ≠ i] G * mass_j * r_ij / (|r_ij|² + softening²)^(3/2) / max(1, N - 1)
 ```
 
 The work per physics step is **O(N²)** for `N` balls. Positions, masses, and acceleration buffers use **O(N)** memory. The scene disables built-in world gravity because each strategy calculates and applies the attraction itself.
